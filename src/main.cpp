@@ -1,16 +1,28 @@
-#include "CSVReader.h"
+#include "models/PlayerRating.h"
+#include "utils/DataLoader.h"
 #include <iostream>
 
 int main() {
-    CSVReader reader("../data/club_games.csv");
-    std::vector<std::vector<std::string>> data = reader.readData();
+    PlayerRating ratingSystem;
+    DataLoader loader;
 
-    for (int i = 0; i < 5 && i < data.size(); i++) {
-        for (const auto& cell : data[i]) {
-            std::cout << cell << " ";
-        }
-        std::cout << std::endl;
+    std::vector<Game> games = loader.loadGames("../data/club_games.csv");
+    std::vector<PlayerAppearance>appearances = loader.loadAppearances("../data/appearances.csv");
+    std::cout << "Data loaded\n";
+
+    for (const auto& game : games) {
+        std::vector<PlayerAppearance> matchAppearances;
+        
+        for (const auto& appearance : appearances) {
+            if (appearance.gameId == game.gameId) {
+                ratingSystem.initializePlayer(appearance.playerId);
+                matchAppearances.push_back(appearance);
+            }
+        } 
+
+        ratingSystem.processMatch(game, matchAppearances);
     }
 
+    ratingSystem.saveRatingsToFile();
     return 0;
 }
