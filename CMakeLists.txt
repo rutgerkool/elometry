@@ -11,7 +11,9 @@ add_executable(FootballELOValuator
     src/main.cpp
     src/models/PlayerRating.cpp
     src/utils/DataLoader.cpp
+    src/utils/Database/Database.cpp
 )
 
+find_package(SQLite3 REQUIRED)
 find_package(Boost COMPONENTS program_options REQUIRED)
-target_link_libraries(FootballELOValuator Boost::program_options)
+target_link_libraries(FootballELOValuator Boost::program_options SQLite::SQLite3)
