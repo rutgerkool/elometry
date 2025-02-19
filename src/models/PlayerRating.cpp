@@ -79,12 +79,18 @@ void PlayerRating::processMatchesParallel(const std::vector<Game>& games, const 
         gameAppearances[appearance.gameId].push_back(appearance);
     }
 
-    #pragma omp parallel for
-    for (size_t i = 0; i < games.size(); ++i) {
-        int gameId = games[i].gameId;
+    std::vector<Game> sortedGames = games;
+    std::sort(sortedGames.begin(), sortedGames.end(), [](const Game& a, const Game& b) {
+        return a.gameId < b.gameId;
+    });
+
+    #pragma omp parallel for ordered
+    for (size_t i = 0; i < sortedGames.size(); ++i) {
+        int gameId = sortedGames[i].gameId;
 
         if (gameAppearances.find(gameId) != gameAppearances.end()) {
-            processMatch(games[i], gameAppearances[gameId]);
+            #pragma omp ordered
+            processMatch(sortedGames[i], gameAppearances[gameId]);
         }
     }
 }
