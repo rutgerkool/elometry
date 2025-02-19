@@ -5,6 +5,8 @@
 #include <vector>
 #include <sqlite3.h>
 
+typedef int PlayerId;
+
 class Database {
     public:
         Database(const std::string& dbPath);

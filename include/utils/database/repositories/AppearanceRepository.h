@@ -4,8 +4,6 @@
 #include "utils/database/Database.h"
 #include <vector>
 
-typedef int PlayerId;
-
 struct PlayerAppearance {
     PlayerId playerId;
     int clubId;
