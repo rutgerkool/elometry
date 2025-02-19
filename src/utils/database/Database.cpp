@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 #include <fstream>
 #include <vector>
 #include <sys/stat.h>
@@ -14,10 +15,25 @@ Database::Database(const std::string& dbPath) {
     }
 
     if (isNewDatabase) {
-        std::cout << "New database created. Initializing tables and importing CSV data." << std::endl;
-        initializeTables();
-        loadCSV("appearances", "../data/appearances.csv");
-        loadCSV("games", "../data/club_games.csv");
+        std::vector<std::string> tableNames {
+            "appearances",
+            "club_games",
+            "clubs",
+            "competitions",
+            "game_events",
+            "game_lineups",
+            "games",
+            "player_valuations",
+            "players",
+            "transfers"
+        }; 
+
+        executeSQLFile("../db/data.sql");
+
+        for (const auto& tableName : tableNames) {
+            std::string csvPath = "../data/" + tableName + ".csv";
+            loadCSVIntoTable(tableName, csvPath);
+        }
     } else {
         std::cout << "Existing database used." << std::endl;
     }
@@ -33,58 +49,97 @@ bool Database::fileExists(const std::string& dbPath) {
     return (stat(dbPath.c_str(), &buffer) == 0);
 }
 
+void Database::executeSQLFile(const std::string& filePath) {
+    std::ifstream file(filePath);
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open SQL file: " << filePath << std::endl;
+        return;
+    }
+
+    std::stringstream ss;
+    std::string line;
+
+    while (getline(file, line)) {
+        ss << line << "\n";
+    }
+
+    char * errMsg;
+
+    if (sqlite3_exec(db, ss.str().c_str(), 0, 0, &errMsg) != SQLITE_OK) {
+        std::cerr << "SQL schema execution error: " << errMsg << std::endl;
+        sqlite3_free(errMsg);
+    } else {
+        std::cout << "Database schema initialized succesfully." << std::endl;
+    }
+}
+
 sqlite3 * Database::getConnection() {
     return db;
 }
 
-const char * Database::getTableCommands() {
-    return R"(
-        CREATE TABLE IF NOT EXISTS appearances (
-            appearance_id TEXT, 
-            game_id INT, 
-            player_id INT, 
-            player_club_id INT,
-            player_current_club_id INT, 
-            date TEXT, 
-            player_name TEXT,
-            competition_id TEXT, 
-            yellow_cards INT, 
-            red_cards INT,
-            goals INT, 
-            assists INT, 
-            minutes_played INT
-        );
-        CREATE TABLE IF NOT EXISTS games (
-            game_id INT, 
-            club_id INT, 
-            own_goals INT, 
-            own_position TEXT,
-            own_manager_name TEXT, 
-            opponent_id INT, 
-            opponent_goals INT,
-            opponent_position TEXT, 
-            opponent_manager_name TEXT,
-            hosting TEXT, 
-            is_win INT
-        );
-        CREATE INDEX IF NOT EXISTS idx_appearances_game ON appearances(game_id);
-        CREATE INDEX IF NOT EXISTS idx_appearances_player ON appearances(player_id);
-    )";
-}
+std::string Database::sanitizeCSVValue(std::string value) {
+    if (value.empty())
+        return "NULL";
 
-void Database::initializeTables() {
-    const char * tableCommands = getTableCommands();
-    char * errMsg;
+    value.erase(0, value.find_first_not_of(" \t\n\r"));
+    value.erase(value.find_last_not_of(" \t\n\r") + 1);
 
-    if (sqlite3_exec(db, tableCommands, 0, 0, &errMsg) != SQLITE_OK) {
-        std::cerr << "SQL error: " << errMsg << std::endl;
-        sqlite3_free(errMsg);
-    } else {
-        std::cout << "Tables initialized" << std::endl;
+    if (value.front() == '"' && value.back() == '"') {
+        value = value.substr(1, value.size() - 2);
+        std::replace(value.begin(), value.end(), '\n', ' ');
     }
+
+    std::string escapedValue;
+    for (char c : value) {
+        if (c == '\'') 
+            escapedValue += "''";
+        else 
+            escapedValue += c;
+    }
+
+    return "'" + escapedValue + "'";
 }
 
-void Database::loadCSV(const std::string& tableName, const std::string& csvPath) {
+std::vector<std::string> Database::getSanitizedValues(std::ifstream& file, std::string& line) {
+    std::vector<std::string> values;
+    std::string value;
+    std::string tempValue;
+    bool inQuotes = false;
+
+    while (true) {
+        for (size_t i = 0; i < line.size(); i++) {
+            char c = line[i];
+
+            if (c == '"') {
+                inQuotes = !inQuotes; 
+            }
+
+            if (c == ',' && !inQuotes) {
+                values.push_back(sanitizeCSVValue(tempValue));
+                tempValue.clear();
+            } else {
+                tempValue += c;
+            }
+        }
+
+        if (inQuotes) { 
+            std::string nextLine;
+            if (!getline(file, nextLine)) 
+                break;
+            tempValue += "\n" + nextLine;
+            line = nextLine;
+        } else {
+            break; 
+        }
+    }
+
+    values.push_back(sanitizeCSVValue(tempValue));
+
+    return values;
+}
+
+void Database::loadCSVIntoTable(const std::string& tableName, const std::string& csvPath) {
     std::ifstream file(csvPath);
     
     if (!file.is_open()) {
@@ -92,34 +147,20 @@ void Database::loadCSV(const std::string& tableName, const std::string& csvPath)
         return;
     }
 
+    std::string line;
     std::stringstream sqlBatch;
     sqlBatch << "BEGIN TRANSACTION;\n";
-    std::string line;
     
     getline(file, line);
 
     while (getline(file, line)) {
-        std::stringstream ss(line);
-        std::vector<std::string> values;
-        std::string value;
-
-        while (getline(ss, value, ',')) {
-            size_t pos = 0;
-
-            while ((pos = value.find("'", pos)) != std::string::npos) {
-                value.insert(pos, "'");
-                pos += 2;
-            }
-
-            values.push_back(value);
-        }
+        std::vector<std::string> values = getSanitizedValues(file, line);
 
         sqlBatch << "INSERT INTO " + tableName + " VALUES(";
 
         for (size_t i = 0; i < values.size(); i++) {
-            sqlBatch << "'" << values[i] << "'";
-            if (i < values.size() - 1)
-                sqlBatch << ",";
+            sqlBatch << values[i];
+            if (i < values.size() - 1) sqlBatch << ",";
         }
         sqlBatch << ");\n";
     }
@@ -128,9 +169,9 @@ void Database::loadCSV(const std::string& tableName, const std::string& csvPath)
 
     char * errMsg;
     if (sqlite3_exec(db, sqlBatch.str().c_str(), 0, 0, &errMsg) != SQLITE_OK) {
-        std:: cerr << "SQL error: " << errMsg << std::endl;
+        std::cerr << "SQL error: " << errMsg << std::endl;
         sqlite3_free(errMsg);
+    } else {
+        std::cout << "Data from " << csvPath << " imported into " << tableName << std::endl;
     }
-
-    std::cout << "Data from " << csvPath << " imported into " << tableName << std::endl;
 }

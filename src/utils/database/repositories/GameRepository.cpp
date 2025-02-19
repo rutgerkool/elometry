@@ -7,7 +7,7 @@ GameRepository::GameRepository(Database& database) {
 std::vector<Game> GameRepository::fetchGames() {
     std::vector<Game> games;
     sqlite3_stmt * stmt;
-    const char * query = "SELECT game_id, club_id, own_goals, opponent_id, opponent_goals FROM games;";
+    const char * query = "SELECT game_id, club_id, own_goals, opponent_id, opponent_goals FROM club_games;";
 
     if (sqlite3_prepare_v2(db, query, -1, &stmt, 0) == SQLITE_OK) {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
