@@ -92,15 +92,11 @@ void Database::loadCSV(const std::string& tableName, const std::string& csvPath)
         return;
     }
 
+    std::stringstream sqlBatch;
+    sqlBatch << "BEGIN TRANSACTION;\n";
     std::string line;
-    char * errMsg;
+    
     getline(file, line);
-
-    if (sqlite3_exec(db, "BEGIN TRANSACTION;", 0, 0, &errMsg) != SQLITE_OK) {
-        std::cerr << "SQL error: " << errMsg << std::endl;
-        sqlite3_free(errMsg);
-        return;
-    }
 
     while (getline(file, line)) {
         std::stringstream ss(line);
@@ -118,22 +114,20 @@ void Database::loadCSV(const std::string& tableName, const std::string& csvPath)
             values.push_back(value);
         }
 
-        std::string sql = "INSERT INTO " + tableName + " VALUES(";
+        sqlBatch << "INSERT INTO " + tableName + " VALUES(";
 
         for (size_t i = 0; i < values.size(); i++) {
-            sql += "'" + values[i] + "'";
+            sqlBatch << "'" << values[i] << "'";
             if (i < values.size() - 1)
-                sql += ",";
+                sqlBatch << ",";
         }
-        sql += ");";
-
-        if (sqlite3_exec(db, sql.c_str(), 0, 0, &errMsg) != SQLITE_OK) {
-            std::cerr << "SQL error: " << errMsg << std::endl;
-            sqlite3_free(errMsg);
-        }
+        sqlBatch << ");\n";
     }
 
-    if (sqlite3_exec(db, "COMMIT;", 0, 0, &errMsg) != SQLITE_OK) {
+    sqlBatch << "COMMIT;\n";
+
+    char * errMsg;
+    if (sqlite3_exec(db, sqlBatch.str().c_str(), 0, 0, &errMsg) != SQLITE_OK) {
         std:: cerr << "SQL error: " << errMsg << std::endl;
         sqlite3_free(errMsg);
     }
