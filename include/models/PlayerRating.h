@@ -1,29 +1,11 @@
 #ifndef PLAYERRATING_H
 #define PLAYERRATING_H
 
+#include "utils/database/repositories/GameRepository.h"
+#include "utils/database/repositories/AppearanceRepository.h"
 #include <unordered_map>
 #include <vector>
 #include <string>
-
-typedef int PlayerId;
-
-struct Game {
-    int gameId;
-    int homeClubId;
-    int awayClubId;
-    int homeGoals;
-    int awayGoals;
-    bool isHome;
-};
-
-struct PlayerAppearance {
-    PlayerId playerId;
-    int clubId;
-    int gameId;
-    int goals;
-    int assists;
-    int minutesPlayed;
-};
 
 class PlayerRating {
     public:

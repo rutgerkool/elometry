@@ -49,6 +49,11 @@ sudo apt install build-essential
 sudo apt install libboost-all-dev
 ```
 
+### **SQLite3**
+```bash
+sudo apt install libsqlite3-dev
+```
+
 ## **Building the Project**
 
 1. Clone the repository:

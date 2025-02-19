@@ -1,19 +1,40 @@
-#include "utils/Database.h"
+#include "utils/database/Database.h"
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <fstream>
 #include <vector>
+#include <sys/stat.h>
 
 Database::Database(const std::string& dbPath) {
+    bool isNewDatabase = !fileExists(dbPath);
+    
     if (sqlite3_open(dbPath.c_str(), &db) != SQLITE_OK) {
         std::cerr << "Can't open database: " << sqlite3_errmsg(db) << std::endl;
+    }
+
+    if (isNewDatabase) {
+        std::cout << "New database created. Initializing tables and importing CSV data." << std::endl;
+        initializeTables();
+        loadCSV("appearances", "../data/appearances.csv");
+        loadCSV("games", "../data/club_games.csv");
+    } else {
+        std::cout << "Existing database used." << std::endl;
     }
 }
 
 Database::~Database() {
     if (db)
         sqlite3_close(db);
+}
+
+bool Database::fileExists(const std::string& dbPath) {
+    struct stat buffer;
+    return (stat(dbPath.c_str(), &buffer) == 0);
+}
+
+sqlite3 * Database::getConnection() {
+    return db;
 }
 
 const char * Database::getTableCommands() {
@@ -46,14 +67,14 @@ const char * Database::getTableCommands() {
             hosting TEXT, 
             is_win INT
         );
-        CREATE INDEX idx_appearances_game ON appearances(game_id);
-        CREATE INDEX idx_appearances_player ON appearances(player_id);
+        CREATE INDEX IF NOT EXISTS idx_appearances_game ON appearances(game_id);
+        CREATE INDEX IF NOT EXISTS idx_appearances_player ON appearances(player_id);
     )";
 }
 
 void Database::initializeTables() {
     const char * tableCommands = getTableCommands();
-    char* errMsg;
+    char * errMsg;
 
     if (sqlite3_exec(db, tableCommands, 0, 0, &errMsg) != SQLITE_OK) {
         std::cerr << "SQL error: " << errMsg << std::endl;

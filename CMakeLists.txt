@@ -7,12 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 include_directories(include)
 
-add_executable(FootballELOValuator
-    src/main.cpp
-    src/models/PlayerRating.cpp
-    src/utils/DataLoader.cpp
-    src/utils/Database/Database.cpp
-)
+file(GLOB_RECURSE SRC_FILES src/*.cpp)
+
+add_executable(FootballELOValuator ${SRC_FILES})
 
 find_package(SQLite3 REQUIRED)
 find_package(Boost COMPONENTS program_options REQUIRED)

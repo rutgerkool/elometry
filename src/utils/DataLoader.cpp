@@ -52,7 +52,6 @@ std::vector<Game> DataLoader::loadGames(const std::string& filePath) {
             skipColumns(ss, token, 2);
 
             getline(ss, token, ',');
-            game.isHome = (token == "Home");
 
             skipColumns(ss, token);
         } catch (const std::invalid_argument (&e)) {
