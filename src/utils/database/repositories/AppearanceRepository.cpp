@@ -16,7 +16,8 @@ std::vector<PlayerAppearance> AppearanceRepository::fetchAppearances() {
             appearance.playerId = sqlite3_column_int(stmt, 1);
             appearance.clubId = sqlite3_column_int(stmt, 2);
             appearance.goals = sqlite3_column_int(stmt, 3);
-            appearance.minutesPlayed = sqlite3_column_int(stmt, 4);
+            appearance.assists = sqlite3_column_int(stmt, 4);
+            appearance.minutesPlayed = sqlite3_column_int(stmt, 5);
             appearances.push_back(appearance);
         }
     }

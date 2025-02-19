@@ -13,18 +13,7 @@ int main() {
 
     PlayerRating ratingSystem;
 
-    for (const auto& game : games) {
-        std::vector<PlayerAppearance> matchAppearances;
-        
-        for (const auto& appearance : appearances) {
-            if (appearance.gameId == game.gameId) {
-                ratingSystem.initializePlayer(appearance.playerId);
-                matchAppearances.push_back(appearance);
-            }
-        } 
-
-        ratingSystem.processMatch(game, matchAppearances);
-    }
+    ratingSystem.processMatchesParallel(games, appearances);
 
     ratingSystem.saveRatingsToFile();
     return 0;

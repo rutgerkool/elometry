@@ -6,6 +6,7 @@
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+#include <algorithm>
 
 PlayerRating::PlayerRating(double k, double homeAdvantage) 
     : kFactor(k), homeAdvantage(homeAdvantage) {}
@@ -31,6 +32,11 @@ void PlayerRating::processMatch(const Game& game, const std::vector<PlayerAppear
     int homeCount = 0, awayCount = 0;
 
     for (const auto& player : appearances) {
+        #pragma omp critical
+        {
+            initializePlayer(player.playerId);
+        }
+
         if (player.clubId == game.homeClubId) {
             homeTeamRating += playerRatings[player.playerId];
             homeCount++;
@@ -55,10 +61,34 @@ void PlayerRating::processMatch(const Game& game, const std::vector<PlayerAppear
         double expected = player.clubId == game.homeClubId ? homeExpected : awayExpected;
         double actual = player.clubId == game.homeClubId ? homeActual : awayActual;
 
-        playerRatings[player.playerId] = updateRating(playerRatings[player.playerId], expected, actual, player.minutesPlayed, std::abs(game.homeGoals - game.awayGoals));
-        playerMinutes[player.playerId] += player.minutesPlayed;
+        double newRating = updateRating(playerRatings[player.playerId], expected, actual, player.minutesPlayed, std::abs(game.homeGoals - game.awayGoals));
+
+        #pragma omp critical
+        {
+            playerRatings[player.playerId] = newRating;
+            playerMinutes[player.playerId] += player.minutesPlayed;
+        }
     }
 }
+
+
+void PlayerRating::processMatchesParallel(const std::vector<Game>& games, const std::vector<PlayerAppearance>& appearances) {
+    std::unordered_map<int, std::vector<PlayerAppearance>> gameAppearances;
+
+    for (const auto& appearance : appearances) {
+        gameAppearances[appearance.gameId].push_back(appearance);
+    }
+
+    #pragma omp parallel for
+    for (size_t i = 0; i < games.size(); ++i) {
+        int gameId = games[i].gameId;
+
+        if (gameAppearances.find(gameId) != gameAppearances.end()) {
+            processMatch(games[i], gameAppearances[gameId]);
+        }
+    }
+}
+
 
 void PlayerRating::saveRatingsToFile() {
     auto now = std::chrono::system_clock::now();
@@ -70,14 +100,18 @@ void PlayerRating::saveRatingsToFile() {
 
     if (!outFile.is_open()) {
         std::cerr << "Failed to open file for saving ratings." << std::endl;
+        return;
     }
 
     outFile << "PlayerId,Rating,MinutesPlayed\n";
 
-    for (const auto& [playerId, rating] : playerRatings) {
+    std::vector<std::pair<int, double>> sortedRatings(playerRatings.begin(), playerRatings.end());
+    std::sort(sortedRatings.begin(), sortedRatings.end());
+
+    for (const auto& [playerId, rating] : sortedRatings) {
         outFile << playerId << "," << rating << "," << playerMinutes[playerId] << "\n";
     }
 
     outFile.close();
-    std::cout << "Player ratings saved to player_ratings.csv" << std::endl;
+    std::cout << "Player ratings saved to " << filename.str() << std::endl;
 }

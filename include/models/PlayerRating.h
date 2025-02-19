@@ -15,6 +15,7 @@ class PlayerRating {
         double calculateExpectation(double playerRating, double opponentTeamRating);
         double updateRating(double currentRating, double expected, double actual, int minutesPlayed, int goalDifference);
         void processMatch(const Game& game, const std::vector<PlayerAppearance>& appearances);
+        void processMatchesParallel(const std::vector<Game>& games, const std::vector<PlayerAppearance>& appearances);
         void saveRatingsToFile();
 
     private:

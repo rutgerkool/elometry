@@ -13,4 +13,6 @@ add_executable(FootballELOValuator ${SRC_FILES})
 
 find_package(SQLite3 REQUIRED)
 find_package(Boost COMPONENTS program_options REQUIRED)
-target_link_libraries(FootballELOValuator Boost::program_options SQLite::SQLite3)
+find_package(OpenMP REQUIRED)
+
+target_link_libraries(FootballELOValuator Boost::program_options SQLite::SQLite3 OpenMP::OpenMP_CXX)
