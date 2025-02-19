@@ -11,10 +11,9 @@
 PlayerRating::PlayerRating(double k, double homeAdvantage) 
     : kFactor(k), homeAdvantage(homeAdvantage) {}
 
-void PlayerRating::initializePlayer(PlayerId playerId, double initialRating) {
-    if (playerRatings.find(playerId) == playerRatings.end()) {
-        playerRatings[playerId] = initialRating;
-        playerMinutes[playerId] = 0;
+void PlayerRating::initializePlayer(Player player) {
+    if (ratedPlayers.find(player.playerId) == ratedPlayers.end()) {
+        ratedPlayers[player.playerId] = player;
     }
 }
 
@@ -32,16 +31,11 @@ void PlayerRating::processMatch(const Game& game, const std::vector<PlayerAppear
     int homeCount = 0, awayCount = 0;
 
     for (const auto& player : appearances) {
-        #pragma omp critical
-        {
-            initializePlayer(player.playerId);
-        }
-
         if (player.clubId == game.homeClubId) {
-            homeTeamRating += playerRatings[player.playerId];
+            homeTeamRating += ratedPlayers[player.playerId].rating;
             homeCount++;
         } else {
-            awayTeamRating += playerRatings[player.playerId];
+            awayTeamRating += ratedPlayers[player.playerId].rating;
             awayCount++;
         }
     }
@@ -61,12 +55,12 @@ void PlayerRating::processMatch(const Game& game, const std::vector<PlayerAppear
         double expected = player.clubId == game.homeClubId ? homeExpected : awayExpected;
         double actual = player.clubId == game.homeClubId ? homeActual : awayActual;
 
-        double newRating = updateRating(playerRatings[player.playerId], expected, actual, player.minutesPlayed, std::abs(game.homeGoals - game.awayGoals));
+        double newRating = updateRating(ratedPlayers[player.playerId].rating, expected, actual, player.minutesPlayed, std::abs(game.homeGoals - game.awayGoals));
 
         #pragma omp critical
         {
-            playerRatings[player.playerId] = newRating;
-            playerMinutes[player.playerId] += player.minutesPlayed;
+            ratedPlayers[player.playerId].rating = newRating;
+            ratedPlayers[player.playerId].minutesPlayed += player.minutesPlayed;
         }
     }
 }
@@ -95,6 +89,9 @@ void PlayerRating::processMatchesParallel(const std::vector<Game>& games, const 
     }
 }
 
+bool PlayerRating::sortPlayersByRating(const std::pair<int, Player>& a, const std::pair<int, Player>& b) {
+    return a.second.rating > b.second.rating;
+}
 
 void PlayerRating::saveRatingsToFile() {
     auto now = std::chrono::system_clock::now();
@@ -109,13 +106,20 @@ void PlayerRating::saveRatingsToFile() {
         return;
     }
 
-    outFile << "PlayerId,Rating,MinutesPlayed\n";
+    outFile << "PlayerId,Name,Rating,SubPosition,Position,MarketValue,HighestMarketValue\n";
 
-    std::vector<std::pair<int, double>> sortedRatings(playerRatings.begin(), playerRatings.end());
-    std::sort(sortedRatings.begin(), sortedRatings.end());
+    std::vector<std::pair<int, Player>> sortedRatings(ratedPlayers.begin(), ratedPlayers.end());
+    std::sort(sortedRatings.begin(), sortedRatings.end(), sortPlayersByRating);
 
     for (const auto& [playerId, rating] : sortedRatings) {
-        outFile << playerId << "," << rating << "," << playerMinutes[playerId] << "\n";
+        outFile 
+            << playerId << "," 
+            << ratedPlayers[playerId].name << "," 
+            << ratedPlayers[playerId].rating << "," 
+            << ratedPlayers[playerId].subPosition << ","
+            << ratedPlayers[playerId].position << ","
+            << ratedPlayers[playerId].marketValue << ","
+            << ratedPlayers[playerId].highestMarketValue << "\n";
     }
 
     outFile.close();
