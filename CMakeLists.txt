@@ -12,7 +12,6 @@ file(GLOB_RECURSE SRC_FILES src/*.cpp)
 add_executable(FootballELOValuator ${SRC_FILES})
 
 find_package(SQLite3 REQUIRED)
-find_package(Boost COMPONENTS program_options REQUIRED)
 find_package(OpenMP REQUIRED)
 
-target_link_libraries(FootballELOValuator Boost::program_options SQLite::SQLite3 OpenMP::OpenMP_CXX)
+target_link_libraries(FootballELOValuator SQLite::SQLite3 OpenMP::OpenMP_CXX)
