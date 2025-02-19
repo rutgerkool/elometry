@@ -1,20 +1,11 @@
-#include "models/PlayerRating.h"
-#include "utils/database/repositories/GameRepository.h"
-#include "utils/database/repositories/AppearanceRepository.h"
+#include "services/RatingManager.h"
 #include <iostream>
 
 int main() {
     Database database("test.db");
-    GameRepository gameRepository(database);
-    AppearanceRepository appearanceRepository(database);
+    RatingManager ratingManager(database);
 
-    std::vector<Game> games = gameRepository.fetchGames();
-    std::vector<PlayerAppearance>appearances = appearanceRepository.fetchAppearances();
+    ratingManager.loadAndProcessRatings();
 
-    PlayerRating ratingSystem;
-
-    ratingSystem.processMatchesParallel(games, appearances);
-
-    ratingSystem.saveRatingsToFile();
     return 0;
 }
