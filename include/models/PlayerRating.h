@@ -19,6 +19,7 @@ class PlayerRating {
         static bool sortPlayersByRating(const std::pair<int, Player>& a, const std::pair<int, Player>& b);
         void processMatchesParallel(const std::vector<Game>& games, const std::vector<PlayerAppearance>& appearances);
         void saveRatingsToFile();
+        std::vector<std::pair<int, Player>>  getSortedRatedPlayers();
 
     private:
         std::unordered_map<PlayerId, Player> ratedPlayers;

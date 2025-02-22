@@ -125,3 +125,9 @@ void PlayerRating::saveRatingsToFile() {
     outFile.close();
     std::cout << "Player ratings saved to " << filename.str() << std::endl;
 }
+
+std::vector<std::pair<int, Player>> PlayerRating::getSortedRatedPlayers() {
+    std::vector<std::pair<int, Player>> sortedRatedPlayers(ratedPlayers.begin(), ratedPlayers.end());
+    std::sort(sortedRatedPlayers.begin(), sortedRatedPlayers.end(), sortPlayersByRating);
+    return sortedRatedPlayers;
+}
