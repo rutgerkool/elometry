@@ -1,6 +1,6 @@
-# Football ELO Valuator
+# Elometry
 
-This project analyzes football player data from the **Football Data from Transfermarkt dataset**, which includes over 60,000 games, 30,000+ players, 400,000+ player market valuations, and more. The project calculates adapted ELO ratings based on an algorithm [introduced by Wolff et al. in 2020](https://www.researchgate.net/publication/346383793_A_football_player_rating_system) and provides optimal team selection based on these ratings using Integer Linear Programming (ILP).
+This project introduces Elometry, an application that analyzes football player data from the **Football Data from Transfermarkt dataset**, which includes over 60,000 games, 30,000+ players, 400,000+ player market valuations, and more. The project calculates adapted ELO ratings based on an algorithm [introduced by Wolff et al. in 2020](https://www.researchgate.net/publication/346383793_A_football_player_rating_system) and provides optimal team selection based on these ratings using Integer Linear Programming (ILP).
 
 It is developed in C++ with CMake as the build system. 
 
@@ -15,7 +15,7 @@ It is developed in C++ with CMake as the build system.
 ## **Project Structure**
 
 ```
-football-elo-valuator/
+elometry/
 │
 ├── CMakeLists.txt                # CMake build configuration
 ├── README.md                     # Project README file
@@ -104,8 +104,8 @@ brew install cmake sqlite3 glpk
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/rutgerkool/football-elo-valuator.git
-   cd football-elo-valuator
+   git clone https://github.com/rutgerkool/elometry.git
+   cd elometry
    ```
 
 2. Download the dataset from [Kaggle](https://www.kaggle.com/datasets/davidcariboo/player-scores) and place all CSV files into the `data/` directory.
@@ -129,7 +129,7 @@ brew install cmake sqlite3 glpk
 
 ### **Running the Program**
 ```bash
-./FootballELOValuator
+./Elometry
 ```
 
 ### **Team Selection Example**
