@@ -15,7 +15,6 @@ public:
 
 private:
     sqlite3* db;
-    Player getPlayerFromStatement(sqlite3_stmt *stmt);
 };
 
 #endif 
