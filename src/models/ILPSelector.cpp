@@ -3,13 +3,18 @@
 #include <map>
 #include <set>
 #include <iostream>
+#include <limits>
 
 ILPSelector::ILPSelector(std::vector<std::pair<int, Player>>& p, 
                         const std::vector<std::string>& pos, 
-                        int b) 
+                        int64_t b) 
     : players(p)
     , requiredPositions(pos)
-    , budget(b) {}
+    , budget(b) {
+    if (budget < 0 || budget > std::numeric_limits<int64_t>::max() / 2) {
+        throw std::invalid_argument("Budget value out of valid range");
+    }
+}
 
 std::vector<ILPSelector::Variable> ILPSelector::createVariables() {
     std::vector<Variable> vars;
@@ -24,7 +29,7 @@ std::vector<ILPSelector::Variable> ILPSelector::createVariables() {
                 var.positionIdx = j;
                 var.varIdx = varIdx++;
                 var.rating = player.second.rating;
-                var.cost = player.second.highestMarketValue;
+                var.cost = static_cast<int64_t>(player.second.highestMarketValue); 
                 vars.push_back(var);
             }
         }
@@ -36,14 +41,21 @@ std::vector<ILPSelector::Variable> ILPSelector::createVariables() {
 void ILPSelector::addBudgetConstraint(glp_prob* lp, const std::vector<Variable>& vars) {
     int rowIdx = glp_add_rows(lp, 1);
     glp_set_row_name(lp, rowIdx, "budget");
-    glp_set_row_bnds(lp, rowIdx, GLP_UP, 0.0, budget);
+    
+    if (budget > std::numeric_limits<double>::max()) {
+        throw std::overflow_error("Budget exceeds maximum double value");
+    }
+    glp_set_row_bnds(lp, rowIdx, GLP_UP, 0.0, static_cast<double>(budget));
 
     std::vector<int> indices(vars.size() + 1);
     std::vector<double> coeffs(vars.size() + 1);
     
     for (size_t i = 0; i < vars.size(); i++) {
         indices[i + 1] = vars[i].varIdx;
-        coeffs[i + 1] = vars[i].cost;
+        if (vars[i].cost > std::numeric_limits<double>::max()) {
+            throw std::overflow_error("Cost value exceeds maximum double value");
+        }
+        coeffs[i + 1] = static_cast<double>(vars[i].cost);
     }
     
     glp_set_mat_row(lp, rowIdx, vars.size(), indices.data(), coeffs.data());
@@ -107,32 +119,38 @@ std::vector<std::pair<int, Player>> ILPSelector::selectTeam() {
         glp_set_col_bnds(lp, var.varIdx, GLP_DB, 0.0, 1.0);
     }
     
-    addBudgetConstraint(lp, vars);
-    addPositionConstraints(lp, vars);
-    setupObjectiveFunction(lp, vars);
-    
-    glp_iocp parm;
-    glp_init_iocp(&parm);
-    parm.presolve = GLP_ON;
-    int err = glp_intopt(lp, &parm);
-    
-    std::vector<std::pair<int, Player>> result;
-    if (err == 0) {
-        double obj_val = glp_mip_obj_val(lp);
-        std::cout << "Optimal solution found with objective value: " << obj_val << std::endl;
+    try {
+        addBudgetConstraint(lp, vars);
+        addPositionConstraints(lp, vars);
+        setupObjectiveFunction(lp, vars);
         
-        for (const auto& var : vars) {
-            if (glp_mip_col_val(lp, var.varIdx) > 0.5) {
-                result.push_back(players[var.playerIdx]);
-                std::cout << "Selected player: " << players[var.playerIdx].second.name 
-                    << " Rating: " << players[var.playerIdx].second.rating
-                    << " HighestMarketValue: " << players[var.playerIdx].second.highestMarketValue
-                    << " Position: " << players[var.playerIdx].second.subPosition 
-                    << std::endl;
+        glp_iocp parm;
+        glp_init_iocp(&parm);
+        parm.presolve = GLP_ON;
+        int err = glp_intopt(lp, &parm);
+        
+        std::vector<std::pair<int, Player>> result;
+        if (err == 0) {
+            double obj_val = glp_mip_obj_val(lp);
+            std::cout << "Optimal solution found with objective value: " << obj_val << std::endl;
+            
+            for (const auto& var : vars) {
+                if (glp_mip_col_val(lp, var.varIdx) > 0.5) {
+                    result.push_back(players[var.playerIdx]);
+                    std::cout << "Selected player: " << players[var.playerIdx].second.name 
+                        << " Rating: " << players[var.playerIdx].second.rating
+                        << " HighestMarketValue: " << players[var.playerIdx].second.highestMarketValue
+                        << " Position: " << players[var.playerIdx].second.subPosition 
+                        << std::endl;
+                }
             }
         }
+        
+        glp_delete_prob(lp);
+        return result;
     }
-    
-    glp_delete_prob(lp);
-    return result;
+    catch (const std::exception& e) {
+        glp_delete_prob(lp);
+        throw;
+    }
 }

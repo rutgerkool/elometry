@@ -16,7 +16,7 @@ public:
 
     std::vector<std::pair<int, Player>> selectOptimalTeamByPositions(
         const std::vector<std::string>& requiredPositions,
-        int budget
+        int64_t budget
     );
 };
 

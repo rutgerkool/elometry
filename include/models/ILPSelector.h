@@ -5,12 +5,13 @@
 #include <vector>
 #include <string>
 #include <glpk.h>
+#include <cstdint>
 
 class ILPSelector {
 public:
     ILPSelector(std::vector<std::pair<int, Player>>& p, 
                 const std::vector<std::string>& pos, 
-                int b);
+                int64_t b);
 
     std::vector<std::pair<int, Player>> selectTeam();
 
@@ -20,12 +21,12 @@ private:
         size_t positionIdx;
         size_t varIdx;
         double rating;
-        int cost;
+        int64_t cost;
     };
 
     std::vector<std::pair<int, Player>>& players;
     const std::vector<std::string>& requiredPositions;
-    int budget;
+    int64_t budget;
 
     std::vector<Variable> createVariables();
     void addBudgetConstraint(glp_prob* lp, const std::vector<Variable>& vars);
@@ -33,4 +34,4 @@ private:
     void setupObjectiveFunction(glp_prob* lp, const std::vector<Variable>& vars);
 };
 
-#endif 
+#endif

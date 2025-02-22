@@ -23,7 +23,7 @@ void RatingManager::loadAndProcessRatings() {
 
 std::vector<std::pair<int, Player>> RatingManager::selectOptimalTeamByPositions(
     const std::vector<std::string>& requiredPositions,
-    int budget
+    int64_t budget
 ) {
     std::vector<std::pair<int, Player>> sortedRatedPlayers = ratingSystem.getSortedRatedPlayers();
     ILPSelector selector(sortedRatedPlayers, requiredPositions, budget);
