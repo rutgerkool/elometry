@@ -19,5 +19,13 @@ void RatingManager::loadAndProcessRatings() {
     }
 
     ratingSystem.processMatchesParallel(games, appearances);
-    ratingSystem.saveRatingsToFile();
+}
+
+std::vector<std::pair<int, Player>> RatingManager::selectOptimalTeamByPositions(
+    const std::vector<std::string>& requiredPositions,
+    int budget
+) {
+    std::vector<std::pair<int, Player>> sortedRatedPlayers = ratingSystem.getSortedRatedPlayers();
+    ILPSelector selector(sortedRatedPlayers, requiredPositions, budget);
+    return selector.selectTeam();
 }

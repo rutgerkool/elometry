@@ -7,5 +7,7 @@ int main() {
 
     ratingManager.loadAndProcessRatings();
 
+    ratingManager.selectOptimalTeamByPositions({"Attacking Midfield", "Centre-Back"}, 50000000);
+
     return 0;
 }
