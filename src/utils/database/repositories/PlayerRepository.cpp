@@ -50,5 +50,6 @@ std::vector<Player> PlayerRepository::fetchPlayers(const int& playerId) {
     }
 
     sqlite3_finalize(stmt);
+    
     return players;
 }

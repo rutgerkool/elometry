@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.10)
 
 project(Elometry VERSION 1.0)
 
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
 set(CMAKE_CXX_STANDARD_20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
@@ -11,11 +17,20 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 file(GLOB_RECURSE SRC_FILES src/*.cpp)
 
-add_executable(Elometry ${SRC_FILES})
-
 find_package(SQLite3 REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(GLPK REQUIRED)
+find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets)
+
+file(GLOB_RECURSE UI_HEADERS include/gui/*.h)
+
+qt6_wrap_cpp(MOC_SOURCES ${UI_HEADERS})
+
+qt6_add_resources(RESOURCES src/gui/resources/resources.qrc)
+
+add_executable(Elometry ${SRC_FILES} ${MOC_SOURCES} ${RESOURCES})
+
+set_property(TARGET Elometry PROPERTY AUTOMOC ON)
 
 if(WIN32)
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
@@ -24,4 +39,4 @@ elseif(APPLE)
     set(CMAKE_MACOSX_RPATH ON)
 endif()
 
-target_link_libraries(Elometry GLPK::GLPK SQLite::SQLite3 OpenMP::OpenMP_CXX)
+target_link_libraries(Elometry GLPK::GLPK SQLite::SQLite3 OpenMP::OpenMP_CXX Qt6::Widgets)

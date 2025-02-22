@@ -70,7 +70,9 @@ void PlayerRating::processMatchesParallel(const std::vector<Game>& games, const 
     std::unordered_map<int, std::vector<PlayerAppearance>> gameAppearances;
 
     for (const auto& appearance : appearances) {
-        gameAppearances[appearance.gameId].push_back(appearance);
+        if (ratedPlayers.find(appearance.playerId) != ratedPlayers.end()) {
+            gameAppearances[appearance.gameId].push_back(appearance);
+        }
     }
 
     std::vector<Game> sortedGames = games;

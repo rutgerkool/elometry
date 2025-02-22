@@ -1,0 +1,221 @@
+QMainWindow {
+    background-color: #1e1e1e;
+}
+
+QWidget {
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: #ffffff;
+}
+
+QPushButton {
+    background-color: #0078d4;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 14px;
+    min-width: 100px;
+}
+
+QPushButton:hover {
+    background-color: #2b8ada;
+    border: 1px solid #3d94dd;
+}
+
+QPushButton:pressed {
+    background-color: #005a9e;
+}
+
+QLineEdit {
+    padding: 8px;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    background-color: #2d2d2d;
+    color: #ffffff;
+    font-size: 14px;
+    selection-background-color: #0078d4;
+}
+
+QLineEdit:focus {
+    border: 2px solid #0078d4;
+    background-color: #333333;
+}
+
+QTableView {
+    border: 1px solid #404040;
+    border-radius: 4px;
+    background-color: #2d2d2d;
+    alternate-background-color: #333333;
+    gridline-color: #404040;
+}
+
+QTableView::item {
+    padding: 8px;
+    border: none;
+}
+
+QTableView::item:selected {
+    background-color: #0078d4;
+    color: white;
+}
+
+QHeaderView::section {
+    background-color: #252525;
+    padding: 8px;
+    border: none;
+    border-right: 1px solid #404040;
+    border-bottom: 1px solid #404040;
+    color: #ffffff;
+    font-weight: bold;
+}
+
+QScrollBar:vertical {
+    border: none;
+    background-color: #2d2d2d;
+    width: 10px;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #404040;
+    border-radius: 5px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #505050;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QComboBox {
+    padding: 8px;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    background-color: #2d2d2d;
+    color: white;
+    min-width: 100px;
+}
+
+QComboBox:on {
+    border: 2px solid #0078d4;
+}
+
+QComboBox::drop-down {
+    border: none;
+    padding-right: 8px;
+}
+
+QComboBox::down-arrow {
+    image: url(:/icons/down-arrow.png);
+    width: 12px;
+    height: 12px;
+}
+
+QComboBox QAbstractItemView {
+    border: 1px solid #404040;
+    background-color: #2d2d2d;
+    selection-background-color: #0078d4;
+    selection-color: white;
+}
+
+QSpinBox {
+    padding: 8px;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    background-color: #2d2d2d;
+    color: white;
+}
+
+QSpinBox::up-button, QSpinBox::down-button {
+    background-color: #404040;
+    border: none;
+    border-radius: 2px;
+}
+
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+    background-color: #505050;
+}
+
+QLabel {
+    font-size: 14px;
+    color: #ffffff;
+}
+
+QGroupBox {
+    background-color: #252525;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 20px;
+}
+
+QGroupBox::title {
+    color: #ffffff;
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 8px;
+}
+
+#playerGroup, #teamGroup {
+    background-color: #252525;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 8px;
+}
+
+.headerLabel {
+    font-size: 24px;
+    color: #0078d4;
+    font-weight: bold;
+    margin: 16px;
+}
+
+.card {
+    background-color: #252525;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 8px;
+    border: 1px solid #404040;
+}
+
+QHeaderView {
+    background-color: #1e1e1e;
+}
+
+QTableCornerButton::section {
+    background-color: #252525; 
+    border: none;
+    border-right: 1px solid #404040;
+    border-bottom: 1px solid #404040;
+}
+
+QAbstractScrollArea {
+    background-color: #1e1e1e;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background-color: #2d2d2d;
+    height: 10px;
+    margin: 0;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #404040;
+    border-radius: 5px;
+    min-width: 20px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #505050;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    width: 0;
+}

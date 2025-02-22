@@ -84,13 +84,14 @@ Before compiling the project, install the necessary tools and libraries:
 - CMake (3.15 or higher)
 - SQLite3
 - GLPK (GNU Linear Programming Kit)
+- Qt6
 
 ### **Platform-Specific Installation**
 
 #### **Linux (Ubuntu/Debian)**
 ```bash
 sudo apt update
-sudo apt install build-essential cmake libsqlite3-dev libglpk-dev
+sudo apt install build-essential cmake libsqlite3-dev libglpk-dev qt6-base-dev
 ```
 
 #### **macOS**

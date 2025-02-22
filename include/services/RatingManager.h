@@ -18,6 +18,10 @@ public:
         const std::vector<std::string>& requiredPositions,
         int64_t budget
     );
+
+    std::vector<std::pair<int, Player>> getSortedRatedPlayers() {
+        return ratingSystem.getSortedRatedPlayers();
+    }
 };
 
 #endif

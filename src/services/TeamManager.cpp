@@ -88,3 +88,11 @@ void TeamManager::autoFillTeam(Team& team, int budget) {
         addPlayerToTeam(team.teamId, player);
     }
 }
+
+Team& TeamManager::loadTeam(int teamId) {
+    auto it = teams.find(teamId);
+    if (it == teams.end()) {
+        throw std::runtime_error("Team not found");
+    }
+    return it->second;
+}

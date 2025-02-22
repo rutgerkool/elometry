@@ -21,6 +21,8 @@ public:
     std::vector<std::string> getAvailableSubPositions();
 
     Team& loadTeamFromClub(int clubId);
+    
+    Team& loadTeam(int teamId);
 
     Team& createTeam(const std::string& teamName);
 
