@@ -126,13 +126,15 @@ std::vector<std::pair<int, Player>> ILPSelector::selectTeam() {
         
         glp_iocp parm;
         glp_init_iocp(&parm);
+
         parm.presolve = GLP_ON;
+        parm.msg_lev = GLP_MSG_OFF; 
+        
         int err = glp_intopt(lp, &parm);
         
         std::vector<std::pair<int, Player>> result;
         if (err == 0) {
             double obj_val = glp_mip_obj_val(lp);
-            std::cout << "Optimal solution found with objective value: " << obj_val << std::endl;
             
             for (const auto& var : vars) {
                 if (glp_mip_col_val(lp, var.varIdx) > 0.5) {
