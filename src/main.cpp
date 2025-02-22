@@ -11,9 +11,11 @@ int main() {
 
     ratingManager.loadAndProcessRatings();
 
-    int clubId = 610;
-    Team& team = teamManager.loadTeamFromClub(clubId);
-    std::cout << "\nLoaded team for Club ID: " << clubId << " (" << team.teamName << ")\n";
+    Team& team = teamManager.createTeam("My Team");
+    teamManager.addPlayerToTeam(team.teamId, {1, 1, "Player 1", "My Club", "Centre-Back", "Defender", "2026-06-30", 7000000, 10000000});
+    teamManager.addPlayerToTeam(team.teamId, {2, 1, "Player 2", "My Club", "Centre-Forward", "Attack", "2027-01-30", 4000000, 8000000});
+    
+    std::cout << "\nLoaded team with ID: " << team.teamId << " (" << team.teamName << ")\n";
 
     for (const auto& player : team.players) {
         std::cout << player.name << " (" << player.subPosition << ") - €" 
@@ -27,7 +29,7 @@ int main() {
     }
 
     std::cout << "\nAuto-filling missing positions...\n";
-    teamManager.autoFillTeam(team, 50000000);
+    teamManager.autoFillTeam(team, 20000000);
 
     std::cout << "\nFinal Team Roster:\n";
     for (const auto& player : team.players) {

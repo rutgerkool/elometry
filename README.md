@@ -6,9 +6,12 @@ It is developed in C++ with CMake as the build system.
 
 ## **Features**
 - Player ELO rating calculation based on match performances
-- Optimal team selection using Integer Linear Programming (ILP)
-   - Select best players for specific positions within a budget constraint
-   - Optimization based on player ratings and historical market values
+- Team management of new/existing teams including:
+   - Automatic analysis of missing positions
+   - Smart team completion within budget constraints
+- Optimal player selection using Integer Linear Programming (ILP)
+  - Select best players for specific positions within a budget constraint
+  - Optimization based on player ratings and historical market values
 - Database management of player and match data
 - Performance-optimized data processing
 
@@ -41,27 +44,35 @@ elometry/
 │   │   ├── PlayerRating.h
 │   │   └── ILPSelector.h        # Team selection algorithm
 │   ├── services/
-│   │   └── RatingManager.h      # Rating management service
+│   │   ├── RatingManager.h      # Rating management service
+│   │   └── TeamManager.h        # Team management service
 │   └── utils/
 │       └── database/
 │           ├── Database.h
+│           ├── PlayerMapper.h
 │           └── repositories/
 │               ├── AppearanceRepository.h
-│               └── GameRepository.h
+│               ├── GameRepository.h
+│               ├── PlayerRepository.h
+│               └── TeamRepository.h
 │
-├── src/                          # Source code files
-    ├── main.cpp                  # Entry point
+└── src/                         # Source code files
+    ├── main.cpp                 # Entry point
     ├── models/
     │   ├── PlayerRating.cpp
-    │   └── ILPSelector.cpp      # Team selection implementation
+    │   └── ILPSelector.cpp
     ├── services/
-    │   └── RatingManager.cpp    # Rating management implementation
+    │   ├── RatingManager.cpp
+    │   └── TeamManager.cpp
     └── utils/
         └── database/
             ├── Database.cpp
+            ├── PlayerMapper.cpp
             └── repositories/
                 ├── AppearanceRepository.cpp
-                └── GameRepository.cpp
+                ├── GameRepository.cpp
+                ├── PlayerRepository.cpp
+                └── TeamRepository.cpp
 ```
 
 ## **Dependencies**
@@ -132,15 +143,25 @@ brew install cmake sqlite3 glpk
 ./Elometry
 ```
 
-### **Team Selection Example**
+### **Team Management Example**
 ```cpp
-std::vector<std::string> positions = {"Attacking Midfield", "Centre-Back"};
-int64_t budget = 45000000;
-auto optimalTeam = ratingManager.selectOptimalTeamByPositions(positions, budget);
+Database database("test.db");
+RatingManager ratingManager(database);
+TeamRepository teamRepository(database);
+TeamManager teamManager(teamRepository, ratingManager);
+
+ratingManager.loadAndProcessRatings();
+
+Team& team = teamManager.createTeam("My Team FC");
+
+teamManager.addPlayerToTeam(team.teamId, {1, 1, "Player 1", "My Club", "Centre-Back", "Defender", "2026-06-30", 7000000, 10000000});
+teamManager.addPlayerToTeam(team.teamId, {2, 1, "Player 2", "My Club", "Centre-Forward", "Attack", "2027-01-30", 4000000, 8000000});
+
+teamManager.autoFillTeam(team, 20000000);  
 ```
 
 ## **Performance Optimizations**
-- Batch INSERT statements for efficient table initialization
-- Indexed SQL queries for faster data retrieval
+- Batch INSERT statements for table initialization
+- Indexed SQL queries for data retrieval
 - Parallel processing for ELO calculations using OpenMP
 - Integer Linear Programming for optimal team selection
