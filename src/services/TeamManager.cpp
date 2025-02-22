@@ -8,10 +8,10 @@ std::vector<std::string> TeamManager::getAvailableSubPositions() {
     return teamRepo.getAvailableSubPositions();
 }
 
-int TeamManager::createTeam(const std::string& teamName) {
+Team& TeamManager::createTeam(const std::string& teamName) {
     int teamId = nextTeamId++;
     teams[teamId] = {teamId, teamName, {}};
-    return teamId;
+    return teams[teamId];
 }
 
 Team& TeamManager::loadTeamFromClub(int clubId) {

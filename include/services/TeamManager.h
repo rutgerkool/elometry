@@ -22,7 +22,7 @@ public:
 
     Team& loadTeamFromClub(int clubId);
 
-    int createTeam(const std::string& teamName);
+    Team& createTeam(const std::string& teamName);
 
     bool addPlayerToTeam(int teamId, const Player& player);
     bool removePlayerFromTeam(int teamId, int playerId);
