@@ -29,7 +29,7 @@ std::vector<ILPSelector::Variable> ILPSelector::createVariables() {
                 var.positionIdx = j;
                 var.varIdx = varIdx++;
                 var.rating = player.second.rating;
-                var.cost = static_cast<int64_t>(player.second.highestMarketValue); 
+                var.cost = static_cast<int64_t>(player.second.marketValue); 
                 vars.push_back(var);
             }
         }
@@ -140,9 +140,10 @@ std::vector<std::pair<int, Player>> ILPSelector::selectTeam() {
                 if (glp_mip_col_val(lp, var.varIdx) > 0.5) {
                     result.push_back(players[var.playerIdx]);
                     std::cout << "Selected player: " << players[var.playerIdx].second.name 
-                        << " Rating: " << players[var.playerIdx].second.rating
-                        << " HighestMarketValue: " << players[var.playerIdx].second.highestMarketValue
-                        << " Position: " << players[var.playerIdx].second.subPosition 
+                        << " - Club: " << players[var.playerIdx].second.clubName
+                        << " - Rating: " << players[var.playerIdx].second.rating
+                        << " - Market Value: " << players[var.playerIdx].second.marketValue
+                        << " - Position: " << players[var.playerIdx].second.subPosition 
                         << std::endl;
                 }
             }

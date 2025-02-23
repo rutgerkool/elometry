@@ -31,7 +31,7 @@ public:
 
     std::vector<std::string> getMissingPositions(const Team& team);
 
-    void autoFillTeam(Team& team, int budget);
+    void autoFillTeam(Team& team, int64_t budget);
 
     std::vector<Team> getAllTeams();
 

@@ -29,7 +29,7 @@ QVariant PlayerListModel::data(const QModelIndex &index, int role) const {
             case 1: return QString::fromStdString(player.second.name);
             case 2: return player.second.rating;
             case 3: return QString::fromStdString(player.second.subPosition);
-            case 4: return player.second.highestMarketValue;
+            case 4: return player.second.marketValue;
         }
     }
 

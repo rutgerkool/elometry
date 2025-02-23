@@ -77,7 +77,7 @@ std::vector<std::string> TeamManager::getMissingPositions(const Team& team) {
 }
 
 
-void TeamManager::autoFillTeam(Team& team, int budget) {
+void TeamManager::autoFillTeam(Team& team, int64_t budget) {
     std::vector<std::string> missingPositions = getMissingPositions(team);
     if (missingPositions.empty()) return;
 
