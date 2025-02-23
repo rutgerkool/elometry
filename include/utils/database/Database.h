@@ -15,6 +15,7 @@ class Database {
         sqlite3 * getConnection();
         bool fileExists(const std::string& dbPath);
         void executeSQLFile(const std::string& filePath);
+        void downloadAndExtractDataset();
         void loadCSVIntoTable(const std::string& tableName, const std::string& csvPath);
 
     private:

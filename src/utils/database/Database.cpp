@@ -6,6 +6,9 @@
 #include <fstream>
 #include <vector>
 #include <sys/stat.h>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 Database::Database(const std::string& dbPath) {
     bool isNewDatabase = !fileExists(dbPath);
@@ -28,10 +31,11 @@ Database::Database(const std::string& dbPath) {
             "transfers"
         }; 
 
+        downloadAndExtractDataset();
         executeSQLFile("../db/data.sql");
 
         for (const auto& tableName : tableNames) {
-            std::string csvPath = "../data/" + tableName + ".csv";
+            std::string csvPath = "data/" + tableName + ".csv";
             loadCSVIntoTable(tableName, csvPath);
         }
     } else {
@@ -138,6 +142,22 @@ std::vector<std::string> Database::getSanitizedValues(std::ifstream& file, std::
 
     return values;
 }
+
+void Database::downloadAndExtractDataset() {
+    std::string datasetPath = "data.zip";
+
+    if (!fileExists(datasetPath)) {
+        std::cout << "Downloading dataset from Kaggle..." << std::endl;
+        std::system("curl -L -o data.zip "
+                    "https://www.kaggle.com/api/v1/datasets/download/davidcariboo/player-scores");
+    }
+
+    if (!fs::exists("data")) {
+        std::cout << "Extracting dataset..." << std::endl;
+        std::system("unzip -o data.zip -d data");
+    }
+}
+
 
 void Database::loadCSVIntoTable(const std::string& tableName, const std::string& csvPath) {
     std::ifstream file(csvPath);
