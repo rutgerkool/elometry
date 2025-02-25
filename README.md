@@ -91,26 +91,15 @@ Before compiling the project, install the necessary tools and libraries:
 #### **Linux (Ubuntu/Debian)**
 ```bash
 sudo apt update
-sudo apt install build-essential cmake libsqlite3-dev libglpk-dev qt6-base-dev
+sudo apt install build-essential cmake libsqlite3-dev libglpk-dev qt6-base-dev unzip
+pip install kaggle
 ```
 
 #### **macOS**
 ```bash
 brew install cmake sqlite3 glpk
+pip install kaggle
 ```
-
-#### **Windows**
-1. Install Visual Studio or MinGW
-2. Install CMake from https://cmake.org/download/
-3. Download SQLite3 development files
-4. Download GLPK from https://sourceforge.net/projects/winglpk/
-   - Extract to a desired location
-   - Set environment variable GLPK_ROOT to the installation directory
-   - Add DLL directory to PATH:
-     ```batch
-     set GLPK_ROOT=C:\path\to\glpk-4.65
-     set PATH=%PATH%;%GLPK_ROOT%\w64
-     ```
 
 ## **Building the Project**
 

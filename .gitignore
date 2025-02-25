@@ -30,3 +30,4 @@ Makefile
 *.core
 
 /data/*.csv
+venv
