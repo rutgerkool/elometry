@@ -14,7 +14,22 @@ MainWindow::MainWindow(RatingManager& rm, TeamManager& tm, QWidget *parent)
     , playerListView(nullptr)
     , teamManagerView(nullptr)
 {
+    stackedWidget = new QStackedWidget(this);
+
+    mainView = new QWidget(this);
+    playerListView = new PlayerListView(ratingManager, this);
+    teamManagerView = new TeamManagerView(teamManager, this);
+
+    stackedWidget->addWidget(mainView);
+    stackedWidget->addWidget(playerListView);
+    stackedWidget->addWidget(teamManagerView);
+
+    setCentralWidget(stackedWidget);
+
     setupUi();
+    setupConnections();
+
+    stackedWidget->setCurrentWidget(mainView);
 }
 
 MainWindow::~MainWindow() {
@@ -23,11 +38,9 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::setupUi() {
-    QWidget* centralWidget = new QWidget(this);
-    QVBoxLayout* layout = new QVBoxLayout(centralWidget);
+    QVBoxLayout* layout = new QVBoxLayout(mainView);
     layout->setContentsMargins(20, 20, 20, 20);
     layout->setSpacing(16);
-    setCentralWidget(centralWidget);
 
     QLabel* headerLabel = new QLabel("Elometry", this);
     headerLabel->setStyleSheet("font-size: 24px; font-weight: bold; color: #0078d4; margin-bottom: 16px;");
@@ -53,16 +66,18 @@ void MainWindow::setupUi() {
     setMinimumSize(1024, 768);
 }
 
+void MainWindow::setupConnections() {
+    connect(playerListView, &PlayerListView::backToMain, this, &MainWindow::showMainView);
+}
+
+void MainWindow::showMainView() {
+    stackedWidget->setCurrentWidget(mainView);
+}
+
 void MainWindow::showPlayerList() {
-    if (!playerListView) {
-        playerListView = new PlayerListView(ratingManager, this);
-    }
-    setCentralWidget(playerListView);
+    stackedWidget->setCurrentWidget(playerListView);
 }
 
 void MainWindow::showTeamManager() {
-    if (!teamManagerView) {
-        teamManagerView = new TeamManagerView(teamManager, this);
-    }
-    setCentralWidget(teamManagerView);
+    stackedWidget->setCurrentWidget(teamManagerView);
 }

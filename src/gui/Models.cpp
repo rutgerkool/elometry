@@ -1,5 +1,4 @@
 #include "gui/Models.h"
-#include <QtCore/QString>
 #include <algorithm>
 
 PlayerListModel::PlayerListModel(const std::vector<std::pair<int, Player>>& players, QObject *parent)
@@ -82,9 +81,71 @@ void PlayerListModel::setFilter(const QString& filter) {
     endResetModel();
 }
 
+void PlayerListModel::setPagination(int start, int max) {
+    beginResetModel();
+    startIndex = start;
+    maxPlayers = max;
+
+    std::vector<std::pair<int, Player>> tempPlayers = allPlayers;
+
+    if (!currentFilter.isEmpty()) {
+        tempPlayers.erase(
+            std::remove_if(tempPlayers.begin(), tempPlayers.end(),
+                [this](const auto& player) {
+                    return !QString::fromStdString(player.second.name).contains(currentFilter, Qt::CaseInsensitive);
+                }
+            ),
+            tempPlayers.end()
+        );
+    }
+
+    if (!currentPosition.isEmpty()) {
+        tempPlayers.erase(
+            std::remove_if(tempPlayers.begin(), tempPlayers.end(),
+                [this](const auto& player) {
+                    return player.second.position != currentPosition.toStdString();
+                }
+            ),
+            tempPlayers.end()
+        );
+    }
+
+    if (startIndex >= tempPlayers.size()) {
+        startIndex = std::max(0, (int)tempPlayers.size() - maxPlayers);
+    }
+
+    if (startIndex < tempPlayers.size()) {
+        int endIndex = std::min(startIndex + maxPlayers, (int)tempPlayers.size());
+        filteredPlayers.assign(tempPlayers.begin() + startIndex, tempPlayers.begin() + endIndex);
+    } else {
+        filteredPlayers.clear();
+    }
+
+    endResetModel();
+}
+
+
 void PlayerListModel::setPositionFilter(const QString& position) {
     currentPosition = position;
     setFilter(currentFilter); 
+}
+
+void PlayerListModel::sort(int column, Qt::SortOrder order) {
+    beginResetModel();
+
+    std::sort(filteredPlayers.begin(), filteredPlayers.end(),
+        [column, order](const std::pair<int, Player>& a, const std::pair<int, Player>& b) {
+            switch (column) {
+                case 0: return order == Qt::AscendingOrder ? a.first < b.first : a.first > b.first;  
+                case 1: return order == Qt::AscendingOrder ? a.second.name < b.second.name : a.second.name > b.second.name;  
+                case 2: return order == Qt::AscendingOrder ? a.second.rating < b.second.rating : a.second.rating > b.second.rating;  
+                case 3: return order == Qt::AscendingOrder ? a.second.subPosition < b.second.subPosition : a.second.subPosition > b.second.subPosition;
+                case 4: return order == Qt::AscendingOrder ? a.second.marketValue < b.second.marketValue : a.second.marketValue > b.second.marketValue;
+            }
+            return false;
+        });
+
+    endResetModel();
 }
 
 TeamListModel::TeamListModel(TeamManager& tm, QObject *parent)

@@ -16,27 +16,27 @@ class TeamManagerView : public QWidget {
 public:
     explicit TeamManagerView(TeamManager& teamManager, QWidget *parent = nullptr);
 
-private slots:
-    void createNewTeam();
-    void loadSelectedTeam();
-    void autoFillTeam();
-    void updateTeamInfo();
+    private slots:
+        void createNewTeam();
+        void loadSelectedTeam();
+        void autoFillTeam();
+        void updateTeamInfo();
 
-private:
-    void setupUi();
-    void setupConnections();
+    private:
+        void setupUi();
+        void setupConnections();
 
-    TeamManager& teamManager;
-    TeamListModel* model;
-    QListView* teamList;
-    QListView* currentTeamPlayers;
-    QPushButton* newTeamButton;
-    QPushButton* loadTeamButton;
-    QPushButton* autoFillButton;
-    QLineEdit* teamNameInput;
-    QSpinBox* budgetInput;
+        TeamManager& teamManager;
+        TeamListModel* model;
+        QListView* teamList;
+        QListView* currentTeamPlayers;
+        QPushButton* newTeamButton;
+        QPushButton* loadTeamButton;
+        QPushButton* autoFillButton;
+        QLineEdit* teamNameInput;
+        QSpinBox* budgetInput;
 
-    Team* currentTeam;
+        Team* currentTeam;
 };
 
 #endif
