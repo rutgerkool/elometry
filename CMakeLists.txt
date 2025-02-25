@@ -39,4 +39,10 @@ elseif(APPLE)
     set(CMAKE_MACOSX_RPATH ON)
 endif()
 
-target_link_libraries(Elometry GLPK::GLPK SQLite::SQLite3 OpenMP::OpenMP_CXX Qt6::Widgets)
+target_link_libraries(Elometry 
+    PRIVATE 
+    GLPK::GLPK 
+    SQLite::SQLite3 
+    OpenMP::OpenMP_CXX 
+    Qt6::Widgets 
+)
