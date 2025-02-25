@@ -68,6 +68,7 @@ void MainWindow::setupUi() {
 
 void MainWindow::setupConnections() {
     connect(playerListView, &PlayerListView::backToMain, this, &MainWindow::showMainView);
+    connect(teamManagerView, &TeamManagerView::backToMain, this, &MainWindow::showMainView);
 }
 
 void MainWindow::showMainView() {

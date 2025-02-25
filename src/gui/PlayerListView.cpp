@@ -19,11 +19,15 @@ PlayerListView::PlayerListView(RatingManager& rm, QWidget *parent)
 void PlayerListView::setupUi() {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
+    backButton = new QPushButton("Back to Menu", this);
+    mainLayout->addWidget(backButton, 0, Qt::AlignLeft);
+
+    QHBoxLayout* inputLayout = new QHBoxLayout();
+
     QHBoxLayout* searchLayout = new QHBoxLayout();
     QLabel* searchLabel = new QLabel("Search:", this);
     searchBox = new QLineEdit(this);
     searchBox->setFixedWidth(200);
-
     searchLayout->addWidget(searchLabel);
     searchLayout->addWidget(searchBox);
     searchLayout->addStretch();
@@ -34,12 +38,10 @@ void PlayerListView::setupUi() {
     positionFilter->addItem("All Positions");
     positionFilter->addItems({"Goalkeeper", "Defender", "Midfield", "Attack"});
     positionFilter->setFixedWidth(200);
-
     filterLayout->addWidget(positionLabel);
     filterLayout->addWidget(positionFilter);
     filterLayout->addStretch();
 
-    QHBoxLayout* inputLayout = new QHBoxLayout();
     inputLayout->addLayout(searchLayout);
     inputLayout->addSpacing(20);
     inputLayout->addLayout(filterLayout);
@@ -52,14 +54,11 @@ void PlayerListView::setupUi() {
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView->setAlternatingRowColors(true);
 
-    backButton = new QPushButton("Back to Main View", this);
-
     paginationLayout = new QHBoxLayout();
     prevPageButton = new QPushButton("Previous", this);
     nextPageButton = new QPushButton("Next", this);
     pageInfoLabel = new QLabel("Page 1", this);
     totalPagesLabel = new QLabel("/ 1", this);
-
     paginationLayout->addWidget(prevPageButton);
     paginationLayout->addWidget(pageInfoLabel);
     paginationLayout->addWidget(totalPagesLabel);
@@ -69,7 +68,6 @@ void PlayerListView::setupUi() {
     mainLayout->addLayout(inputLayout);
     mainLayout->addWidget(tableView);
     mainLayout->addLayout(paginationLayout);
-    mainLayout->addWidget(backButton, 0, Qt::AlignLeft);
 }
 
 void PlayerListView::setupConnections() {

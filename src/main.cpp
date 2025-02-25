@@ -30,12 +30,13 @@ int main(int argc, char *argv[]) {
     Database database("test.db");
     RatingManager ratingManager(database);
     TeamRepository teamRepository(database);
-    TeamManager teamManager(teamRepository, ratingManager);
+    PlayerRepository playerRepository(database);
+    TeamManager teamManager(teamRepository, ratingManager, playerRepository);
 
     ratingManager.loadAndProcessRatings();
 
     MainWindow w(ratingManager, teamManager);
-    w.show();
+    w.showMaximized();
 
     return app.exec();
 }

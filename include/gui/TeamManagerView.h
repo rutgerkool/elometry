@@ -6,6 +6,8 @@
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QSpinBox>
+#include <QtGui/QStandardItem>
+#include <QtGui/QStandardItemModel>
 #include "services/TeamManager.h"
 
 class TeamListModel;
@@ -16,27 +18,37 @@ class TeamManagerView : public QWidget {
 public:
     explicit TeamManagerView(TeamManager& teamManager, QWidget *parent = nullptr);
 
-    private slots:
-        void createNewTeam();
-        void loadSelectedTeam();
-        void autoFillTeam();
-        void updateTeamInfo();
+signals:
+        void backToMain(); 
 
-    private:
-        void setupUi();
-        void setupConnections();
+private slots:
+    void createNewTeam();
+    void loadSelectedTeam();
+    void autoFillTeam();
+    void updateTeamInfo();
+    void loadTeamById();
+    void updateBudget(int newBudget);
+    void removeSelectedPlayer();
+    void navigateBack();
 
-        TeamManager& teamManager;
-        TeamListModel* model;
-        QListView* teamList;
-        QListView* currentTeamPlayers;
-        QPushButton* newTeamButton;
-        QPushButton* loadTeamButton;
-        QPushButton* autoFillButton;
-        QLineEdit* teamNameInput;
-        QSpinBox* budgetInput;
+private:
+    TeamManager& teamManager;
+    Team* currentTeam;
+    TeamListModel* model;
 
-        Team* currentTeam;
+    QListView* teamList;
+    QListView* currentTeamPlayers;
+    QPushButton* newTeamButton;
+    QPushButton* loadTeamByIdButton;
+    QPushButton* autoFillButton;
+    QPushButton* removePlayerButton;
+    QPushButton* backButton;
+    QLineEdit* teamNameInput;
+    QLineEdit* loadTeamIdInput;
+    QSpinBox* budgetInput;
+
+    void setupUi();
+    void setupConnections();
 };
 
 #endif

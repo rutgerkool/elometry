@@ -1,8 +1,8 @@
 #include "services/TeamManager.h"
 #include <iostream>
 
-TeamManager::TeamManager(TeamRepository& teamRepo, RatingManager& ratingManager)
-    : teamRepo(teamRepo), ratingManager(ratingManager) {}
+TeamManager::TeamManager(TeamRepository& teamRepo, RatingManager& ratingManager, PlayerRepository& playerRepo)
+    : teamRepo(teamRepo), ratingManager(ratingManager), playerRepo(playerRepo) {}
 
 std::vector<std::string> TeamManager::getAvailableSubPositions() {
     return teamRepo.getAvailableSubPositions();
@@ -18,7 +18,7 @@ Team& TeamManager::loadTeamFromClub(int clubId) {
     Team team;
     team.teamId = nextTeamId++;
     team.teamName = "Club " + std::to_string(clubId);
-    team.players = teamRepo.fetchPlayersForClub(clubId);
+    team.players = playerRepo.fetchPlayers(clubId);  
     teams[team.teamId] = team;
     return teams[team.teamId];
 }
@@ -42,11 +42,10 @@ bool TeamManager::removePlayerFromTeam(int teamId, int playerId) {
 
     auto& players = teams[teamId].players;
     players.erase(
-        std::remove_if(
-            players.begin(), players.end(), [playerId](const Player& p) { 
-                return p.playerId == playerId; 
-            }
-        ), players.end()
+        std::remove_if(players.begin(), players.end(),
+            [playerId](const Player& p) { return p.playerId == playerId; }
+        ),
+        players.end()
     );
     return true;
 }
@@ -95,4 +94,23 @@ Team& TeamManager::loadTeam(int teamId) {
         throw std::runtime_error("Team not found");
     }
     return it->second;
+}
+
+bool TeamManager::deleteTeam(int teamId) {
+    return teams.erase(teamId) > 0;
+}
+
+void TeamManager::setTeamBudget(int teamId, int64_t newBudget) {
+    if (teams.find(teamId) == teams.end()) {
+        throw std::runtime_error("Team not found");
+    }
+    teams[teamId].budget = newBudget;
+}
+
+Player TeamManager::searchPlayerById(int playerId) {
+    std::vector<Player> players = playerRepo.fetchPlayers(-1, playerId);
+    if (players.empty()) {
+        throw std::runtime_error("Player not found");
+    }
+    return players.front();
 }
