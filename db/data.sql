@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS appearances (
-    appearance_id TEXT, 
+    appearance_id TEXT PRIMARY KEY, 
     game_id INT, 
     player_id INT, 
     player_club_id INT,
@@ -11,14 +11,15 @@ CREATE TABLE IF NOT EXISTS appearances (
     red_cards INT,
     goals INT, 
     assists INT, 
-    minutes_played INT
+    minutes_played INT,
+    UNIQUE(appearance_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_appearances_game ON appearances(game_id);
 CREATE INDEX IF NOT EXISTS idx_appearances_player ON appearances(player_id);
 
 CREATE TABLE IF NOT EXISTS club_games (
-    game_id INT, 
+    game_id INT PRIMARY KEY, 
     club_id INT, 
     own_goals INT, 
     own_position TEXT,
@@ -28,11 +29,12 @@ CREATE TABLE IF NOT EXISTS club_games (
     opponent_position TEXT, 
     opponent_manager_name TEXT,
     hosting TEXT, 
-    is_win BOOLEAN
+    is_win BOOLEAN,
+    UNIQUE(game_id)
 );
 
 CREATE TABLE IF NOT EXISTS clubs (
-    club_id INT,
+    club_id INT PRIMARY KEY,
     club_code INT,
     name TEXT,
     domestic_competition_id INT,
@@ -48,7 +50,8 @@ CREATE TABLE IF NOT EXISTS clubs (
     coach_name TEXT,
     last_season YEAR,
     filename TEXT,
-    url TEXT
+    url TEXT,
+    UNIQUE(club_id)
 );
 
 CREATE TABLE IF NOT EXISTS competitions (
@@ -62,11 +65,12 @@ CREATE TABLE IF NOT EXISTS competitions (
     domestic_league_code TEXT,
     confederation TEXT,
     url TEXT,
-    is_major_national_league BOOLEAN
+    is_major_national_league BOOLEAN,
+    UNIQUE(competition_id)
 );
 
 CREATE TABLE IF NOT EXISTS game_events (
-    game_event_id TEXT,
+    game_event_id TEXT PRIMARY KEY,
     date DATE,
     game_id INT,
     minute INT,
@@ -75,11 +79,12 @@ CREATE TABLE IF NOT EXISTS game_events (
     player_id INT,
     description TEXT,
     player_in_id INT,
-    player_assist_id INT
+    player_assist_id INT,
+    UNIQUE(game_event_id)
 );
 
 CREATE TABLE IF NOT EXISTS game_lineups (
-    game_lineups_id TEXT,
+    game_lineups_id TEXT PRIMARY KEY,
     date DATE,
     game_id INT,
     player_id INT,
@@ -88,11 +93,12 @@ CREATE TABLE IF NOT EXISTS game_lineups (
     type TEXT,
     position TEXT,
     number INT,
-    team_captain BOOLEAN
+    team_captain BOOLEAN,
+    UNIQUE(game_lineups_id)
 );
 
 CREATE TABLE IF NOT EXISTS games (
-    game_id INT,
+    game_id INT PRIMARY KEY,
     competition_id TEXT,
     season YEAR,
     round TEXT,
@@ -114,15 +120,17 @@ CREATE TABLE IF NOT EXISTS games (
     home_club_name TEXT,
     away_club_name TEXT,
     aggregate TEXT,
-    competition_type TEXT
+    competition_type TEXT,
+    UNIQUE(game_id)
 );
 
 CREATE TABLE IF NOT EXISTS player_valuations (
-    player_id INT,
+    player_id INT PRIMARY KEY,
     date DATE,
     market_value_in_eur INT,
     current_club_id INT,
-    player_club_domestic_competition_id TEXT
+    player_club_domestic_competition_id TEXT,
+    UNIQUE(player_id)
 );
 
 CREATE TABLE IF NOT EXISTS players (
@@ -148,10 +156,12 @@ CREATE TABLE IF NOT EXISTS players (
     current_club_domestic_competition_id TEXT,
     current_club_name TEXT,
     market_value_in_eur INT,
-    highest_market_value_in_eur INT
+    highest_market_value_in_eur INT,
+    UNIQUE(player_id)
 );
 
 CREATE TABLE IF NOT EXISTS transfers (
+    transfer_id INTEGER PRIMARY KEY AUTOINCREMENT,
     player_id INT,
     transfer_date TEXT,
     transfer_season TEXT,
@@ -161,5 +171,6 @@ CREATE TABLE IF NOT EXISTS transfers (
     to_club_name TEXT,
     transfer_fee FLOAT,
     market_value_in_eur FLOAT,
-    player_name TEXT
+    player_name TEXT,
+    UNIQUE(player_id, transfer_date, to_club_name)
 );

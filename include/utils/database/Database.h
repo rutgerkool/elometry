@@ -13,16 +13,26 @@ class Database {
         ~Database();
 
         sqlite3 * getConnection();
-        bool fileExists(const std::string& dbPath);
-        void executeSQLFile(const std::string& filePath);
-        void downloadAndExtractDataset();
-        void loadCSVIntoTable(const std::string& tableName, const std::string& csvPath);
 
     private:
         sqlite3 * db = nullptr;
 
         std::string sanitizeCSVValue(std::string value);
+        std::string join(const std::vector<std::string>& values, const std::string& delimiter);
         std::vector<std::string> getSanitizedValues(std::ifstream& file, std::string& line);
+        void setLastUpdateTimestamp();
+        time_t getLastUpdateTimestamp();
+        time_t extractLastUpdatedTimestamp();
+        std::string getMetadataValue(const std::string& key);
+        void setMetadataValue(const std::string& key, const std::string& value);
+        void executeSQLFile(const std::string& filePath);
+        void downloadAndExtractDataset(bool updateDataset = false);
+        void loadCSVIntoTable(const std::string& tableName, const std::string& csvPath);
+        void loadDataIntoDatabase(bool updateDataset = false);
+        void updateDatasetIfNeeded();
+        bool fetchKaggleDatasetList();
+        bool fileExists(const std::string& dbPath);
+        void compareAndUpdateDataset(time_t kaggleUpdatedTime);
 };
 
 #endif
