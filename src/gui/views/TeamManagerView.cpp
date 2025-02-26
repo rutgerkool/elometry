@@ -40,6 +40,7 @@ void TeamManagerView::setupUi() {
 
     QVBoxLayout* leftLayout = new QVBoxLayout();
     QLabel* teamsLabel = new QLabel("Existing Teams:", this);
+    teamsLabel->setObjectName("teamsLabel");
     teamList = new QListView(this);
     teamList->setModel(model);
     teamList->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -67,7 +68,8 @@ void TeamManagerView::setupUi() {
 
     QVBoxLayout* centerLayout = new QVBoxLayout();
     QLabel* currentTeamLabel = new QLabel("Current Team:", this);
-    
+    currentTeamLabel->setObjectName("currentTeamLabel");
+
     currentTeamPlayers = new QTableView(this);
     currentTeamPlayers->setShowGrid(false);
     currentTeamPlayers->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -111,17 +113,31 @@ void TeamManagerView::setupUi() {
     centerLayout->addWidget(autoFillButton);
     centerLayout->addWidget(removePlayerButton);
 
-    QVBoxLayout* rightLayout = new QVBoxLayout();
+     QVBoxLayout* rightLayout = new QVBoxLayout();
     QLabel* playerDetailsLabel = new QLabel("Selected Player:", this);
+    playerDetailsLabel->setObjectName("playerDetailsLabel");
+
     playerImage = new QLabel(this);
+    playerImage->setObjectName("playerImage");
     playerImage->setFixedSize(200, 200);
     playerImage->setAlignment(Qt::AlignCenter);
 
     playerName = new QLabel("", this);
+    playerName->setObjectName("playerName");
+
     playerClub = new QLabel("", this);
+    playerClub->setObjectName("playerClub");
+    playerClub->setWordWrap(true); 
+    playerClub->setAlignment(Qt::AlignLeft);
+
     playerPosition = new QLabel("", this);
+    playerPosition->setObjectName("playerPosition");
+
     playerMarketValue = new QLabel("", this);
+    playerMarketValue->setObjectName("playerMarketValue");
+
     playerRating = new QLabel("", this);
+    playerRating->setObjectName("playerRating");
 
     rightLayout->addWidget(playerDetailsLabel);
     rightLayout->addWidget(playerImage);
@@ -276,6 +292,13 @@ void TeamManagerView::removeSelectedPlayer() {
     teamManager.removePlayerFromTeam(currentTeam->teamId, playerId);
     teamManager.saveTeamPlayers(*currentTeam);
     updateTeamInfo();
+
+    playerName->clear();
+    playerClub->clear();
+    playerPosition->clear();
+    playerMarketValue->clear();
+    playerRating->clear();
+    playerImage->clear();
 }
 
 void TeamManagerView::editTeamName() {

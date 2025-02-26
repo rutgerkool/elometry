@@ -26,7 +26,9 @@ void PlayerListView::setupUi() {
 
     QHBoxLayout* searchLayout = new QHBoxLayout();
     QLabel* searchLabel = new QLabel("Search:", this);
+    searchLabel->setProperty("section", "search");
     searchBox = new QLineEdit(this);
+    searchBox->setObjectName("searchBox");
     searchBox->setFixedWidth(200);
     searchLayout->addWidget(searchLabel);
     searchLayout->addWidget(searchBox);
@@ -34,7 +36,9 @@ void PlayerListView::setupUi() {
 
     QHBoxLayout* filterLayout = new QHBoxLayout();
     QLabel* positionLabel = new QLabel("Position:", this);
+    positionLabel->setProperty("section", "position");
     positionFilter = new QComboBox(this);
+    positionFilter->setObjectName("positionFilter");
     positionFilter->addItem("All Positions");
     positionFilter->addItems({"Goalkeeper", "Defender", "Midfield", "Attack"});
     positionFilter->setFixedWidth(200);
@@ -53,15 +57,29 @@ void PlayerListView::setupUi() {
     tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView->setAlternatingRowColors(true);
+    tableView->setFixedWidth(665); 
 
     paginationLayout = new QHBoxLayout();
     prevPageButton = new QPushButton("Previous", this);
+    prevPageButton->setObjectName("prevPageButton");
     nextPageButton = new QPushButton("Next", this);
+    nextPageButton->setObjectName("nextPageButton");
+    
+    QWidget* pageInfoContainer = new QWidget(this);
+    QHBoxLayout* pageInfoLayout = new QHBoxLayout(pageInfoContainer);
     pageInfoLabel = new QLabel("Page 1", this);
+    pageInfoLabel->setObjectName("pageInfoLabel");
     totalPagesLabel = new QLabel("/ 1", this);
+    totalPagesLabel->setObjectName("totalPagesLabel");
+    
+    pageInfoLayout->addStretch(1);
+    pageInfoLayout->addWidget(pageInfoLabel);
+    pageInfoLayout->addWidget(totalPagesLabel);
+    pageInfoLayout->addStretch(1);
+    pageInfoLayout->setContentsMargins(0, 0, 0, 0);
+
     paginationLayout->addWidget(prevPageButton);
-    paginationLayout->addWidget(pageInfoLabel);
-    paginationLayout->addWidget(totalPagesLabel);
+    paginationLayout->addWidget(pageInfoContainer);
     paginationLayout->addWidget(nextPageButton);
     paginationLayout->addStretch();
 
