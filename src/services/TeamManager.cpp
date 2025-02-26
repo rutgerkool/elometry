@@ -87,7 +87,6 @@ std::vector<std::string> TeamManager::getMissingPositions(const Team& team) {
     return missingPositions;
 }
 
-
 void TeamManager::autoFillTeam(Team& team, int64_t budget) {
     std::vector<std::string> missingPositions = getMissingPositions(team);
     if (missingPositions.empty()) return;
@@ -111,6 +110,21 @@ Team& TeamManager::loadTeam(int teamId) {
 bool TeamManager::deleteTeam(int teamId) {
     teamRepo.deleteTeam(teamId);
     return teams.erase(teamId) > 0;
+}
+
+bool TeamManager::updateTeamName(int teamId, const std::string& newName) {
+    auto it = teams.find(teamId);
+    if (it == teams.end()) {
+        return false;
+    }
+    
+    bool success = teamRepo.updateTeamName(teamId, newName);
+    
+    if (success) {
+        it->second.teamName = newName;
+    }
+    
+    return success;
 }
 
 void TeamManager::setTeamBudget(int teamId, int64_t newBudget) {

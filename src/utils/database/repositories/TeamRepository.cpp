@@ -132,3 +132,20 @@ void TeamRepository::removeAllPlayersFromTeam(int teamId) {
     }
     sqlite3_finalize(stmt);
 }
+
+bool TeamRepository::updateTeamName(int teamId, const std::string& newName) {
+    std::string query = "UPDATE teams SET team_name = ? WHERE team_id = ?;";
+    sqlite3_stmt* stmt;
+    bool success = false;
+
+    if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, newName.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 2, teamId);
+        
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+            success = sqlite3_changes(db) > 0;
+        }
+    }
+    sqlite3_finalize(stmt);
+    return success;
+}

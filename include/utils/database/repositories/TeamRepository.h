@@ -25,9 +25,10 @@ public:
     void removePlayerFromTeam(int teamId, int playerId);
     void removeAllPlayersFromTeam(int teamId);
     void deleteTeam(int teamId);
+    bool updateTeamName(int teamId, const std::string& newName);
 
 private:
     sqlite3* db;
 };
 
-#endif 
+#endif

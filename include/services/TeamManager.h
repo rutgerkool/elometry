@@ -22,6 +22,7 @@ public:
     bool addPlayerToTeam(int teamId, const Player& player);
     bool removePlayerFromTeam(int teamId, int playerId);
     bool deleteTeam(int teamId);
+    bool updateTeamName(int teamId, const std::string& newName);
     
     std::vector<std::string> getMissingPositions(const Team& team);
     void autoFillTeam(Team& team, int64_t budget);

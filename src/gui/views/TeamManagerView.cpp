@@ -11,6 +11,7 @@
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkRequest>
 #include <QTimer>
+#include <QInputDialog>
 #include <iostream>
 
 TeamManagerView::TeamManagerView(TeamManager& tm, QWidget *parent)
@@ -41,6 +42,7 @@ void TeamManagerView::setupUi() {
     QLabel* teamsLabel = new QLabel("Existing Teams:", this);
     teamList = new QListView(this);
     teamList->setModel(model);
+    teamList->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     QHBoxLayout* newTeamLayout = new QHBoxLayout();
     teamNameInput = new QLineEdit(this);
@@ -54,11 +56,14 @@ void TeamManagerView::setupUi() {
     loadTeamLayout->addWidget(loadTeamByIdButton);
     deleteTeamButton = new QPushButton("Delete Team", this);
 
+    editTeamNameButton = new QPushButton("Edit Team Name", this);
+    
     leftLayout->addWidget(teamsLabel);
     leftLayout->addWidget(teamList);
     leftLayout->addLayout(newTeamLayout);
     leftLayout->addLayout(loadTeamLayout);
     leftLayout->addWidget(deleteTeamButton);
+    leftLayout->addWidget(editTeamNameButton);
 
     QVBoxLayout* centerLayout = new QVBoxLayout();
     QLabel* currentTeamLabel = new QLabel("Current Team:", this);
@@ -141,6 +146,7 @@ void TeamManagerView::setupConnections() {
     connect(removePlayerButton, &QPushButton::clicked, this, &TeamManagerView::removeSelectedPlayer);
     connect(backButton, &QPushButton::clicked, this, &TeamManagerView::navigateBack);
     connect(deleteTeamButton, &QPushButton::clicked, this, &TeamManagerView::deleteSelectedTeam);
+    connect(editTeamNameButton, &QPushButton::clicked, this, &TeamManagerView::editTeamName);
 
     if (teamList->selectionModel()) { 
         connect(teamList->selectionModel(), &QItemSelectionModel::currentChanged, this, &TeamManagerView::loadSelectedTeam);
@@ -152,6 +158,7 @@ void TeamManagerView::setupConnections() {
     autoFillButton->setEnabled(false);
     budgetInput->setEnabled(false);
     removePlayerButton->setEnabled(false);
+    editTeamNameButton->setEnabled(false);
 }
 
 void TeamManagerView::createNewTeam() {
@@ -172,6 +179,7 @@ void TeamManagerView::createNewTeam() {
         autoFillButton->setEnabled(true);
         budgetInput->setEnabled(true);
         removePlayerButton->setEnabled(true);
+        editTeamNameButton->setEnabled(true);
 
         teamNameInput->clear();
     } catch (const std::exception& e) {
@@ -189,9 +197,12 @@ void TeamManagerView::loadSelectedTeam() {
         Team& selectedTeam = teamManager.loadTeam(teamId);
         currentTeam = &selectedTeam;
         updateTeamInfo();
+        
+        editTeamNameButton->setEnabled(true);
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Error", QString("Failed to load team: %1").arg(e.what()));
         currentTeam = nullptr;
+        editTeamNameButton->setEnabled(false);
     }
 }
 
@@ -215,9 +226,11 @@ void TeamManagerView::loadTeamById() {
                 teamManager.saveTeam(selectedTeam);
                 model->refresh();
                 updateTeamInfo();
+                editTeamNameButton->setEnabled(true);
             } catch (const std::exception& e) {
                 QMessageBox::critical(this, "Error", QString("Failed to load team: %1").arg(e.what()));
                 currentTeam = nullptr;
+                editTeamNameButton->setEnabled(false);
             }
         }
     }
@@ -265,6 +278,43 @@ void TeamManagerView::removeSelectedPlayer() {
     updateTeamInfo();
 }
 
+void TeamManagerView::editTeamName() {
+    QModelIndex index = teamList->currentIndex();
+    if (!index.isValid() || !currentTeam) {
+        QMessageBox::warning(this, "Error", "Please select a team first");
+        return;
+    }
+
+    bool ok;
+    QString currentName = QString::fromStdString(currentTeam->teamName);
+    QString newName = QInputDialog::getText(this, 
+                                         "Edit Team Name", 
+                                         "Enter new team name:", 
+                                         QLineEdit::Normal,
+                                         currentName, 
+                                         &ok);
+
+    if (ok && !newName.isEmpty()) {
+        try {
+            if (teamManager.updateTeamName(currentTeam->teamId, newName.toStdString())) {
+                model->refresh();
+                
+                for(int i = 0; i < model->rowCount(); i++) {
+                    QModelIndex idx = model->index(i, 0);
+                    if (model->data(idx, Qt::UserRole).toInt() == currentTeam->teamId) {
+                        teamList->setCurrentIndex(idx);
+                        break;
+                    }
+                }
+            } else {
+                QMessageBox::critical(this, "Error", "Failed to update team name");
+            }
+        } catch (const std::exception& e) {
+            QMessageBox::critical(this, "Error", QString("Failed to update team name: %1").arg(e.what()));
+        }
+    }
+}
+
 void TeamManagerView::updateTeamInfo() {
     if (!currentTeam) {
         currentTeamPlayers->setModel(nullptr);
@@ -272,6 +322,7 @@ void TeamManagerView::updateTeamInfo() {
         budgetInput->setEnabled(false);
         autoFillButton->setEnabled(false);
         removePlayerButton->setEnabled(false);
+        editTeamNameButton->setEnabled(false);
         return;
     }
 
@@ -326,6 +377,7 @@ void TeamManagerView::updateTeamInfo() {
     budgetInput->setValue(currentTeam->budget);
     autoFillButton->setEnabled(true);
     removePlayerButton->setEnabled(true);
+    editTeamNameButton->setEnabled(true);
 }
 
 void TeamManagerView::updatePlayerDetails() {
