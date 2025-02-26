@@ -20,7 +20,7 @@
 #include <QMap>
 #include "utils/database/repositories/ClubRepository.h"
 #include "services/TeamManager.h"
-#include "gui/Models.h"
+#include "gui/models/Models.h"
 
 class TeamManagerView : public QWidget {
     Q_OBJECT

@@ -1,4 +1,4 @@
-#include "gui/Models.h"
+#include "gui/models/Models.h"
 #include <algorithm>
 
 PlayerListModel::PlayerListModel(const std::vector<std::pair<int, Player>>& players, QObject *parent)

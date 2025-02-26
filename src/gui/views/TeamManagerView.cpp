@@ -1,6 +1,6 @@
-#include "gui/TeamManagerView.h"
-#include "gui/Models.h"
-#include "gui/ClubSelectDialog.h"
+#include "gui/views/TeamManagerView.h"
+#include "gui/models/Models.h"
+#include "gui/components/ClubSelectDialog.h"
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>

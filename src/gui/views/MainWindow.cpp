@@ -1,6 +1,6 @@
-#include "gui/MainWindow.h"
-#include "gui/PlayerListView.h"
-#include "gui/TeamManagerView.h"
+#include "gui/views/MainWindow.h"
+#include "gui/views/PlayerListView.h"
+#include "gui/views/TeamManagerView.h"
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QLabel> 

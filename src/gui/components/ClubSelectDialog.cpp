@@ -1,4 +1,4 @@
-#include "gui/ClubSelectDialog.h"
+#include "gui/components/ClubSelectDialog.h"
 #include <QHeaderView>
 #include <QMessageBox>
 
