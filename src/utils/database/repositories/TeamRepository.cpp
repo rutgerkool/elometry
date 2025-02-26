@@ -22,44 +22,6 @@ std::vector<std::string> TeamRepository::getAvailableSubPositions() {
     return subPositions;
 }
 
-std::vector<Player> TeamRepository::fetchPlayersForClub(int clubId) {
-    std::vector<Player> players;
-    sqlite3_stmt *stmt;
-
-    int currentSeasonYear = getCurrentSeasonYear();
-
-    std::string query = R"(
-        SELECT 
-            player_id, 
-            current_club_id, 
-            name, 
-            current_club_name, 
-            sub_position, 
-            position, 
-            contract_expiration_date, 
-            market_value_in_eur, 
-            highest_market_value_in_eur,
-            image_url
-        FROM players 
-        WHERE current_club_id = ? AND last_season = ?;
-    )";
-
-    if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int(stmt, 1, clubId);
-        sqlite3_bind_int(stmt, 2, currentSeasonYear);
-
-        while (sqlite3_step(stmt) == SQLITE_ROW) {
-            Player player = PlayerMapper::mapPlayerFromStatement(stmt);
-            players.push_back(player);
-        }
-    } else {
-        std::cerr << "SQL error: " << sqlite3_errmsg(db) << std::endl;
-    }
-
-    sqlite3_finalize(stmt);
-    return players;
-}
-
 void TeamRepository::createTeam(const std::string& teamName) {
     std::string query = "INSERT INTO teams (team_name) VALUES (?);";
     sqlite3_stmt* stmt;

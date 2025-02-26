@@ -17,7 +17,6 @@ public:
     explicit TeamRepository(Database& database);
 
     std::vector<std::string> getAvailableSubPositions();
-    std::vector<Player> fetchPlayersForClub(int clubId);
 
     void createTeam(const std::string& teamName);
     std::vector<Team> getAllTeams();

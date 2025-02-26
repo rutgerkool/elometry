@@ -1,5 +1,7 @@
 #include "gui/components/DataLoader.h"
-#include <QThread>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 DataLoader::DataLoader(RatingManager& rm, TeamManager& tm, Database& db, QObject* parent)
     : QObject(parent)
@@ -9,13 +11,11 @@ DataLoader::DataLoader(RatingManager& rm, TeamManager& tm, Database& db, QObject
 {
 }
 
-void DataLoader::loadData(const std::string& dbPath)
+void DataLoader::loadData()
 {
     emit progressUpdate("Connecting to database", 10);
-    bool isNewDatabase = !database.fileExists(dbPath);
-    QThread::msleep(500);
     
-    if (isNewDatabase) {
+    if (!fs::exists("data")) {
         database.executeSQLFile("../db/data.sql");
         database.executeSQLFile("../db/user.sql");
 

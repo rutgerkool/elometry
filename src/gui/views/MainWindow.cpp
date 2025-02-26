@@ -122,7 +122,7 @@ void MainWindow::initializeApp() {
     dataLoader->moveToThread(loadingThread);
     
     connect(loadingThread, &QThread::started, [dataLoader]() {
-        dataLoader->loadData("test.db");
+        dataLoader->loadData();
     });
     
     connect(dataLoader, &DataLoader::progressUpdate, this, &MainWindow::onDataLoadProgress);

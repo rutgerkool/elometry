@@ -13,7 +13,7 @@ public:
     explicit DataLoader(RatingManager& rm, TeamManager& tm, Database& db, QObject* parent = nullptr);
     
 public slots:
-    void loadData(const std::string& dbPath);
+    void loadData();
     
 signals:
     void progressUpdate(const QString& status, int progress);

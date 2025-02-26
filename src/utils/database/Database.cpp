@@ -13,9 +13,21 @@
 
 namespace fs = std::filesystem;
 
-Database::Database(const std::string& dbPath) {    
+Database::Database(const std::string& dbPath) {
+    bool isNewDatabase = !fileExists(dbPath);
+    
     if (sqlite3_open(dbPath.c_str(), &db) != SQLITE_OK) {
         std::cerr << "Can't open database: " << sqlite3_errmsg(db) << std::endl;
+    }
+
+    if (isNewDatabase) {
+        executeSQLFile("../db/data.sql");
+        executeSQLFile("../db/user.sql");
+
+        loadDataIntoDatabase();
+    } else {
+        std::cout << "Existing database used." << std::endl;
+        updateDatasetIfNeeded();
     }
 }
 

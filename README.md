@@ -5,153 +5,106 @@ This project introduces Elometry, an application that analyzes football player d
 It is developed in C++ with CMake as the build system. 
 
 ## **Features**
-- Player ELO rating calculation based on match performances
-- Team management of new/existing teams including:
-   - Automatic analysis of missing positions
-   - Smart team completion within budget constraints
-- Optimal player selection using Integer Linear Programming (ILP)
-  - Select best players for specific positions within a budget constraint
-  - Optimization based on player ratings and historical market values
-- Database management of player and match data
-- Performance-optimized data processing
+
+### Player ELO Rating Overview
+- Calculate player ratings based on match performances
+- Adaptive rating system
+
+
+![Player Ratings Demo](img/player-list.gif)
+
+### Optimal Team Composition
+- Integer Linear Programming for team selection
+- Optimize players within budget constraints
+- Balance performance and market value
+
+![Team Optimization Demo](img/team-manager-view-new.gif)
+
+### Team Management from Existing Clubs
+- Create and manage custom teams based on real data
+- Budget-constrained team building based on adapted ELO ratings
+
+![Team Management Demo](img/team-manager-view-existing.gif)
 
 ## **Project Structure**
-
 ```
 elometry/
-│
-├── CMakeLists.txt                # CMake build configuration
-├── README.md                     # Project README file
-│
-├── cmake/                        # CMake modules
-│   └── FindGLPK.cmake           # GLPK finder module
-│
-├── data/                         # Dataset CSV files (excluded from repo)
-│   ├── appearances.csv
-│   ├── club_games.csv
-│   ├── clubs.csv
-│   ├── competitions.csv
-│   ├── game_events.csv
-│   ├── game_lineups.csv
-│   ├── games.csv
-│   ├── player_ratings.csv
-│   ├── player_valuations.csv
-│   ├── players.csv
-│   └── transfers.csv
-│
-├── include/                      # Header files
-│   ├── models/
-│   │   ├── PlayerRating.h
-│   │   └── ILPSelector.h        # Team selection algorithm
-│   ├── services/
-│   │   ├── RatingManager.h      # Rating management service
-│   │   └── TeamManager.h        # Team management service
-│   └── utils/
-│       └── database/
-│           ├── Database.h
-│           ├── PlayerMapper.h
-│           └── repositories/
-│               ├── AppearanceRepository.h
-│               ├── GameRepository.h
-│               ├── PlayerRepository.h
-│               └── TeamRepository.h
-│
-└── src/                         # Source code files
-    ├── main.cpp                 # Entry point
-    ├── models/
-    │   ├── PlayerRating.cpp
-    │   └── ILPSelector.cpp
-    ├── services/
-    │   ├── RatingManager.cpp
-    │   └── TeamManager.cpp
-    └── utils/
-        └── database/
-            ├── Database.cpp
-            ├── PlayerMapper.cpp
-            └── repositories/
-                ├── AppearanceRepository.cpp
-                ├── GameRepository.cpp
-                ├── PlayerRepository.cpp
-                └── TeamRepository.cpp
+├── CMakeLists.txt
+├── cmake/                    # CMake modules
+├── db/                       # Database scripts
+├── include/                  # Header files
+│   ├── gui/                  # User interface headers
+│   ├── models/               # Data models
+│   ├── services/             # Business logic
+│   └── utils/                # Utility classes
+├── src/                      # Source code
+│   ├── gui/                  # User interface implementation
+│   │   ├── components/
+│   │   ├── models/
+│   │   ├── resources/
+│   │   ├── styles/
+│   │   └── views/
+│   ├── models/               # Implementation of data models
+│   ├── services/             # Service implementations
+│   └── utils/                # Utility implementations
+├── static/                   # Static resources
+└── data/                     # Dataset files
 ```
 
-## **Dependencies**
+## **Technology Stack**
+- C++20
+- Qt6 for GUI
+- SQLite for data management
+- GLPK for Integer Linear Programming
+- OpenMP for parallel processing
 
-Before compiling the project, install the necessary tools and libraries:
+## **Prerequisites**
 
 ### **Required Tools**
-- C++ Compiler (GCC/Clang/MSVC)
+- C++ Compiler (GCC 10+/Clang 10+/MSVC 2019+)
 - CMake (3.15 or higher)
+- Qt6
 - SQLite3
 - GLPK (GNU Linear Programming Kit)
-- Qt6
 
-### **Platform-Specific Installation**
-
-#### **Linux (Ubuntu/Debian)**
+## **Installation**
+### **Linux (Ubuntu/Debian)**
 ```bash
-sudo apt update
-sudo apt install build-essential cmake libsqlite3-dev libglpk-dev qt6-base-dev unzip
+sudo apt install build-essential cmake qt6-base-dev libglpk-dev libsqlite3-dev
 pip install kaggle
+git clone https://github.com/rutgerkool/elometry.git
+cd elometry
 ```
 
-#### **macOS**
+### **macOS**
 ```bash
-brew install cmake sqlite3 glpk
+brew install cmake qt@6 glpk sqlite
 pip install kaggle
+git clone https://github.com/rutgerkool/elometry.git
+cd elometry
 ```
 
 ## **Building the Project**
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/rutgerkool/elometry.git
-   cd elometry
-   ```
-
-2. Download the dataset from [Kaggle](https://www.kaggle.com/datasets/davidcariboo/player-scores) and place all CSV files into the `data/` directory.
-
-3. Create and navigate to build directory:
-   ```bash
-   mkdir build && cd build
-   ```
-
-4. Configure with CMake:
-   ```bash
-   cmake ..
-   ```
-
-5. Build the project:
-   ```bash
-   cmake --build .
-   ```
-
-## **Usage**
-
-### **Running the Program**
 ```bash
-./Elometry
+mkdir build && cd build
+cmake ..
+cmake --build .
 ```
 
-### **Team Management Example**
-```cpp
-Database database("test.db");
-RatingManager ratingManager(database);
-TeamRepository teamRepository(database);
-TeamManager teamManager(teamRepository, ratingManager);
+## **Configuration**
 
-ratingManager.loadAndProcessRatings();
+### **Kaggle Dataset**
+To allow for automated updates, Kaggle API credentials must be submitted in the settings when running the program. 
+- Open 'Settings' when running the application
+- Enter Kaggle API credentials
+  - Kaggle Username
+  - Kaggle API Key
 
-Team& team = teamManager.createTeam("My Team FC");
-
-teamManager.addPlayerToTeam(team.teamId, {1, 1, "Player 1", "My Club", "Centre-Back", "Defender", "2026-06-30", 7000000, 10000000});
-teamManager.addPlayerToTeam(team.teamId, {2, 1, "Player 2", "My Club", "Centre-Forward", "Attack", "2027-01-30", 4000000, 8000000});
-
-teamManager.autoFillTeam(team, 20000000);  
-```
+*Note: Generate API key from [Kaggle Account Settings](https://www.kaggle.com/)*
 
 ## **Performance Optimizations**
-- Batch INSERT statements for table initialization
-- Indexed SQL queries for data retrieval
-- Parallel processing for ELO calculations using OpenMP
-- Integer Linear Programming for optimal team selection
+- Batch SQL operations
+- Indexed queries
+- Parallel ELO calculations
+- Integer Linear Programming optimization
