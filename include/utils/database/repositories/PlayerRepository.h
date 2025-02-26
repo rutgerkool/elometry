@@ -12,6 +12,7 @@ struct Player {
     std::string subPosition;
     std::string position;
     std::string contractExpirationDate;
+    std::string imageUrl;
     int marketValue;
     int highestMarketValue;
 

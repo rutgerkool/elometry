@@ -23,5 +23,8 @@ Player PlayerMapper::mapPlayerFromStatement(sqlite3_stmt *stmt) {
     player.marketValue = sqlite3_column_int(stmt, 7);
     player.highestMarketValue = sqlite3_column_int(stmt, 8);
 
+    const unsigned char* imageUrl = sqlite3_column_text(stmt, 9);
+    player.imageUrl = imageUrl ? std::string(reinterpret_cast<const char*>(imageUrl)) : "";
+
     return player;
 }

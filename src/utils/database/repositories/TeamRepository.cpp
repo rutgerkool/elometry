@@ -38,7 +38,8 @@ std::vector<Player> TeamRepository::fetchPlayersForClub(int clubId) {
             position, 
             contract_expiration_date, 
             market_value_in_eur, 
-            highest_market_value_in_eur 
+            highest_market_value_in_eur,
+            image_url
         FROM players 
         WHERE current_club_id = ? AND last_season = ?;
     )";

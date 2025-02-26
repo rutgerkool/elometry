@@ -13,6 +13,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 include_directories(include)
 
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/static)
+
+file(GLOB STATIC_FILES ${CMAKE_SOURCE_DIR}/static/*)
+foreach(FILE ${STATIC_FILES})
+    configure_file(${FILE} ${CMAKE_BINARY_DIR}/static/ COPYONLY)
+endforeach()
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 file(GLOB_RECURSE SRC_FILES src/*.cpp)
@@ -20,7 +27,7 @@ file(GLOB_RECURSE SRC_FILES src/*.cpp)
 find_package(SQLite3 REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(GLPK REQUIRED)
-find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets)
+find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Network)
 
 file(GLOB_RECURSE UI_HEADERS include/gui/*.h)
 
@@ -45,4 +52,5 @@ target_link_libraries(Elometry
     SQLite::SQLite3 
     OpenMP::OpenMP_CXX 
     Qt6::Widgets 
+    Qt6::Network
 )

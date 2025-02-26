@@ -2,15 +2,24 @@
 #define TEAMMANAGERVIEW_H
 
 #include <QtWidgets/QWidget>
-#include <QtWidgets/QListView>
+#include <QtWidgets/QTableView>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QSpinBox>
+#include <QtWidgets/QVBoxLayout>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QHeaderView>
+#include <QtGui/QPixmap>
 #include <QtGui/QStandardItem>
 #include <QtGui/QStandardItemModel>
+#include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkReply>
+#include <QtNetwork/QNetworkRequest>
+#include <QtWidgets/QListView>
+#include <QMap>
 #include "services/TeamManager.h"
-
-class TeamListModel;
+#include "gui/Models.h"
 
 class TeamManagerView : public QWidget {
     Q_OBJECT
@@ -19,7 +28,7 @@ public:
     explicit TeamManagerView(TeamManager& teamManager, QWidget *parent = nullptr);
 
 signals:
-        void backToMain(); 
+    void backToMain();
 
 private slots:
     void createNewTeam();
@@ -30,14 +39,17 @@ private slots:
     void updateBudget(int newBudget);
     void removeSelectedPlayer();
     void navigateBack();
+    void updatePlayerDetails();
 
 private:
     TeamManager& teamManager;
     Team* currentTeam;
     TeamListModel* model;
+    QNetworkAccessManager* networkManager;
+    QMap<int, QPixmap> playerImageCache;
 
     QListView* teamList;
-    QListView* currentTeamPlayers;
+    QTableView* currentTeamPlayers;
     QPushButton* newTeamButton;
     QPushButton* loadTeamByIdButton;
     QPushButton* autoFillButton;
@@ -47,8 +59,21 @@ private:
     QLineEdit* loadTeamIdInput;
     QSpinBox* budgetInput;
 
+    QLabel* playerImage;
+    QLabel* playerName;
+    QLabel* playerClub;
+    QLabel* playerPosition;
+    QLabel* playerMarketValue;
+    QLabel* playerRating;
+
     void setupUi();
     void setupConnections();
+    void loadPlayerImage(int playerId, const QString& imageUrl);
+    void handleImageResponse(QNetworkReply* reply, int playerId);
+    void loadLocalImage(int playerId, const QString& imageUrl);
+    void updatePlayerImageInModel(int playerId);
+    void fetchPlayerDetailImage(const QString& imageUrl);
+    void loadLocalPlayerDetailImage(const QString& imageUrl);
 };
 
 #endif
