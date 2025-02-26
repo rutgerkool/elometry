@@ -37,6 +37,8 @@ public:
     std::vector<Team> getAllTeams();
     Player searchPlayerById(int playerId);
 
+    std::vector<std::pair<int, std::string>> getAllClubs();
+
 private:
     TeamRepository& teamRepo;
     RatingManager& ratingManager;

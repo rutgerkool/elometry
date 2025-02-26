@@ -15,9 +15,20 @@ Team& TeamManager::createTeam(const std::string& teamName) {
 }
 
 Team& TeamManager::loadTeamFromClub(int clubId) {
+    std::string clubName = "Club " + std::to_string(clubId);
+    
+    std::vector<std::pair<int, std::string>> clubs = getAllClubs();
+    
+    for (const auto& [id, name] : clubs) {
+        if (id == clubId) {
+            clubName = name;
+            break;
+        }
+    }
+    
     Team team;
     team.teamId = nextTeamId++;
-    team.teamName = "Club " + std::to_string(clubId);
+    team.teamName = clubName; 
     team.players = playerRepo.fetchPlayers(clubId);  
     teams[team.teamId] = team;
     return teams[team.teamId];
@@ -113,4 +124,26 @@ Player TeamManager::searchPlayerById(int playerId) {
         throw std::runtime_error("Player not found");
     }
     return players.front();
+}
+
+std::vector<std::pair<int, std::string>> TeamManager::getAllClubs() {
+    std::vector<std::pair<int, std::string>> clubs;
+    std::unordered_map<int, std::string> uniqueClubs;
+    
+    std::vector<Player> players = playerRepo.fetchPlayers();
+    
+    for (const auto& player : players) {
+        if (player.clubId > 0 && !uniqueClubs.count(player.clubId)) {
+            uniqueClubs[player.clubId] = player.clubName;
+        }
+    }
+    
+    for (const auto& [id, name] : uniqueClubs) {
+        clubs.emplace_back(id, name);
+    }
+    
+    std::sort(clubs.begin(), clubs.end(), 
+        [](const auto& a, const auto& b) { return a.second < b.second; });
+    
+    return clubs;
 }

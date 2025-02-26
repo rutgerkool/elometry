@@ -18,6 +18,8 @@
 #include <QtNetwork/QNetworkRequest>
 #include <QtWidgets/QListView>
 #include <QMap>
+#include <QtWidgets/QComboBox>
+#include "utils/database/repositories/ClubRepository.h"
 #include "services/TeamManager.h"
 #include "gui/Models.h"
 
@@ -40,6 +42,7 @@ private slots:
     void removeSelectedPlayer();
     void navigateBack();
     void updatePlayerDetails();
+    void loadClubById(int clubId);
 
 private:
     TeamManager& teamManager;
@@ -56,7 +59,6 @@ private:
     QPushButton* removePlayerButton;
     QPushButton* backButton;
     QLineEdit* teamNameInput;
-    QLineEdit* loadTeamIdInput;
     QSpinBox* budgetInput;
 
     QLabel* playerImage;
@@ -66,6 +68,9 @@ private:
     QLabel* playerMarketValue;
     QLabel* playerRating;
 
+    QComboBox* clubSearchCombo;
+    std::vector<std::pair<int, std::string>> availableClubs;
+
     void setupUi();
     void setupConnections();
     void loadPlayerImage(int playerId, const QString& imageUrl);
@@ -74,6 +79,7 @@ private:
     void updatePlayerImageInModel(int playerId);
     void fetchPlayerDetailImage(const QString& imageUrl);
     void loadLocalPlayerDetailImage(const QString& imageUrl);
+    void loadAvailableClubs();
 };
 
 #endif

@@ -9,6 +9,7 @@
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkRequest>
+#include <QTimer>
 #include <iostream>
 
 TeamManagerView::TeamManagerView(TeamManager& tm, QWidget *parent)
@@ -44,10 +45,13 @@ void TeamManagerView::setupUi() {
     newTeamLayout->addWidget(newTeamButton);
 
     QHBoxLayout* loadTeamLayout = new QHBoxLayout();
-    loadTeamIdInput = new QLineEdit(this);
-    loadTeamIdInput->setPlaceholderText("Enter Club ID");
+    clubSearchCombo = new QComboBox(this);
+    clubSearchCombo->setEditable(false);
+    clubSearchCombo->setMaxVisibleItems(15);
+    clubSearchCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    clubSearchCombo->setMinimumWidth(250);
     loadTeamByIdButton = new QPushButton("Load Club", this);
-    loadTeamLayout->addWidget(loadTeamIdInput);
+    loadTeamLayout->addWidget(clubSearchCombo);
     loadTeamLayout->addWidget(loadTeamByIdButton);
 
     leftLayout->addWidget(teamsLabel);
@@ -65,6 +69,7 @@ void TeamManagerView::setupUi() {
     currentTeamPlayers->verticalHeader()->setVisible(false);
     currentTeamPlayers->horizontalHeader()->setVisible(false);
     currentTeamPlayers->setIconSize(QSize(32, 32));
+    currentTeamPlayers->setEditTriggers(QAbstractItemView::NoEditTriggers);
     currentTeamPlayers->setStyleSheet(
         "QTableView {"
         "  background-color: #2d2d2d;"
@@ -145,6 +150,17 @@ void TeamManagerView::setupConnections() {
     autoFillButton->setEnabled(false);
     budgetInput->setEnabled(false);
     removePlayerButton->setEnabled(false);
+
+    QStandardItemModel* emptyModel = new QStandardItemModel(this);
+    clubSearchCombo->setModel(emptyModel);
+    
+    QTimer::singleShot(100, this, [this]() {
+        try {
+            loadAvailableClubs();
+        } catch (const std::exception& e) {
+            qWarning() << "Failed to load clubs:" << e.what();
+        }
+    });
 }
 
 void TeamManagerView::createNewTeam() {
@@ -188,19 +204,20 @@ void TeamManagerView::loadSelectedTeam() {
 }
 
 void TeamManagerView::loadTeamById() {
-    bool ok;
-    int clubId = loadTeamIdInput->text().toInt(&ok);
-    if (!ok) {
-        QMessageBox::warning(this, "Error", "Invalid Club ID");
+    int index = clubSearchCombo->currentIndex();
+    if (index <= 0) {
+        QMessageBox::warning(this, "Invalid Club", "Please select a club from the dropdown.");
         return;
     }
-
+    
+    int clubId = clubSearchCombo->itemData(index, Qt::UserRole).toInt();
+    
     try {
         Team& selectedTeam = teamManager.loadTeamFromClub(clubId);
         currentTeam = &selectedTeam;
         model->refresh();
         updateTeamInfo();
-        loadTeamIdInput->clear();
+        clubSearchCombo->setCurrentIndex(0);
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Error", QString("Failed to load team: %1").arg(e.what()));
         currentTeam = nullptr;
@@ -250,7 +267,10 @@ void TeamManagerView::removeSelectedPlayer() {
 void TeamManagerView::updateTeamInfo() {
     if (!currentTeam) {
         currentTeamPlayers->setModel(nullptr);
+        currentTeamPlayers->setEnabled(false);
         budgetInput->setEnabled(false);
+        autoFillButton->setEnabled(false);
+        removePlayerButton->setEnabled(false);
         return;
     }
 
@@ -261,6 +281,9 @@ void TeamManagerView::updateTeamInfo() {
     for (const auto& player : currentTeam->players) {
         QStandardItem* imageItem = new QStandardItem();
         QStandardItem* nameItem = new QStandardItem(QString::fromStdString(player.name));
+        
+        imageItem->setEditable(false);
+        nameItem->setEditable(false);
         
         imageItem->setData(player.playerId, Qt::UserRole);
         nameItem->setData(player.playerId, Qt::UserRole);
@@ -285,6 +308,8 @@ void TeamManagerView::updateTeamInfo() {
     currentTeamPlayers->setColumnWidth(0, 40);
     currentTeamPlayers->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     
+    currentTeamPlayers->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    
     if (currentTeamPlayers->selectionModel()) {
         disconnect(currentTeamPlayers->selectionModel(), nullptr, this, nullptr);
         connect(currentTeamPlayers->selectionModel(), &QItemSelectionModel::currentChanged, 
@@ -295,6 +320,7 @@ void TeamManagerView::updateTeamInfo() {
         delete oldModel;
     }
 
+    currentTeamPlayers->setEnabled(true);
     budgetInput->setEnabled(true);
     budgetInput->setValue(currentTeam->budget);
     autoFillButton->setEnabled(true);
@@ -335,9 +361,12 @@ void TeamManagerView::loadPlayerImage(int playerId, const QString& imageUrl) {
     if (imageUrl.isEmpty()) return;
     
     if (imageUrl.startsWith("http")) {
-        QNetworkReply* reply = networkManager->get(QNetworkRequest(QUrl(imageUrl)));
-        connect(reply, &QNetworkReply::finished, this, [=]() {
-            handleImageResponse(reply, playerId);
+        QUrl url(imageUrl);
+        QNetworkRequest request(url);
+        QNetworkReply* reply = networkManager->get(request);
+        
+        connect(reply, &QNetworkReply::finished, this, [this, reply, playerId]() {
+            this->handleImageResponse(reply, playerId);
         });
     } else {
         loadLocalImage(playerId, imageUrl);
@@ -401,5 +430,45 @@ void TeamManagerView::loadLocalPlayerDetailImage(const QString& imageUrl) {
         playerImage->setPixmap(pixmap.scaled(200, 200, Qt::KeepAspectRatio));
     } else {
         playerImage->setText("No Image");
+    }
+}
+
+void TeamManagerView::loadClubById(int clubId) {
+    try {
+        Team& selectedTeam = teamManager.loadTeamFromClub(clubId);
+        currentTeam = &selectedTeam;
+        model->refresh();
+        updateTeamInfo();
+        clubSearchCombo->setCurrentIndex(0);
+    } catch (const std::exception& e) {
+        QMessageBox::critical(this, "Error", QString("Failed to load team: %1").arg(e.what()));
+        currentTeam = nullptr;
+    }
+}
+
+void TeamManagerView::loadAvailableClubs() {
+    try {
+        availableClubs = teamManager.getAllClubs();
+        
+        QStandardItemModel* newModel = new QStandardItemModel(this);
+        
+        QStandardItem* firstItem = new QStandardItem("Select a club...");
+        firstItem->setData(-1, Qt::UserRole);
+        newModel->appendRow(firstItem);
+        
+        for (const auto& [id, name] : availableClubs) {
+            QStandardItem* item = new QStandardItem(QString::fromStdString(name));
+            item->setData(id, Qt::UserRole);
+            newModel->appendRow(item);
+        }
+        
+        QAbstractItemModel* oldModel = clubSearchCombo->model();
+        clubSearchCombo->setModel(newModel);
+        
+        if (oldModel && oldModel != newModel) {
+            oldModel->deleteLater();
+        }
+    } catch (const std::exception& e) {
+        qWarning() << "Error loading clubs:" << e.what();
     }
 }
