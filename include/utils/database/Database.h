@@ -17,6 +17,11 @@ class Database {
         std::string getKaggleUsername();
         std::string getKaggleKey();
         void setKaggleCredentials(const std::string& username, const std::string& key);
+        void loadCSVIntoTable(const std::string& tableName, const std::string& csvPath);
+        void executeSQLFile(const std::string& filePath);
+        bool fileExists(const std::string& dbPath);
+        void loadDataIntoDatabase(bool updateDataset = false);
+        void updateDatasetIfNeeded();
 
     private:
         sqlite3 * db = nullptr;
@@ -29,13 +34,8 @@ class Database {
         time_t extractLastUpdatedTimestamp();
         std::string getMetadataValue(const std::string& key);
         void setMetadataValue(const std::string& key, const std::string& value);
-        void executeSQLFile(const std::string& filePath);
         void downloadAndExtractDataset(bool updateDataset = false);
-        void loadCSVIntoTable(const std::string& tableName, const std::string& csvPath);
-        void loadDataIntoDatabase(bool updateDataset = false);
-        void updateDatasetIfNeeded();
         bool fetchKaggleDatasetList();
-        bool fileExists(const std::string& dbPath);
         void compareAndUpdateDataset(time_t kaggleUpdatedTime);
 };
 

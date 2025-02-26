@@ -33,10 +33,8 @@ int main(int argc, char *argv[]) {
     PlayerRepository playerRepository(database);
     TeamManager teamManager(teamRepository, ratingManager, playerRepository);
 
-    ratingManager.loadAndProcessRatings();
-
     MainWindow w(ratingManager, teamManager, database);
-    w.showMaximized();
+    w.show();
 
     return app.exec();
 }

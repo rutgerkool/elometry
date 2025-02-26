@@ -6,10 +6,12 @@
 #include "utils/database/Database.h"
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QStackedWidget>
+#include <QThread>
 
 class PlayerListView;
 class TeamManagerView;
 class SettingsView;
+class LoadingView;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -22,6 +24,9 @@ class MainWindow : public QMainWindow {
         void showPlayerList();
         void showTeamManager();
         void showSettings();
+        void showMainView();
+        void initializeApp();
+        void onDataLoadProgress(const QString& status, int progress);
 
     private:
         RatingManager& ratingManager;
@@ -31,13 +36,16 @@ class MainWindow : public QMainWindow {
         PlayerListView* playerListView;
         TeamManagerView* teamManagerView;
         SettingsView* settingsView;
+        LoadingView* loadingView;
 
         QWidget* mainView;
         QStackedWidget* stackedWidget;
+        
+        QThread* loadingThread;
+        bool appInitialized;
 
         void setupUi();
         void setupConnections();
-        void showMainView();
 };
 
 #endif

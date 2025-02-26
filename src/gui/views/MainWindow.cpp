@@ -2,11 +2,14 @@
 #include "gui/views/PlayerListView.h"
 #include "gui/views/TeamManagerView.h"
 #include "gui/views/SettingsView.h"
+#include "gui/views/LoadingView.h"
+#include "gui/components/DataLoader.h"
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QLabel> 
 #include <QtGui/QIcon>
 #include <QtCore/QSize> 
+#include <QTimer>
 
 MainWindow::MainWindow(RatingManager& rm, TeamManager& tm, Database& db, QWidget *parent)
     : QMainWindow(parent)
@@ -16,31 +19,33 @@ MainWindow::MainWindow(RatingManager& rm, TeamManager& tm, Database& db, QWidget
     , playerListView(nullptr)
     , teamManagerView(nullptr)
     , settingsView(nullptr)
+    , loadingView(nullptr)
+    , loadingThread(nullptr)
+    , appInitialized(false)
 {
     stackedWidget = new QStackedWidget(this);
 
+    loadingView = new LoadingView(this);
+    
     mainView = new QWidget(this);
-    playerListView = new PlayerListView(ratingManager, this);
-    teamManagerView = new TeamManagerView(teamManager, this);
-    settingsView = new SettingsView(database, this);
-
+    
+    stackedWidget->addWidget(loadingView);
     stackedWidget->addWidget(mainView);
-    stackedWidget->addWidget(playerListView);
-    stackedWidget->addWidget(teamManagerView);
-    stackedWidget->addWidget(settingsView);
-
+    
     setCentralWidget(stackedWidget);
+    
+    stackedWidget->setCurrentWidget(loadingView);
+    
+    initializeApp();
 
-    setupUi();
-    setupConnections();
-
-    stackedWidget->setCurrentWidget(mainView);
+    setWindowTitle("Elometry");
+    setMinimumSize(1024, 768);
 }
 
 MainWindow::~MainWindow() {
-    delete playerListView;
-    delete teamManagerView;
-    delete settingsView;
+    if (playerListView) delete playerListView;
+    if (teamManagerView) delete teamManagerView;
+    if (settingsView) delete settingsView;
 }
 
 void MainWindow::setupUi() {
@@ -74,9 +79,6 @@ void MainWindow::setupUi() {
     connect(playerListButton, &QPushButton::clicked, this, &MainWindow::showPlayerList);
     connect(teamManagerButton, &QPushButton::clicked, this, &MainWindow::showTeamManager);
     connect(settingsButton, &QPushButton::clicked, this, &MainWindow::showSettings);
-
-    setWindowTitle("Elometry");
-    setMinimumSize(1024, 768);
 }
 
 void MainWindow::setupConnections() {
@@ -86,6 +88,19 @@ void MainWindow::setupConnections() {
 }
 
 void MainWindow::showMainView() {
+    if (!appInitialized) {
+        playerListView = new PlayerListView(ratingManager, this);
+        teamManagerView = new TeamManagerView(teamManager, this);
+        settingsView = new SettingsView(database, this);
+        
+        stackedWidget->addWidget(playerListView);
+        stackedWidget->addWidget(teamManagerView);
+        stackedWidget->addWidget(settingsView);
+        
+        setupConnections();
+        appInitialized = true;
+    }
+    
     stackedWidget->setCurrentWidget(mainView);
 }
 
@@ -99,4 +114,38 @@ void MainWindow::showTeamManager() {
 
 void MainWindow::showSettings() {
     stackedWidget->setCurrentWidget(settingsView);
+}
+
+void MainWindow::initializeApp() {
+    loadingThread = new QThread();
+    DataLoader* dataLoader = new DataLoader(ratingManager, teamManager, database);
+    dataLoader->moveToThread(loadingThread);
+    
+    connect(loadingThread, &QThread::started, [dataLoader]() {
+        dataLoader->loadData("test.db");
+    });
+    
+    connect(dataLoader, &DataLoader::progressUpdate, this, &MainWindow::onDataLoadProgress);
+    connect(dataLoader, &DataLoader::loadingComplete, this, [=]() {
+        setupUi();
+        
+        loadingThread->quit();
+        loadingThread->wait();
+        dataLoader->deleteLater();
+        
+        showMainView();
+    });
+    
+    connect(loadingThread, &QThread::finished, loadingThread, &QThread::deleteLater);
+    
+    loadingThread->start();
+}
+
+void MainWindow::onDataLoadProgress(const QString& status, int progress) {
+    loadingView->updateStatus(status);
+    loadingView->updateProgress(progress);
+    
+    if (progress >= 100) {
+        QTimer::singleShot(500, loadingView, &LoadingView::loadingFinished);
+    }
 }

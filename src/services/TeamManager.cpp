@@ -27,9 +27,10 @@ Team& TeamManager::loadTeamFromClub(int clubId) {
     }
     
     Team team;
+    std::vector<Player> selection = playerRepo.fetchPlayers(clubId);
     team.teamId = ++nextTeamId;
     team.teamName = clubName; 
-    team.players = playerRepo.fetchPlayers(clubId);  
+    team.players = ratingManager.getFilteredRatedPlayers(selection);  
     teams[team.teamId] = team;
     return teams[team.teamId];
 }
@@ -167,8 +168,9 @@ void TeamManager::loadTeams() {
     teams.clear();
     std::vector<Team> loadedTeams = teamRepo.getAllTeams();
     for (const auto& team : loadedTeams) {
+        std::vector<Player> selection = playerRepo.fetchPlayers(-1, -1, team.teamId);
         teams[team.teamId] = team;
-        teams[team.teamId].players = playerRepo.fetchPlayers(-1, -1, team.teamId);
+        teams[team.teamId].players = ratingManager.getFilteredRatedPlayers(selection);
         nextTeamId = std::max(nextTeamId, team.teamId);
     }
 }

@@ -22,6 +22,8 @@ public:
     std::vector<std::pair<int, Player>> getSortedRatedPlayers() {
         return ratingSystem.getSortedRatedPlayers();
     }
+
+    std::vector<Player> getFilteredRatedPlayers(const std::vector<Player>& filterPlayers);
 };
 
 #endif
