@@ -365,3 +365,16 @@ void Database::compareAndUpdateDataset(time_t kaggleUpdatedTime) {
         std::cout << "Dataset is already up-to-date." << std::endl;
     }
 }
+
+std::string Database::getKaggleUsername() {
+    return getMetadataValue("KAGGLE_USERNAME");
+}
+
+std::string Database::getKaggleKey() {
+    return getMetadataValue("KAGGLE_KEY");
+}
+
+void Database::setKaggleCredentials(const std::string& username, const std::string& key) {
+    setMetadataValue("KAGGLE_USERNAME", username);
+    setMetadataValue("KAGGLE_KEY", key);
+}

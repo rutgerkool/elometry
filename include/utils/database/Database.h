@@ -14,6 +14,10 @@ class Database {
 
         sqlite3 * getConnection();
 
+        std::string getKaggleUsername();
+        std::string getKaggleKey();
+        void setKaggleCredentials(const std::string& username, const std::string& key);
+
     private:
         sqlite3 * db = nullptr;
 

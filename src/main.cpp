@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
 
     ratingManager.loadAndProcessRatings();
 
-    MainWindow w(ratingManager, teamManager);
+    MainWindow w(ratingManager, teamManager, database);
     w.showMaximized();
 
     return app.exec();
