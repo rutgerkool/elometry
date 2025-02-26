@@ -5,13 +5,26 @@
 #include "models/PlayerRating.h"
 #include <vector>
 
+struct Team {
+    int teamId;
+    std::string teamName;
+    std::vector<Player> players;
+    int64_t budget = 20000000;
+};
+
 class TeamRepository {
 public:
     explicit TeamRepository(Database& database);
 
     std::vector<std::string> getAvailableSubPositions();
-
     std::vector<Player> fetchPlayersForClub(int clubId);
+
+    void createTeam(const std::string& teamName);
+    std::vector<Team> getAllTeams();
+    void addPlayerToTeam(int teamId, int playerId);
+    void removePlayerFromTeam(int teamId, int playerId);
+    void removeAllPlayersFromTeam(int teamId);
+    void deleteTeam(int teamId);
 
 private:
     sqlite3* db;

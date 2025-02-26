@@ -24,7 +24,7 @@ class PlayerRepository {
     public:
         PlayerRepository(Database& database);
         PlayerRepository(sqlite3 * db);
-        std::vector<Player> fetchPlayers(int clubId = -1, int playerId = -1);
+        std::vector<Player> fetchPlayers(int clubId = -1, int playerId = -1, int teamId = -1);
 
     private:
         sqlite3 * db;

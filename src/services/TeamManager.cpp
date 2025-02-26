@@ -9,7 +9,7 @@ std::vector<std::string> TeamManager::getAvailableSubPositions() {
 }
 
 Team& TeamManager::createTeam(const std::string& teamName) {
-    int teamId = nextTeamId++;
+    int teamId = ++nextTeamId;
     teams[teamId] = {teamId, teamName, {}};
     return teams[teamId];
 }
@@ -27,7 +27,7 @@ Team& TeamManager::loadTeamFromClub(int clubId) {
     }
     
     Team team;
-    team.teamId = nextTeamId++;
+    team.teamId = ++nextTeamId;
     team.teamName = clubName; 
     team.players = playerRepo.fetchPlayers(clubId);  
     teams[team.teamId] = team;
@@ -108,6 +108,7 @@ Team& TeamManager::loadTeam(int teamId) {
 }
 
 bool TeamManager::deleteTeam(int teamId) {
+    teamRepo.deleteTeam(teamId);
     return teams.erase(teamId) > 0;
 }
 
@@ -146,4 +147,28 @@ std::vector<std::pair<int, std::string>> TeamManager::getAllClubs() {
         [](const auto& a, const auto& b) { return a.second < b.second; });
     
     return clubs;
+}
+
+void TeamManager::saveTeam(const Team& team) {
+    teamRepo.createTeam(team.teamName);
+    for (const auto& player : team.players) {
+        teamRepo.addPlayerToTeam(team.teamId, player.playerId);
+    }
+}
+
+void TeamManager::saveTeamPlayers(const Team& team) {
+    teamRepo.removeAllPlayersFromTeam(team.teamId);
+    for (const auto& player : team.players) {
+        teamRepo.addPlayerToTeam(team.teamId, player.playerId);
+    }
+}
+
+void TeamManager::loadTeams() {
+    teams.clear();
+    std::vector<Team> loadedTeams = teamRepo.getAllTeams();
+    for (const auto& team : loadedTeams) {
+        teams[team.teamId] = team;
+        teams[team.teamId].players = playerRepo.fetchPlayers(-1, -1, team.teamId);
+        nextTeamId = std::max(nextTeamId, team.teamId);
+    }
 }

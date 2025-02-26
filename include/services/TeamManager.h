@@ -10,13 +10,6 @@
 #include <cstdint>
 #include <algorithm>
 
-struct Team {
-    int teamId;
-    std::string teamName;
-    std::vector<Player> players;
-    int64_t budget = 20000000;
-};
-
 class TeamManager {
 public:
     TeamManager(TeamRepository& teamRepo, RatingManager& ratingManager, PlayerRepository& playerRepo);
@@ -39,12 +32,16 @@ public:
 
     std::vector<std::pair<int, std::string>> getAllClubs();
 
+    void saveTeam(const Team& team);
+    void loadTeams();
+    void saveTeamPlayers(const Team& team);
+
 private:
     TeamRepository& teamRepo;
     RatingManager& ratingManager;
     PlayerRepository& playerRepo;
     std::unordered_map<int, Team> teams;
-    int nextTeamId = 1;
+    int nextTeamId = 0;
 };
 
 #endif

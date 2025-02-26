@@ -22,6 +22,10 @@ TeamManagerView::TeamManagerView(TeamManager& tm, QWidget *parent)
 {
     setupUi();
     setupConnections();
+
+    teamManager.loadTeams();
+    model->refresh();
+    updateTeamInfo();
 }
 
 void TeamManagerView::setupUi() {
@@ -46,13 +50,15 @@ void TeamManagerView::setupUi() {
     newTeamLayout->addWidget(newTeamButton);
 
     QHBoxLayout* loadTeamLayout = new QHBoxLayout();
-    loadTeamByIdButton = new QPushButton("Select Club...", this);
+    loadTeamByIdButton = new QPushButton("Load Team from Club", this);
     loadTeamLayout->addWidget(loadTeamByIdButton);
+    deleteTeamButton = new QPushButton("Delete Team", this);
 
     leftLayout->addWidget(teamsLabel);
     leftLayout->addWidget(teamList);
     leftLayout->addLayout(newTeamLayout);
     leftLayout->addLayout(loadTeamLayout);
+    leftLayout->addWidget(deleteTeamButton);
 
     QVBoxLayout* centerLayout = new QVBoxLayout();
     QLabel* currentTeamLabel = new QLabel("Current Team:", this);
@@ -134,6 +140,7 @@ void TeamManagerView::setupConnections() {
     connect(budgetInput, QOverload<int>::of(&QSpinBox::valueChanged), this, &TeamManagerView::updateBudget);
     connect(removePlayerButton, &QPushButton::clicked, this, &TeamManagerView::removeSelectedPlayer);
     connect(backButton, &QPushButton::clicked, this, &TeamManagerView::navigateBack);
+    connect(deleteTeamButton, &QPushButton::clicked, this, &TeamManagerView::deleteSelectedTeam);
 
     if (teamList->selectionModel()) { 
         connect(teamList->selectionModel(), &QItemSelectionModel::currentChanged, this, &TeamManagerView::loadSelectedTeam);
@@ -157,6 +164,7 @@ void TeamManagerView::createNewTeam() {
     try {
         Team& newTeam = teamManager.createTeam(name.toStdString());
         currentTeam = &newTeam;
+        teamManager.saveTeam(newTeam);
         model->refresh();
         updateTeamInfo();
         
@@ -204,6 +212,7 @@ void TeamManagerView::loadTeamById() {
             try {
                 Team& selectedTeam = teamManager.loadTeamFromClub(clubId);
                 currentTeam = &selectedTeam;
+                teamManager.saveTeam(selectedTeam);
                 model->refresh();
                 updateTeamInfo();
             } catch (const std::exception& e) {
@@ -222,6 +231,7 @@ void TeamManagerView::autoFillTeam() {
 
     try {
         teamManager.autoFillTeam(*currentTeam, budgetInput->value());
+        teamManager.saveTeamPlayers(*currentTeam);
         updateTeamInfo();
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Error", QString("Failed to auto-fill team: %1").arg(e.what()));
@@ -251,6 +261,7 @@ void TeamManagerView::removeSelectedPlayer() {
     }
 
     teamManager.removePlayerFromTeam(currentTeam->teamId, playerId);
+    teamManager.saveTeamPlayers(*currentTeam);
     updateTeamInfo();
 }
 
@@ -420,5 +431,26 @@ void TeamManagerView::loadLocalPlayerDetailImage(const QString& imageUrl) {
         playerImage->setPixmap(pixmap.scaled(200, 200, Qt::KeepAspectRatio));
     } else {
         playerImage->setText("No Image");
+    }
+}
+
+void TeamManagerView::deleteSelectedTeam() {
+    QModelIndex index = teamList->currentIndex();
+    if (!index.isValid()) return;
+
+    int teamId = model->data(index, Qt::UserRole).toInt();
+
+    QMessageBox::StandardButton reply = QMessageBox::question(this, "Delete Team", "Are you sure you want to delete this team?",
+        QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::Yes) {
+        try {
+            teamManager.deleteTeam(teamId);
+            model->refresh();
+            currentTeam = nullptr;
+            updateTeamInfo();
+        } catch (const std::exception& e) {
+            QMessageBox::critical(this, "Error", QString("Failed to delete team: %1").arg(e.what()));
+        }
     }
 }

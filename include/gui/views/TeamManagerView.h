@@ -41,6 +41,7 @@ private slots:
     void removeSelectedPlayer();
     void navigateBack();
     void updatePlayerDetails();
+    void deleteSelectedTeam();
 
 private:
     TeamManager& teamManager;
@@ -56,6 +57,7 @@ private:
     QPushButton* autoFillButton;
     QPushButton* removePlayerButton;
     QPushButton* backButton;
+    QPushButton* deleteTeamButton;
     QLineEdit* teamNameInput;
     QSpinBox* budgetInput;
 

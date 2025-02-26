@@ -9,7 +9,7 @@ PlayerRepository::PlayerRepository(Database& database) {
 
 PlayerRepository::PlayerRepository(sqlite3 * db): db(db) {}
 
-std::vector<Player> PlayerRepository::fetchPlayers(int clubId, int playerId) {
+std::vector<Player> PlayerRepository::fetchPlayers(int clubId, int playerId, int teamId) {
     std::vector<Player> players;
     sqlite3_stmt *stmt;
     
@@ -39,6 +39,10 @@ std::vector<Player> PlayerRepository::fetchPlayers(int clubId, int playerId) {
         query += " AND player_id = ?";
     }
 
+    if (teamId != -1) {
+        query += " AND player_id IN (SELECT player_id FROM team_players WHERE team_id = ?)";
+    }
+
     if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
         sqlite3_bind_int(stmt, 1, currentSeasonYear);
 
@@ -47,7 +51,10 @@ std::vector<Player> PlayerRepository::fetchPlayers(int clubId, int playerId) {
             sqlite3_bind_int(stmt, paramIndex++, clubId);
         }
         if (playerId != -1) {
-            sqlite3_bind_int(stmt, paramIndex, playerId);
+            sqlite3_bind_int(stmt, paramIndex++, playerId);
+        }
+        if (teamId != -1) {
+            sqlite3_bind_int(stmt, paramIndex, teamId);
         }
 
         while (sqlite3_step(stmt) == SQLITE_ROW) {
