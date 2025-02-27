@@ -24,7 +24,15 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 file(GLOB_RECURSE SRC_FILES src/*.cpp)
 
-find_package(SQLite3 REQUIRED)
+find_package(unofficial-sqlite3 CONFIG QUIET)
+
+if(unofficial-sqlite3_FOUND)
+    set(SQLITE3_TARGET unofficial::sqlite3::sqlite3)
+else()
+    find_package(SQLite3 REQUIRED)
+    set(SQLITE3_TARGET SQLite::SQLite3)
+endif()
+
 find_package(OpenMP REQUIRED)
 find_package(GLPK REQUIRED)
 find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Network)
@@ -49,7 +57,7 @@ endif()
 target_link_libraries(Elometry 
     PRIVATE 
     GLPK::GLPK 
-    SQLite::SQLite3 
+    ${SQLITE3_TARGET} 
     OpenMP::OpenMP_CXX 
     Qt6::Widgets 
     Qt6::Network

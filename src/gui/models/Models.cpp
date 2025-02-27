@@ -61,10 +61,10 @@ QVariant PlayerListModel::headerData(int section, Qt::Orientation orientation, i
 }
 
 int PlayerListModel::filteredPlayerCount() const {
-    return filteredPlayers.size();
+    return static_cast<int>(filteredPlayers.size());
 }
 
-int PlayerListModel::totalPlayers() const {
+size_t PlayerListModel::totalPlayers() const {
     return allPlayers.size();
 }
 
@@ -144,7 +144,7 @@ TeamListModel::TeamListModel(TeamManager& tm, QObject *parent)
 
 int TeamListModel::rowCount(const QModelIndex &parent) const {
     if (parent.isValid()) return 0;
-    return teams.size();
+    return static_cast<int>(teams.size());
 }
 
 QVariant TeamListModel::data(const QModelIndex &index, int role) const {

@@ -18,7 +18,7 @@ ILPSelector::ILPSelector(std::vector<std::pair<int, Player>>& p,
 
 std::vector<ILPSelector::Variable> ILPSelector::createVariables() {
     std::vector<Variable> vars;
-    size_t varIdx = 1;
+    int varIdx = 1;
     
     for (size_t i = 0; i < players.size(); i++) {
         const auto& player = players[i];
@@ -58,7 +58,7 @@ void ILPSelector::addBudgetConstraint(glp_prob* lp, const std::vector<Variable>&
         coeffs[i + 1] = static_cast<double>(vars[i].cost);
     }
     
-    glp_set_mat_row(lp, rowIdx, vars.size(), indices.data(), coeffs.data());
+    glp_set_mat_row(lp, rowIdx, static_cast<int>(vars.size()), indices.data(), coeffs.data());
 }
 
 void ILPSelector::addPositionConstraints(glp_prob* lp, const std::vector<Variable>& vars) {
@@ -83,7 +83,7 @@ void ILPSelector::addPositionConstraints(glp_prob* lp, const std::vector<Variabl
                 coeffs[i + 1] = 1.0;
             }
             
-            glp_set_mat_row(lp, rowIdx, posVars.size(), indices.data(), coeffs.data());
+            glp_set_mat_row(lp, rowIdx, static_cast<int>(posVars.size()), indices.data(), coeffs.data());
         }
     }
 }
@@ -109,7 +109,7 @@ std::vector<std::pair<int, Player>> ILPSelector::selectTeam() {
     glp_set_obj_dir(lp, GLP_MAX);
     
     auto vars = createVariables();
-    glp_add_cols(lp, vars.size());
+    glp_add_cols(lp, static_cast<int>(vars.size()));
     
     for (const auto& var : vars) {
         glp_set_col_name(lp, var.varIdx, 

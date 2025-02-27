@@ -19,7 +19,7 @@ private:
     struct Variable {
         size_t playerIdx;
         size_t positionIdx;
-        size_t varIdx;
+        int varIdx;
         double rating;
         int64_t cost;
     };

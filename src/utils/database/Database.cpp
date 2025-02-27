@@ -54,13 +54,13 @@ void Database::loadDataIntoDatabase(bool updateDataset, std::function<void(const
     downloadAndExtractDataset(updateDataset, progressCallback);
 
     int baseProgress = 30;
-    int progressPerTable = 40 / tableNames.size();
+    int progressPerTable = 40 / static_cast<int>(tableNames.size());
     
     for (size_t i = 0; i < tableNames.size(); i++) {
         std::string tableName = tableNames[i];
         std::string csvPath = "data/" + tableName + ".csv";
         
-        progressCallback("Loading " + tableName + " data", baseProgress + i * progressPerTable);
+        progressCallback("Loading " + tableName + " data", baseProgress + static_cast<int>(i) * progressPerTable);
         loadCSVIntoTable(tableName, csvPath);
     }
 
@@ -274,8 +274,8 @@ void Database::updateDatasetIfNeeded(std::function<void(const std::string&, int)
     }
 
     progressCallback("Setting up Kaggle credentials", 20);
-    setenv("KAGGLE_USERNAME", kaggleUsername.c_str(), 1);
-    setenv("KAGGLE_KEY", kaggleKey.c_str(), 1);
+        setenv("KAGGLE_USERNAME", kaggleUsername.c_str(), 1);
+        setenv("KAGGLE_KEY", kaggleKey.c_str(), 1);
 
     progressCallback("Checking for dataset updates", 25);
     if (!fetchKaggleDatasetList()) {
@@ -362,7 +362,7 @@ time_t Database::extractLastUpdatedTimestamp() {
     std::string lastUpdatedStr = match[1].str();
     struct tm tm = {};
 
-    if (strptime(lastUpdatedStr.c_str(), "%Y-%m-%d %H:%M:%S", &tm) == nullptr) {
+        if (strptime(lastUpdatedStr.c_str(), "%Y-%m-%d %H:%M:%S", &tm) == nullptr) {
         std::cerr << "Failed to parse timestamp: " << lastUpdatedStr << std::endl;
         return 0;
     }
