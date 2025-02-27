@@ -121,6 +121,9 @@ void MainWindow::initializeApp() {
     DataLoader* dataLoader = new DataLoader(ratingManager, teamManager, database);
     dataLoader->moveToThread(loadingThread);
     
+    loadingView->updateStatus("Starting");
+    loadingView->updateProgress(0);
+    
     connect(loadingThread, &QThread::started, [dataLoader]() {
         dataLoader->loadData();
     });
@@ -138,7 +141,9 @@ void MainWindow::initializeApp() {
     
     connect(loadingThread, &QThread::finished, loadingThread, &QThread::deleteLater);
     
-    loadingThread->start();
+    QTimer::singleShot(100, [this]() {
+        loadingThread->start();
+    });
 }
 
 void MainWindow::onDataLoadProgress(const QString& status, int progress) {
@@ -146,6 +151,6 @@ void MainWindow::onDataLoadProgress(const QString& status, int progress) {
     loadingView->updateProgress(progress);
     
     if (progress >= 100) {
-        QTimer::singleShot(500, loadingView, &LoadingView::loadingFinished);
+        QTimer::singleShot(500, loadingView, &LoadingView::markLoadingComplete);
     }
 }

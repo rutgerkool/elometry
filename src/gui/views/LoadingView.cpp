@@ -1,6 +1,8 @@
 #include "gui/views/LoadingView.h"
 #include <QtWidgets/QVBoxLayout>
 #include <QtGui/QFont>
+#include <QTimer>
+#include <QtWidgets/QApplication>
 
 LoadingView::LoadingView(QWidget *parent)
     : QWidget(parent)
@@ -29,7 +31,7 @@ void LoadingView::setupUi()
     progressBar->setMinimumWidth(300);
     progressBar->setTextVisible(true);
     
-    statusLabel = new QLabel("Initializing...", this);
+    statusLabel = new QLabel("Initializing", this);
     statusLabel->setAlignment(Qt::AlignCenter);
     QFont statusFont = statusLabel->font();
     statusFont.setPointSize(10);
@@ -48,9 +50,18 @@ void LoadingView::setupUi()
 void LoadingView::updateStatus(const QString& status)
 {
     statusLabel->setText(status);
+    QApplication::processEvents();
 }
 
 void LoadingView::updateProgress(int value)
 {
     progressBar->setValue(value);
+    QApplication::processEvents();
+}
+
+void LoadingView::markLoadingComplete()
+{
+    progressBar->setStyleSheet("QProgressBar::chunk { background-color: #52BE80; }");
+    statusLabel->setText("Loading complete!");
+    emit loadingFinished();
 }

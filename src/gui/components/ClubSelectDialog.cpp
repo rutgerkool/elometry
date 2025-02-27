@@ -20,7 +20,7 @@ void ClubSelectDialog::setupUi()
     QHBoxLayout* searchLayout = new QHBoxLayout();
     QLabel* searchLabel = new QLabel("Search:", this);
     searchLineEdit = new QLineEdit(this);
-    searchLineEdit->setPlaceholderText("Type to filter clubs...");
+    searchLineEdit->setPlaceholderText("Type to filter clubs");
     searchLayout->addWidget(searchLabel);
     searchLayout->addWidget(searchLineEdit);
     

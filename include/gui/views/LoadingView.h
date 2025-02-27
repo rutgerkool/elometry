@@ -15,6 +15,7 @@ public:
 public slots:
     void updateStatus(const QString& status);
     void updateProgress(int value);
+    void markLoadingComplete();
     
 signals:
     void loadingFinished();

@@ -15,22 +15,20 @@ void DataLoader::loadData()
 {
     emit progressUpdate("Connecting to database", 10);
     
-    if (!fs::exists("data")) {
-        database.executeSQLFile("../db/data.sql");
-        database.executeSQLFile("../db/user.sql");
-
-        emit progressUpdate("Loading dataset into database", 25);
-        database.loadDataIntoDatabase();
+    auto progressCallback = [this](const std::string& status, int progress) {
+        emit progressUpdate(QString::fromStdString(status), progress);
+    };
+    
+    if (database.isNewDatabase()) {
+        database.initialize(progressCallback);
     } else {
-        emit progressUpdate("Checking for dataset updates", 25);
-        database.updateDatasetIfNeeded();
+        database.initialize(progressCallback);
     }
 
-    emit progressUpdate("Processing player ratings...", 75);
+    emit progressUpdate("Processing player ratings", 75);
     ratingManager.loadAndProcessRatings();
-
     
-    emit progressUpdate("Loading team data...", 90);
+    emit progressUpdate("Loading team data", 90);
     teamManager.loadTeams();
     
     emit progressUpdate("Ready!", 100);

@@ -13,21 +13,23 @@
 
 namespace fs = std::filesystem;
 
-Database::Database(const std::string& dbPath) {
-    bool isNewDatabase = !fileExists(dbPath);
+Database::Database(const std::string& path) : dbPath(path) {
+    newDatabase = !fileExists(dbPath);
     
     if (sqlite3_open(dbPath.c_str(), &db) != SQLITE_OK) {
         std::cerr << "Can't open database: " << sqlite3_errmsg(db) << std::endl;
     }
+}
 
-    if (isNewDatabase) {
+void Database::initialize(std::function<void(const std::string&, int)> progressCallback) {
+    if (newDatabase) {
+        progressCallback("Creating database schema", 15);
         executeSQLFile("../db/data.sql");
         executeSQLFile("../db/user.sql");
-
-        loadDataIntoDatabase();
+        loadDataIntoDatabase(false, progressCallback);
     } else {
-        std::cout << "Existing database used." << std::endl;
-        updateDatasetIfNeeded();
+        progressCallback("Checking for dataset updates", 15);
+        updateDatasetIfNeeded(progressCallback);
     }
 }
 
@@ -41,20 +43,28 @@ bool Database::fileExists(const std::string& dbPath) {
     return (stat(dbPath.c_str(), &buffer) == 0);
 }
 
-void Database::loadDataIntoDatabase(bool updateDataset) {
+void Database::loadDataIntoDatabase(bool updateDataset, std::function<void(const std::string&, int)> progressCallback) {
     std::vector<std::string> tableNames {
         "appearances", "club_games", "clubs", "competitions",
         "game_events", "game_lineups", "games", "player_valuations",
         "players", "transfers"
     };
 
-    downloadAndExtractDataset(updateDataset);
+    progressCallback("Downloading dataset", 20);
+    downloadAndExtractDataset(updateDataset, progressCallback);
 
-    for (const auto& tableName : tableNames) {
+    int baseProgress = 30;
+    int progressPerTable = 40 / tableNames.size();
+    
+    for (size_t i = 0; i < tableNames.size(); i++) {
+        std::string tableName = tableNames[i];
         std::string csvPath = "data/" + tableName + ".csv";
+        
+        progressCallback("Loading " + tableName + " data", baseProgress + i * progressPerTable);
         loadCSVIntoTable(tableName, csvPath);
     }
 
+    progressCallback("Finalizing database setup", 70);
     setLastUpdateTimestamp();
 }
 
@@ -148,10 +158,11 @@ std::vector<std::string> Database::getSanitizedValues(std::ifstream& file, std::
     return values;
 }
 
-void Database::downloadAndExtractDataset(bool updateDataset) {
+void Database::downloadAndExtractDataset(bool updateDataset, std::function<void(const std::string&, int)> progressCallback) {
     std::string datasetPath = "player-scores.zip";
 
     if (updateDataset || !fileExists(datasetPath)) {
+        progressCallback("Downloading dataset from Kaggle", 20);
         int result = std::system("kaggle datasets download -d davidcariboo/player-scores -p ./ 2> kaggle_error.log");
 
         if (result != 0) {
@@ -161,6 +172,7 @@ void Database::downloadAndExtractDataset(bool updateDataset) {
     }
 
     if (updateDataset || !fs::exists("data")) {
+        progressCallback("Extracting dataset files", 25);
         std::system("unzip -o player-scores.zip -d data");
     }
 }
@@ -253,7 +265,7 @@ void Database::setLastUpdateTimestamp() {
     }
 }
 
-void Database::updateDatasetIfNeeded() {
+void Database::updateDatasetIfNeeded(std::function<void(const std::string&, int)> progressCallback) {
     std::string kaggleUsername = getMetadataValue("KAGGLE_USERNAME");
     std::string kaggleKey = getMetadataValue("KAGGLE_KEY");
 
@@ -261,9 +273,11 @@ void Database::updateDatasetIfNeeded() {
         return;
     }
 
+    progressCallback("Setting up Kaggle credentials", 20);
     setenv("KAGGLE_USERNAME", kaggleUsername.c_str(), 1);
     setenv("KAGGLE_KEY", kaggleKey.c_str(), 1);
 
+    progressCallback("Checking for dataset updates", 25);
     if (!fetchKaggleDatasetList()) {
         std::cerr << "Failed to fetch dataset metadata." << std::endl;
         return;
@@ -276,7 +290,8 @@ void Database::updateDatasetIfNeeded() {
         return;
     }
 
-    compareAndUpdateDataset(kaggleUpdatedTime);
+    progressCallback("Comparing dataset versions", 30);
+    compareAndUpdateDataset(kaggleUpdatedTime, progressCallback);
 }
 
 std::string Database::getMetadataValue(const std::string& key) {
@@ -355,14 +370,14 @@ time_t Database::extractLastUpdatedTimestamp() {
     return mktime(&tm);
 }
 
-void Database::compareAndUpdateDataset(time_t kaggleUpdatedTime) {
+void Database::compareAndUpdateDataset(time_t kaggleUpdatedTime, std::function<void(const std::string&, int)> progressCallback) {
     time_t lastUpdated = getLastUpdateTimestamp();
 
     if (kaggleUpdatedTime > lastUpdated) {
-        std::cout << "New dataset available." << std::endl;
-        loadDataIntoDatabase(true);
+        progressCallback("New dataset available, updating", 35);
+        loadDataIntoDatabase(true, progressCallback);
     } else {
-        std::cout << "Dataset is already up-to-date." << std::endl;
+        progressCallback("Dataset is already up-to-date", 70);
     }
 }
 
