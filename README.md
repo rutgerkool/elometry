@@ -84,12 +84,18 @@ git clone https://github.com/rutgerkool/elometry.git
 cd elometry
 ```
 
-## **Building the Project**
+## **Building the project**
 
 ```bash
 mkdir build && cd build
 cmake ..
 cmake --build .
+```
+
+## **Running the project (in `/build`)**
+
+```bash
+./Elometry
 ```
 
 ## **Configuration**
