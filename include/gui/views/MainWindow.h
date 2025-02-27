@@ -10,6 +10,7 @@
 #include <QPropertyAnimation>
 #include <QParallelAnimationGroup>
 #include <QGraphicsOpacityEffect>
+#include <QShowEvent>
 
 class PlayerListView;
 class TeamManagerView;
@@ -23,6 +24,9 @@ class MainWindow : public QMainWindow {
         explicit MainWindow(RatingManager& ratingManager, TeamManager& teamManager, Database& database, QWidget *parent = nullptr);
         ~MainWindow() override;
 
+    protected:
+        void showEvent(QShowEvent* event) override;
+
     private slots:
         void showPlayerList();
         void showTeamManager();
@@ -31,6 +35,7 @@ class MainWindow : public QMainWindow {
         void initializeApp();
         void onDataLoadProgress(const QString& status, int progress);
         void animateViewTransition(QWidget* newWidget);
+        void centerWindow();
 
     private:
         RatingManager& ratingManager;

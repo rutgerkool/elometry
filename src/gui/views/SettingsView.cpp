@@ -122,5 +122,15 @@ void SettingsView::saveSettings() {
     msgBox.setText("Kaggle credentials have been saved successfully.");
     msgBox.setIcon(QMessageBox::Information);
 
+    QScreen* screen = QApplication::screenAt(QCursor::pos());
+    if (!screen) screen = QApplication::primaryScreen();
+    
+    QRect screenGeometry = screen->availableGeometry();
+    msgBox.adjustSize();
+    msgBox.move(
+        screenGeometry.x() + (screenGeometry.width() - msgBox.width()) / 2,
+        screenGeometry.y() + (screenGeometry.height() - msgBox.height()) / 2
+    );
+    
     msgBox.exec();
 }

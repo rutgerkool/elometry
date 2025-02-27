@@ -14,6 +14,10 @@
 #include <QPropertyAnimation>
 #include <QGraphicsOpacityEffect>
 #include <QParallelAnimationGroup>
+#include <QScreen>
+#include <QApplication>
+#include <QGuiApplication>
+#include <QCursor>
 
 MainWindow::MainWindow(RatingManager& rm, TeamManager& tm, Database& db, QWidget *parent)
     : QMainWindow(parent)
@@ -27,6 +31,8 @@ MainWindow::MainWindow(RatingManager& rm, TeamManager& tm, Database& db, QWidget
     , loadingThread(nullptr)
     , appInitialized(false)
 {
+    setFixedSize(1024, 768);
+
     stackedWidget = new QStackedWidget(this);
 
     loadingView = new LoadingView(this);
@@ -44,7 +50,36 @@ MainWindow::MainWindow(RatingManager& rm, TeamManager& tm, Database& db, QWidget
     initializeApp();
 
     setWindowTitle("Elometry");
-    setMinimumSize(1024, 768);
+}
+
+void MainWindow::centerWindow() {
+    QPoint cursorPos = QCursor::pos();
+    QScreen* screen = nullptr;
+
+    for (QScreen* s : QGuiApplication::screens()) {
+        if (s->geometry().contains(cursorPos)) {
+            screen = s;
+            break;
+        }
+    }
+    
+    if (!screen) {
+        screen = QGuiApplication::primaryScreen();
+    }
+    
+    if (screen) {
+        QRect screenGeometry = screen->availableGeometry();
+        
+        int x = screenGeometry.x() + (screenGeometry.width() - width()) / 2;
+        int y = screenGeometry.y() + (screenGeometry.height() - height()) / 2;
+        
+        move(x, y);
+    }
+}
+
+void MainWindow::showEvent(QShowEvent* event) {
+    centerWindow();
+    QMainWindow::showEvent(event);
 }
 
 MainWindow::~MainWindow() {
@@ -68,7 +103,7 @@ void MainWindow::setupUi() {
     layout->setSpacing(24);
 
     QLabel* headerLabel = new QLabel("Elometry", this);
-    headerLabel->setStyleSheet("font-size: 36px; font-weight: bold; color: #0c7bb3; margin-bottom: 24px;");
+    headerLabel->setObjectName("headerLabel");
     layout->addWidget(headerLabel, 0, Qt::AlignCenter);
 
     QPushButton* playerListButton = new QPushButton("Player Ratings List", this);
