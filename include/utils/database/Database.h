@@ -5,6 +5,11 @@
 #include <vector>
 #include <sqlite3.h>
 #include <functional>
+#ifdef _WIN32
+#include <stdlib.h>
+#include <iomanip>
+#include <sstream>
+#endif
 
 typedef int PlayerId;
 

@@ -163,7 +163,7 @@ void Database::downloadAndExtractDataset(bool updateDataset, std::function<void(
 
     if (updateDataset || !fileExists(datasetPath)) {
         progressCallback("Downloading dataset from Kaggle", 20);
-        int result = std::system("kaggle datasets download -d davidcariboo/player-scores -p ./ 2> kaggle_error.log");
+        int result = std::system("python -m kaggle datasets download -d davidcariboo/player-scores -p ./ 2> kaggle_error.log");
 
         if (result != 0) {
             std::cerr << "Kaggle API error. Check kaggle_error.log for details." << std::endl;
@@ -274,8 +274,14 @@ void Database::updateDatasetIfNeeded(std::function<void(const std::string&, int)
     }
 
     progressCallback("Setting up Kaggle credentials", 20);
+    
+    #ifdef _WIN32
+        _putenv_s("KAGGLE_USERNAME", kaggleUsername.c_str());
+        _putenv_s("KAGGLE_KEY", kaggleKey.c_str());
+    #else
         setenv("KAGGLE_USERNAME", kaggleUsername.c_str(), 1);
         setenv("KAGGLE_KEY", kaggleKey.c_str(), 1);
+    #endif
 
     progressCallback("Checking for dataset updates", 25);
     if (!fetchKaggleDatasetList()) {
@@ -329,7 +335,7 @@ void Database::setMetadataValue(const std::string& key, const std::string& value
 }
 
 bool Database::fetchKaggleDatasetList() {
-    int result = std::system("kaggle datasets list --search 'davidcariboo/player-scores' --sort-by updated > dataset-list.txt");
+    int result = std::system("python -m kaggle datasets list --search 'davidcariboo/player-scores' --sort-by updated > dataset-list.txt");
     return result == 0;
 }
 
@@ -362,7 +368,13 @@ time_t Database::extractLastUpdatedTimestamp() {
     std::string lastUpdatedStr = match[1].str();
     struct tm tm = {};
 
+    #ifdef _WIN32
+        std::istringstream ss(lastUpdatedStr);
+        ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
+        if (ss.fail()) {
+    #else
         if (strptime(lastUpdatedStr.c_str(), "%Y-%m-%d %H:%M:%S", &tm) == nullptr) {
+    #endif
         std::cerr << "Failed to parse timestamp: " << lastUpdatedStr << std::endl;
         return 0;
     }
