@@ -9,6 +9,10 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QHBoxLayout>
+#include <QPropertyAnimation>
+#include <QParallelAnimationGroup>
+#include <QSequentialAnimationGroup>
+#include <QGraphicsOpacityEffect>
 
 class PlayerListModel;
 
@@ -25,6 +29,7 @@ class PlayerListView : public QWidget {
         void filterPlayers();
         void searchPlayers(const QString& text);
         void filterByPosition(const QString& position);
+        void animateTable();
 
     private:
         int currentPage = 0;
@@ -44,8 +49,14 @@ class PlayerListView : public QWidget {
         RatingManager& ratingManager;
         PlayerListModel* model;
 
+        QGraphicsOpacityEffect* tableOpacityEffect;
+        QPropertyAnimation* tableOpacityAnimation;
+        QPropertyAnimation* tableSlideAnimation;
+        QParallelAnimationGroup* tableAnimGroup;
+
         void setupUi();
         void setupConnections();
+        void setupAnimations();
         void updatePagination();
 };
 

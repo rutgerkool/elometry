@@ -12,6 +12,9 @@
 #include <QtNetwork/QNetworkRequest>
 #include <QTimer>
 #include <QInputDialog>
+#include <QEasingCurve>
+#include <QParallelAnimationGroup>
+#include <QScrollArea>
 #include <iostream>
 
 TeamManagerView::TeamManagerView(TeamManager& tm, QWidget *parent)
@@ -22,25 +25,30 @@ TeamManagerView::TeamManagerView(TeamManager& tm, QWidget *parent)
     , networkManager(new QNetworkAccessManager(this))
 {
     setupUi();
+    setupAnimations();
     setupConnections();
 
     teamManager.loadTeams();
     model->refresh();
     updateTeamInfo();
+    animateTeamView();
 }
 
 void TeamManagerView::setupUi() {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(40, 40, 40, 40);
+    mainLayout->setSpacing(20);
 
     backButton = new QPushButton("Back to Menu", this);
     mainLayout->addWidget(backButton, 0, Qt::AlignLeft);
 
     QHBoxLayout* mainContentLayout = new QHBoxLayout();
-    mainContentLayout->setSpacing(10);
+    mainContentLayout->setSpacing(30);
 
     QVBoxLayout* leftLayout = new QVBoxLayout();
     QLabel* teamsLabel = new QLabel("Existing Teams:", this);
     teamsLabel->setObjectName("teamsLabel");
+    
     teamList = new QListView(this);
     teamList->setModel(model);
     teamList->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -56,6 +64,7 @@ void TeamManagerView::setupUi() {
     loadTeamByIdButton = new QPushButton("Load Team from Club", this);
     loadTeamLayout->addWidget(loadTeamByIdButton);
     deleteTeamButton = new QPushButton("Delete Team", this);
+    deleteTeamButton->setObjectName("deleteTeamButton");
 
     editTeamNameButton = new QPushButton("Edit Team Name", this);
     
@@ -63,8 +72,8 @@ void TeamManagerView::setupUi() {
     leftLayout->addWidget(teamList);
     leftLayout->addLayout(newTeamLayout);
     leftLayout->addLayout(loadTeamLayout);
-    leftLayout->addWidget(deleteTeamButton);
     leftLayout->addWidget(editTeamNameButton);
+    leftLayout->addWidget(deleteTeamButton);
 
     QVBoxLayout* centerLayout = new QVBoxLayout();
     QLabel* currentTeamLabel = new QLabel("Current Team:", this);
@@ -78,22 +87,6 @@ void TeamManagerView::setupUi() {
     currentTeamPlayers->horizontalHeader()->setVisible(false);
     currentTeamPlayers->setIconSize(QSize(32, 32));
     currentTeamPlayers->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    currentTeamPlayers->setStyleSheet(
-        "QTableView {"
-        "  background-color: #2d2d2d;"
-        "  border: 1px solid #404040;"
-        "  border-radius: 4px;"
-        "  padding: 0px;"
-        "}"
-        "QTableView::item {"
-        "  padding: 5px;"
-        "  border-bottom: 1px solid #333333;"
-        "}"
-        "QTableView::item:selected {"
-        "  background-color: #0078d4;"
-        "  color: white;"
-        "}"
-    );
 
     QHBoxLayout* budgetLayout = new QHBoxLayout();
     QLabel* budgetLabel = new QLabel("Budget (€):", this);
@@ -108,50 +101,136 @@ void TeamManagerView::setupUi() {
     removePlayerButton = new QPushButton("Remove Player", this);
 
     centerLayout->addWidget(currentTeamLabel);
-    centerLayout->addWidget(currentTeamPlayers);
+    centerLayout->addWidget(currentTeamPlayers, 1);
     centerLayout->addLayout(budgetLayout);
     centerLayout->addWidget(autoFillButton);
     centerLayout->addWidget(removePlayerButton);
 
-     QVBoxLayout* rightLayout = new QVBoxLayout();
+    QScrollArea* playerDetailsScrollArea = new QScrollArea(this);
+    playerDetailsScrollArea->setWidgetResizable(true);
+    playerDetailsScrollArea->setFrameShape(QFrame::NoFrame);
+    playerDetailsScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    playerDetailsScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    
+    playerDetailsWidget = new QWidget();
+    playerDetailsWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    
+    QVBoxLayout* rightLayout = new QVBoxLayout(playerDetailsWidget);
+    rightLayout->setContentsMargins(0, 0, 0, 0);
+    
     QLabel* playerDetailsLabel = new QLabel("Selected Player:", this);
     playerDetailsLabel->setObjectName("playerDetailsLabel");
 
-    playerImage = new QLabel(this);
+    playerImage = new QLabel();
     playerImage->setObjectName("playerImage");
     playerImage->setFixedSize(200, 200);
     playerImage->setAlignment(Qt::AlignCenter);
+    playerImage->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-    playerName = new QLabel("", this);
+    playerName = new QLabel("");
     playerName->setObjectName("playerName");
-
-    playerClub = new QLabel("", this);
+    playerName->setWordWrap(true);
+    playerName->setAlignment(Qt::AlignLeft);
+    
+    playerClub = new QLabel("");
     playerClub->setObjectName("playerClub");
-    playerClub->setWordWrap(true); 
+    playerClub->setWordWrap(true);
     playerClub->setAlignment(Qt::AlignLeft);
-
-    playerPosition = new QLabel("", this);
+    
+    playerPosition = new QLabel("");
     playerPosition->setObjectName("playerPosition");
-
-    playerMarketValue = new QLabel("", this);
+    playerPosition->setWordWrap(true);
+    playerPosition->setAlignment(Qt::AlignLeft);
+    
+    playerMarketValue = new QLabel("");
     playerMarketValue->setObjectName("playerMarketValue");
-
-    playerRating = new QLabel("", this);
+    playerMarketValue->setWordWrap(true);
+    playerMarketValue->setAlignment(Qt::AlignLeft);
+    
+    playerRating = new QLabel("");
     playerRating->setObjectName("playerRating");
+    playerRating->setWordWrap(true);
+    playerRating->setAlignment(Qt::AlignLeft);
+    
+    QHBoxLayout* imageLayout = new QHBoxLayout();
+    imageLayout->addStretch();
+    imageLayout->addWidget(playerImage);
+    imageLayout->addStretch();
 
     rightLayout->addWidget(playerDetailsLabel);
-    rightLayout->addWidget(playerImage);
+    rightLayout->addLayout(imageLayout);
     rightLayout->addWidget(playerName);
     rightLayout->addWidget(playerClub);
     rightLayout->addWidget(playerPosition);
     rightLayout->addWidget(playerMarketValue);
     rightLayout->addWidget(playerRating);
     rightLayout->addStretch();
+    
+    playerDetailsScrollArea->setWidget(playerDetailsWidget);
 
-    mainContentLayout->addLayout(leftLayout, 1);
-    mainContentLayout->addLayout(centerLayout, 1);
-    mainContentLayout->addLayout(rightLayout, 1);
-    mainLayout->addLayout(mainContentLayout);
+    mainContentLayout->addLayout(leftLayout, 2);
+    mainContentLayout->addLayout(centerLayout, 3);
+    mainContentLayout->addWidget(playerDetailsScrollArea, 2);
+    
+    mainLayout->addLayout(mainContentLayout, 1);
+}
+
+void TeamManagerView::setupAnimations() {
+    teamListOpacityEffect = new QGraphicsOpacityEffect(teamList);
+    teamList->setGraphicsEffect(teamListOpacityEffect);
+    teamListOpacityEffect->setOpacity(0.0);
+    
+    teamListOpacityAnimation = new QPropertyAnimation(teamListOpacityEffect, "opacity");
+    teamListOpacityAnimation->setDuration(500);
+    teamListOpacityAnimation->setStartValue(0.0);
+    teamListOpacityAnimation->setEndValue(1.0);
+    teamListOpacityAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    
+    teamPlayersOpacityEffect = new QGraphicsOpacityEffect(currentTeamPlayers);
+    currentTeamPlayers->setGraphicsEffect(teamPlayersOpacityEffect);
+    teamPlayersOpacityEffect->setOpacity(0.0);
+    
+    teamPlayersOpacityAnimation = new QPropertyAnimation(teamPlayersOpacityEffect, "opacity");
+    teamPlayersOpacityAnimation->setDuration(500);
+    teamPlayersOpacityAnimation->setStartValue(0.0);
+    teamPlayersOpacityAnimation->setEndValue(1.0);
+    teamPlayersOpacityAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    
+    playerDetailsOpacityEffect = new QGraphicsOpacityEffect(playerDetailsWidget);
+    playerDetailsWidget->setGraphicsEffect(playerDetailsOpacityEffect);
+    playerDetailsOpacityEffect->setOpacity(0.0);
+    
+    playerDetailsOpacityAnimation = new QPropertyAnimation(playerDetailsOpacityEffect, "opacity");
+    playerDetailsOpacityAnimation->setDuration(300);
+    playerDetailsOpacityAnimation->setStartValue(0.0);
+    playerDetailsOpacityAnimation->setEndValue(1.0);
+    playerDetailsOpacityAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    
+    playerDetailsSlideAnimation = new QPropertyAnimation(playerDetailsWidget, "pos");
+    playerDetailsSlideAnimation->setDuration(300);
+    playerDetailsSlideAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    
+    playerDetailsAnimGroup = new QParallelAnimationGroup(this);
+    playerDetailsAnimGroup->addAnimation(playerDetailsOpacityAnimation);
+    playerDetailsAnimGroup->addAnimation(playerDetailsSlideAnimation);
+}
+
+void TeamManagerView::animateTeamView() {
+    teamListOpacityAnimation->start();
+    QTimer::singleShot(200, [this]() {
+        teamPlayersOpacityAnimation->start();
+    });
+}
+
+void TeamManagerView::animatePlayerDetails() {
+    QPoint currentPos = playerDetailsWidget->pos();
+    QPoint startPos = currentPos + QPoint(30, 0);
+    
+    playerDetailsSlideAnimation->setStartValue(startPos);
+    playerDetailsSlideAnimation->setEndValue(currentPos);
+    
+    playerDetailsOpacityEffect->setOpacity(0.0);
+    playerDetailsAnimGroup->start();
 }
 
 void TeamManagerView::setupConnections() {
@@ -198,6 +277,8 @@ void TeamManagerView::createNewTeam() {
         editTeamNameButton->setEnabled(true);
 
         teamNameInput->clear();
+        
+        teamPlayersOpacityAnimation->start();
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Error", QString("Failed to create team: %1").arg(e.what()));
         currentTeam = nullptr;
@@ -215,6 +296,7 @@ void TeamManagerView::loadSelectedTeam() {
         updateTeamInfo();
         
         editTeamNameButton->setEnabled(true);
+        teamPlayersOpacityAnimation->start();
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Error", QString("Failed to load team: %1").arg(e.what()));
         currentTeam = nullptr;
@@ -243,6 +325,7 @@ void TeamManagerView::loadTeamById() {
                 model->refresh();
                 updateTeamInfo();
                 editTeamNameButton->setEnabled(true);
+                teamPlayersOpacityAnimation->start();
             } catch (const std::exception& e) {
                 QMessageBox::critical(this, "Error", QString("Failed to load team: %1").arg(e.what()));
                 currentTeam = nullptr;
@@ -262,6 +345,7 @@ void TeamManagerView::autoFillTeam() {
         teamManager.autoFillTeam(*currentTeam, budgetInput->value());
         teamManager.saveTeamPlayers(*currentTeam);
         updateTeamInfo();
+        teamPlayersOpacityAnimation->start();
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Error", QString("Failed to auto-fill team: %1").arg(e.what()));
     }
@@ -435,6 +519,8 @@ void TeamManagerView::updatePlayerDetails() {
             } else {
                 loadLocalPlayerDetailImage(imageUrl);
             }
+            
+            animatePlayerDetails();
             break;
         }
     }

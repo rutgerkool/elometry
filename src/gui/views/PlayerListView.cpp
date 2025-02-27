@@ -5,6 +5,10 @@
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QPushButton>
+#include <QtWidgets/QFrame>
+#include <QPropertyAnimation>
+#include <QEasingCurve>
+#include <QParallelAnimationGroup>
 
 PlayerListView::PlayerListView(RatingManager& rm, QWidget *parent)
     : QWidget(parent)
@@ -12,24 +16,30 @@ PlayerListView::PlayerListView(RatingManager& rm, QWidget *parent)
     , model(new PlayerListModel(ratingManager.getSortedRatedPlayers()))
 {
     setupUi();
+    setupAnimations();
     setupConnections();
     updatePagination();
+    animateTable();
 }
 
 void PlayerListView::setupUi() {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(40, 40, 40, 40);
+    mainLayout->setSpacing(20);
 
     backButton = new QPushButton("Back to Menu", this);
     mainLayout->addWidget(backButton, 0, Qt::AlignLeft);
 
     QHBoxLayout* inputLayout = new QHBoxLayout();
+    inputLayout->setContentsMargins(0, 0, 0, 0);
 
     QHBoxLayout* searchLayout = new QHBoxLayout();
     QLabel* searchLabel = new QLabel("Search:", this);
     searchLabel->setProperty("section", "search");
     searchBox = new QLineEdit(this);
     searchBox->setObjectName("searchBox");
-    searchBox->setFixedWidth(200);
+    searchBox->setFixedWidth(240);
+    searchBox->setPlaceholderText("Search players...");
     searchLayout->addWidget(searchLabel);
     searchLayout->addWidget(searchBox);
     searchLayout->addStretch();
@@ -41,7 +51,7 @@ void PlayerListView::setupUi() {
     positionFilter->setObjectName("positionFilter");
     positionFilter->addItem("All Positions");
     positionFilter->addItems({"Goalkeeper", "Defender", "Midfield", "Attack"});
-    positionFilter->setFixedWidth(200);
+    positionFilter->setFixedWidth(240);
     filterLayout->addWidget(positionLabel);
     filterLayout->addWidget(positionFilter);
     filterLayout->addStretch();
@@ -51,41 +61,84 @@ void PlayerListView::setupUi() {
     inputLayout->addLayout(filterLayout);
     inputLayout->addStretch();
 
-    tableView = new QTableView(this);
+    mainLayout->addLayout(inputLayout);
+
+    QFrame* contentFrame = new QFrame(this);
+    contentFrame->setFrameShape(QFrame::NoFrame);
+    contentFrame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    
+    QVBoxLayout* contentLayout = new QVBoxLayout(contentFrame);
+    contentLayout->setContentsMargins(0, 0, 0, 0);
+    contentLayout->setSpacing(10);
+
+    tableView = new QTableView(contentFrame);
+    tableView->setObjectName("playerTable");
     tableView->setModel(model);
     tableView->setSortingEnabled(true);
     tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    tableView->horizontalHeader()->setStretchLastSection(true);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView->setAlternatingRowColors(true);
-    tableView->setFixedWidth(665); 
-
-    paginationLayout = new QHBoxLayout();
-    prevPageButton = new QPushButton("Previous", this);
-    prevPageButton->setObjectName("prevPageButton");
-    nextPageButton = new QPushButton("Next", this);
-    nextPageButton->setObjectName("nextPageButton");
+    tableView->setShowGrid(false);
+    tableView->verticalHeader()->setVisible(false);
     
-    QWidget* pageInfoContainer = new QWidget(this);
+    tableView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    
+    contentLayout->addWidget(tableView, 1);
+
+    QWidget* paginationWidget = new QWidget(contentFrame);
+    paginationWidget->setFixedHeight(50);
+    QHBoxLayout* paginationLayout = new QHBoxLayout(paginationWidget);
+    paginationLayout->setContentsMargins(0, 0, 0, 0);
+    
+    prevPageButton = new QPushButton("Previous", paginationWidget);
+    prevPageButton->setObjectName("prevPageButton");
+    
+    QWidget* pageInfoContainer = new QWidget(paginationWidget);
     QHBoxLayout* pageInfoLayout = new QHBoxLayout(pageInfoContainer);
-    pageInfoLabel = new QLabel("Page 1", this);
+    pageInfoLayout->setContentsMargins(0, 0, 0, 0);
+    
+    pageInfoLabel = new QLabel("Page 1", pageInfoContainer);
     pageInfoLabel->setObjectName("pageInfoLabel");
-    totalPagesLabel = new QLabel("/ 1", this);
+    totalPagesLabel = new QLabel("/ 1", pageInfoContainer);
     totalPagesLabel->setObjectName("totalPagesLabel");
     
     pageInfoLayout->addStretch(1);
     pageInfoLayout->addWidget(pageInfoLabel);
     pageInfoLayout->addWidget(totalPagesLabel);
     pageInfoLayout->addStretch(1);
-    pageInfoLayout->setContentsMargins(0, 0, 0, 0);
-
+    
+    nextPageButton = new QPushButton("Next", paginationWidget);
+    nextPageButton->setObjectName("nextPageButton");
+    
     paginationLayout->addWidget(prevPageButton);
     paginationLayout->addWidget(pageInfoContainer);
     paginationLayout->addWidget(nextPageButton);
     paginationLayout->addStretch();
+    
+    contentLayout->addWidget(paginationWidget, 0);
+    
+    mainLayout->addWidget(contentFrame, 1);
+}
 
-    mainLayout->addLayout(inputLayout);
-    mainLayout->addWidget(tableView);
-    mainLayout->addLayout(paginationLayout);
+void PlayerListView::setupAnimations() {
+    tableOpacityEffect = new QGraphicsOpacityEffect(tableView);
+    tableView->setGraphicsEffect(tableOpacityEffect);
+    tableOpacityEffect->setOpacity(0.0);
+    
+    tableOpacityAnimation = new QPropertyAnimation(tableOpacityEffect, "opacity");
+    tableOpacityAnimation->setDuration(500);
+    tableOpacityAnimation->setStartValue(0.0);
+    tableOpacityAnimation->setEndValue(1.0);
+    tableOpacityAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    
+    tableAnimGroup = new QParallelAnimationGroup(this);
+    tableAnimGroup->addAnimation(tableOpacityAnimation);
+}
+
+void PlayerListView::animateTable() {
+    tableOpacityEffect->setOpacity(0.0);
+    tableAnimGroup->start();
 }
 
 void PlayerListView::setupConnections() {
@@ -97,12 +150,14 @@ void PlayerListView::setupConnections() {
         if (currentPage > 0) {
             currentPage--;
             updatePagination();
+            animateTable();
         }
     });
     connect(nextPageButton, &QPushButton::clicked, this, [this]() {
         if ((currentPage + 1) * playersPerPage < model->filteredPlayerCount()) {
             currentPage++;
             updatePagination();
+            animateTable();
         }
     });
 }
@@ -130,12 +185,14 @@ void PlayerListView::searchPlayers(const QString& text) {
     currentPage = 0;
     model->setFilter(text);
     updatePagination();
+    animateTable();
 }
 
 void PlayerListView::filterByPosition(const QString& position) {
     currentPage = 0;
     model->setPositionFilter(position == "All Positions" ? "" : position);
     updatePagination();
+    animateTable();
 }
 
 void PlayerListView::filterPlayers() {

@@ -10,6 +10,10 @@
 #include <QtGui/QIcon>
 #include <QtCore/QSize> 
 #include <QTimer>
+#include <QEasingCurve>
+#include <QPropertyAnimation>
+#include <QGraphicsOpacityEffect>
+#include <QParallelAnimationGroup>
 
 MainWindow::MainWindow(RatingManager& rm, TeamManager& tm, Database& db, QWidget *parent)
     : QMainWindow(parent)
@@ -36,6 +40,7 @@ MainWindow::MainWindow(RatingManager& rm, TeamManager& tm, Database& db, QWidget
     
     stackedWidget->setCurrentWidget(loadingView);
     
+    setupAnimations();
     initializeApp();
 
     setWindowTitle("Elometry");
@@ -48,33 +53,42 @@ MainWindow::~MainWindow() {
     if (settingsView) delete settingsView;
 }
 
+void MainWindow::setupAnimations() {
+    opacityEffect = new QGraphicsOpacityEffect(this);
+    fadeAnimation = new QPropertyAnimation(opacityEffect, "opacity");
+    fadeAnimation->setDuration(300);
+    fadeAnimation->setStartValue(0.0);
+    fadeAnimation->setEndValue(1.0);
+    fadeAnimation->setEasingCurve(QEasingCurve::OutCubic);
+}
+
 void MainWindow::setupUi() {
     QVBoxLayout* layout = new QVBoxLayout(mainView);
-    layout->setContentsMargins(20, 20, 20, 20);
-    layout->setSpacing(16);
+    layout->setContentsMargins(40, 40, 40, 40);
+    layout->setSpacing(24);
 
     QLabel* headerLabel = new QLabel("Elometry", this);
-    headerLabel->setStyleSheet("font-size: 24px; font-weight: bold; color: #0078d4; margin-bottom: 16px;");
-    layout->addWidget(headerLabel);
+    headerLabel->setStyleSheet("font-size: 36px; font-weight: bold; color: #0c7bb3; margin-bottom: 24px;");
+    layout->addWidget(headerLabel, 0, Qt::AlignCenter);
 
     QPushButton* playerListButton = new QPushButton("Player Ratings List", this);
-    playerListButton->setIcon(QIcon(":/static/default.jpg"));  
-    playerListButton->setIconSize(QSize(24, 24));
+    playerListButton->setMinimumHeight(60);
 
     QPushButton* teamManagerButton = new QPushButton("Team Manager", this);
-    teamManagerButton->setIcon(QIcon(":/icons/team.png"));
-    teamManagerButton->setIconSize(QSize(24, 24));
+    teamManagerButton->setMinimumHeight(60);
 
     QPushButton* settingsButton = new QPushButton("Settings", this);
-    settingsButton->setIcon(QIcon(":/icons/settings.png"));
-    settingsButton->setIconSize(QSize(24, 24));
+    settingsButton->setMinimumHeight(60);
 
     layout->addWidget(playerListButton);
-    layout->addSpacing(8);
+    layout->addSpacing(16);
     layout->addWidget(teamManagerButton);
-    layout->addSpacing(8);
+    layout->addSpacing(16);
     layout->addWidget(settingsButton);
     layout->addStretch();  
+
+    mainView->setGraphicsEffect(opacityEffect);
+    opacityEffect->setOpacity(1.0);
 
     connect(playerListButton, &QPushButton::clicked, this, &MainWindow::showPlayerList);
     connect(teamManagerButton, &QPushButton::clicked, this, &MainWindow::showTeamManager);
@@ -85,6 +99,17 @@ void MainWindow::setupConnections() {
     connect(playerListView, &PlayerListView::backToMain, this, &MainWindow::showMainView);
     connect(teamManagerView, &TeamManagerView::backToMain, this, &MainWindow::showMainView);
     connect(settingsView, &SettingsView::backToMain, this, &MainWindow::showMainView);
+}
+
+void MainWindow::animateViewTransition(QWidget* newWidget) {
+    fadeAnimation->setDirection(QPropertyAnimation::Backward);
+    connect(fadeAnimation, &QPropertyAnimation::finished, this, [=]() {
+        stackedWidget->setCurrentWidget(newWidget);
+        fadeAnimation->setDirection(QPropertyAnimation::Forward);
+        fadeAnimation->start();
+        disconnect(fadeAnimation, &QPropertyAnimation::finished, this, nullptr);
+    });
+    fadeAnimation->start();
 }
 
 void MainWindow::showMainView() {
@@ -101,19 +126,19 @@ void MainWindow::showMainView() {
         appInitialized = true;
     }
     
-    stackedWidget->setCurrentWidget(mainView);
+    animateViewTransition(mainView);
 }
 
 void MainWindow::showPlayerList() {
-    stackedWidget->setCurrentWidget(playerListView);
+    animateViewTransition(playerListView);
 }
 
 void MainWindow::showTeamManager() {
-    stackedWidget->setCurrentWidget(teamManagerView);
+    animateViewTransition(teamManagerView);
 }
 
 void MainWindow::showSettings() {
-    stackedWidget->setCurrentWidget(settingsView);
+    animateViewTransition(settingsView);
 }
 
 void MainWindow::initializeApp() {

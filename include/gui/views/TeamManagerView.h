@@ -18,6 +18,10 @@
 #include <QtNetwork/QNetworkRequest>
 #include <QtWidgets/QListView>
 #include <QMap>
+#include <QPropertyAnimation>
+#include <QSequentialAnimationGroup>
+#include <QParallelAnimationGroup>
+#include <QGraphicsOpacityEffect>
 #include "utils/database/repositories/ClubRepository.h"
 #include "services/TeamManager.h"
 #include "gui/models/Models.h"
@@ -43,6 +47,8 @@ private slots:
     void updatePlayerDetails();
     void deleteSelectedTeam();
     void editTeamName();
+    void animateTeamView();
+    void animatePlayerDetails();
 
 private:
     TeamManager& teamManager;
@@ -70,10 +76,24 @@ private:
     QLabel* playerMarketValue;
     QLabel* playerRating;
 
+    QWidget* playerDetailsWidget;
+
     std::vector<std::pair<int, std::string>> availableClubs;
+
+    QGraphicsOpacityEffect* teamListOpacityEffect;
+    QPropertyAnimation* teamListOpacityAnimation;
+    
+    QGraphicsOpacityEffect* teamPlayersOpacityEffect;
+    QPropertyAnimation* teamPlayersOpacityAnimation;
+    
+    QGraphicsOpacityEffect* playerDetailsOpacityEffect;
+    QPropertyAnimation* playerDetailsOpacityAnimation;
+    QPropertyAnimation* playerDetailsSlideAnimation;
+    QParallelAnimationGroup* playerDetailsAnimGroup;
 
     void setupUi();
     void setupConnections();
+    void setupAnimations();
     void loadPlayerImage(int playerId, const QString& imageUrl);
     void handleImageResponse(QNetworkReply* reply, int playerId);
     void loadLocalImage(int playerId, const QString& imageUrl);

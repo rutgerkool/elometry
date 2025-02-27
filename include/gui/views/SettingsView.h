@@ -1,9 +1,12 @@
 #ifndef SETTINGSVIEW_H
 #define SETTINGSVIEW_H
 
-#include <QtWidgets/QWidget>
-#include <QtWidgets/QLineEdit>
-#include <QtWidgets/QPushButton>
+#include <QWidget>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QPropertyAnimation>
+#include <QGraphicsOpacityEffect>
+#include <QParallelAnimationGroup>
 #include "utils/database/Database.h"
 
 class SettingsView : public QWidget {
@@ -11,10 +14,13 @@ class SettingsView : public QWidget {
 
 public:
     explicit SettingsView(Database& database, QWidget *parent = nullptr);
-    ~SettingsView() override;
+    ~SettingsView();
 
 signals:
     void backToMain();
+
+private slots:
+    void saveSettings();
 
 private:
     Database& database;
@@ -22,11 +28,16 @@ private:
     QLineEdit* keyLineEdit;
     QPushButton* saveButton;
     QPushButton* backButton;
-
+    
+    QWidget* formWidget;
+    QGraphicsOpacityEffect* formOpacityEffect;
+    QPropertyAnimation* formOpacityAnimation;
+    QPropertyAnimation* formSlideAnimation;
+    QParallelAnimationGroup* formAnimationGroup;
+    
     void setupUi();
-
-private slots:
-    void saveSettings();
+    void setupAnimations();
+    void animateForm();
 };
 
 #endif

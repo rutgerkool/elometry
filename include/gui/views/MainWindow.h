@@ -7,6 +7,9 @@
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QStackedWidget>
 #include <QThread>
+#include <QPropertyAnimation>
+#include <QParallelAnimationGroup>
+#include <QGraphicsOpacityEffect>
 
 class PlayerListView;
 class TeamManagerView;
@@ -27,6 +30,7 @@ class MainWindow : public QMainWindow {
         void showMainView();
         void initializeApp();
         void onDataLoadProgress(const QString& status, int progress);
+        void animateViewTransition(QWidget* newWidget);
 
     private:
         RatingManager& ratingManager;
@@ -44,8 +48,12 @@ class MainWindow : public QMainWindow {
         QThread* loadingThread;
         bool appInitialized;
 
+        QPropertyAnimation* fadeAnimation;
+        QGraphicsOpacityEffect* opacityEffect;
+
         void setupUi();
         void setupConnections();
+        void setupAnimations();
 };
 
 #endif

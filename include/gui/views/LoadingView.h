@@ -5,6 +5,9 @@
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QProgressBar>
+#include <QPropertyAnimation>
+#include <QSequentialAnimationGroup>
+#include <QGraphicsOpacityEffect>
 
 class LoadingView : public QWidget {
     Q_OBJECT
@@ -24,7 +27,14 @@ private:
     QLabel* statusLabel;
     QLabel* appNameLabel;
     QProgressBar* progressBar;
+    
+    QPropertyAnimation* progressAnimation;
+    QPropertyAnimation* statusOpacityAnimation;
+    QGraphicsOpacityEffect* statusOpacityEffect;
+    QPropertyAnimation* appNameAnimation;
+    
     void setupUi();
+    void setupAnimations();
 };
 
 #endif
