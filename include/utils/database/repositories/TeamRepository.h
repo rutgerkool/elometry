@@ -18,7 +18,7 @@ public:
 
     std::vector<std::string> getAvailableSubPositions();
 
-    void createTeam(const std::string& teamName);
+    void createTeam(const Team& team);
     std::vector<Team> getAllTeams();
     void addPlayerToTeam(int teamId, int playerId);
     void removePlayerFromTeam(int teamId, int playerId);

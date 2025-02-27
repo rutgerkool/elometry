@@ -22,12 +22,13 @@ std::vector<std::string> TeamRepository::getAvailableSubPositions() {
     return subPositions;
 }
 
-void TeamRepository::createTeam(const std::string& teamName) {
-    std::string query = "INSERT INTO teams (team_name) VALUES (?);";
+void TeamRepository::createTeam(const Team& team) {
+    std::string query = "INSERT INTO teams (team_id, team_name) VALUES (?, ?);";
     sqlite3_stmt* stmt;
 
     if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, teamName.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 1, team.teamId);
+        sqlite3_bind_text(stmt, 2, team.teamName.c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_step(stmt);
     }
     sqlite3_finalize(stmt);

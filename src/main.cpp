@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 
     applyStyle(app);
 
-    Database database("test.db");
+    Database database("main.db");
     RatingManager ratingManager(database);
     TeamRepository teamRepository(database);
     PlayerRepository playerRepository(database);

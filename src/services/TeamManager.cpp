@@ -165,7 +165,7 @@ std::vector<std::pair<int, std::string>> TeamManager::getAllClubs() {
 }
 
 void TeamManager::saveTeam(const Team& team) {
-    teamRepo.createTeam(team.teamName);
+    teamRepo.createTeam(team);
     for (const auto& player : team.players) {
         teamRepo.addPlayerToTeam(team.teamId, player.playerId);
     }
