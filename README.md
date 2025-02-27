@@ -66,6 +66,7 @@ elometry/
 - Qt6
 - SQLite3
 - GLPK (GNU Linear Programming Kit)
+- Kaggle CLI tool
 
 ## **Installation**
 ### **Linux (Ubuntu/Debian)**
