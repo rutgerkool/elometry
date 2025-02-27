@@ -91,7 +91,7 @@ MainWindow::~MainWindow() {
 void MainWindow::setupAnimations() {
     opacityEffect = new QGraphicsOpacityEffect(this);
     fadeAnimation = new QPropertyAnimation(opacityEffect, "opacity");
-    fadeAnimation->setDuration(300);
+    fadeAnimation->setDuration(200);
     fadeAnimation->setStartValue(0.0);
     fadeAnimation->setEndValue(1.0);
     fadeAnimation->setEasingCurve(QEasingCurve::OutCubic);

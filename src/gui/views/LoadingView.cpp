@@ -61,7 +61,7 @@ void LoadingView::setupAnimations()
     progressAnimation->setEasingCurve(QEasingCurve::OutQuad);
     
     statusOpacityAnimation = new QPropertyAnimation(statusOpacityEffect, "opacity");
-    statusOpacityAnimation->setDuration(300);
+    statusOpacityAnimation->setDuration(250);
     statusOpacityAnimation->setEasingCurve(QEasingCurve::InOutQuad);
     
     appNameAnimation = new QPropertyAnimation(appNameLabel, "geometry");

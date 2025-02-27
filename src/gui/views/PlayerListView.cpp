@@ -127,7 +127,7 @@ void PlayerListView::setupAnimations() {
     tableOpacityEffect->setOpacity(0.0);
     
     tableOpacityAnimation = new QPropertyAnimation(tableOpacityEffect, "opacity");
-    tableOpacityAnimation->setDuration(500);
+    tableOpacityAnimation->setDuration(250);
     tableOpacityAnimation->setStartValue(0.0);
     tableOpacityAnimation->setEndValue(1.0);
     tableOpacityAnimation->setEasingCurve(QEasingCurve::OutCubic);

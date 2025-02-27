@@ -181,7 +181,7 @@ void TeamManagerView::setupAnimations() {
     teamListOpacityEffect->setOpacity(0.0);
     
     teamListOpacityAnimation = new QPropertyAnimation(teamListOpacityEffect, "opacity");
-    teamListOpacityAnimation->setDuration(500);
+    teamListOpacityAnimation->setDuration(250);
     teamListOpacityAnimation->setStartValue(0.0);
     teamListOpacityAnimation->setEndValue(1.0);
     teamListOpacityAnimation->setEasingCurve(QEasingCurve::OutCubic);
@@ -191,7 +191,7 @@ void TeamManagerView::setupAnimations() {
     teamPlayersOpacityEffect->setOpacity(0.0);
     
     teamPlayersOpacityAnimation = new QPropertyAnimation(teamPlayersOpacityEffect, "opacity");
-    teamPlayersOpacityAnimation->setDuration(500);
+    teamPlayersOpacityAnimation->setDuration(250);
     teamPlayersOpacityAnimation->setStartValue(0.0);
     teamPlayersOpacityAnimation->setEndValue(1.0);
     teamPlayersOpacityAnimation->setEasingCurve(QEasingCurve::OutCubic);
@@ -201,7 +201,7 @@ void TeamManagerView::setupAnimations() {
     playerDetailsOpacityEffect->setOpacity(0.0);
     
     playerDetailsOpacityAnimation = new QPropertyAnimation(playerDetailsOpacityEffect, "opacity");
-    playerDetailsOpacityAnimation->setDuration(300);
+    playerDetailsOpacityAnimation->setDuration(250);
     playerDetailsOpacityAnimation->setStartValue(0.0);
     playerDetailsOpacityAnimation->setEndValue(1.0);
     playerDetailsOpacityAnimation->setEasingCurve(QEasingCurve::OutCubic);
