@@ -10,7 +10,10 @@ PlayerListModel::PlayerListModel(const std::vector<std::pair<int, Player>>& play
 
 int PlayerListModel::rowCount(const QModelIndex &parent) const {
     if (parent.isValid()) return 0;
-    return filteredPlayers.size();
+    
+    int totalFiltered = filteredPlayerCount();
+    
+    return std::min(maxPlayers, totalFiltered - startIndex);
 }
 
 int PlayerListModel::columnCount(const QModelIndex &parent) const {
@@ -20,9 +23,15 @@ int PlayerListModel::columnCount(const QModelIndex &parent) const {
 
 QVariant PlayerListModel::data(const QModelIndex &index, int role) const {
     if (!index.isValid()) return QVariant();
+    
+    int actualRow = index.row() + startIndex;
+    
+    if (actualRow < 0 || actualRow >= filteredPlayers.size()) {
+        return QVariant();
+    }
 
     if (role == Qt::DisplayRole) {
-        const auto& player = filteredPlayers[index.row()];
+        const auto& player = filteredPlayers[actualRow];
         switch (index.column()) {
             case 0: return player.first; 
             case 1: return QString::fromStdString(player.second.name);
@@ -51,11 +60,20 @@ QVariant PlayerListModel::headerData(int section, Qt::Orientation orientation, i
     return QVariant();
 }
 
+int PlayerListModel::filteredPlayerCount() const {
+    return filteredPlayers.size();
+}
+
+int PlayerListModel::totalPlayers() const {
+    return allPlayers.size();
+}
+
 void PlayerListModel::setFilter(const QString& filter) {
     beginResetModel();
     currentFilter = filter;
     
     filteredPlayers = allPlayers;
+    
     if (!filter.isEmpty()) {
         filteredPlayers.erase(
             std::remove_if(filteredPlayers.begin(), filteredPlayers.end(),
@@ -78,6 +96,9 @@ void PlayerListModel::setFilter(const QString& filter) {
             filteredPlayers.end()
         );
     }
+    
+    startIndex = 0;
+    
     endResetModel();
 }
 
@@ -85,49 +106,13 @@ void PlayerListModel::setPagination(int start, int max) {
     beginResetModel();
     startIndex = start;
     maxPlayers = max;
-
-    std::vector<std::pair<int, Player>> tempPlayers = allPlayers;
-
-    if (!currentFilter.isEmpty()) {
-        tempPlayers.erase(
-            std::remove_if(tempPlayers.begin(), tempPlayers.end(),
-                [this](const auto& player) {
-                    return !QString::fromStdString(player.second.name).contains(currentFilter, Qt::CaseInsensitive);
-                }
-            ),
-            tempPlayers.end()
-        );
-    }
-
-    if (!currentPosition.isEmpty()) {
-        tempPlayers.erase(
-            std::remove_if(tempPlayers.begin(), tempPlayers.end(),
-                [this](const auto& player) {
-                    return player.second.position != currentPosition.toStdString();
-                }
-            ),
-            tempPlayers.end()
-        );
-    }
-
-    if (startIndex >= tempPlayers.size()) {
-        startIndex = std::max(0, (int)tempPlayers.size() - maxPlayers);
-    }
-
-    if (startIndex < tempPlayers.size()) {
-        int endIndex = std::min(startIndex + maxPlayers, (int)tempPlayers.size());
-        filteredPlayers.assign(tempPlayers.begin() + startIndex, tempPlayers.begin() + endIndex);
-    } else {
-        filteredPlayers.clear();
-    }
-
     endResetModel();
 }
 
 
 void PlayerListModel::setPositionFilter(const QString& position) {
     currentPosition = position;
-    setFilter(currentFilter); 
+    setFilter(currentFilter);
 }
 
 void PlayerListModel::sort(int column, Qt::SortOrder order) {
@@ -144,6 +129,8 @@ void PlayerListModel::sort(int column, Qt::SortOrder order) {
             }
             return false;
         });
+        
+    startIndex = 0;
 
     endResetModel();
 }

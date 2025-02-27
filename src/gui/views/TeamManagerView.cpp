@@ -310,27 +310,34 @@ void TeamManagerView::editTeamName() {
 
     bool ok;
     QString currentName = QString::fromStdString(currentTeam->teamName);
-    QString newName = QInputDialog::getText(this, 
-                                         "Edit Team Name", 
-                                         "Enter new team name:", 
-                                         QLineEdit::Normal,
-                                         currentName, 
-                                         &ok);
+    QString newName = QInputDialog::getText(
+        this, 
+        "Edit Team Name", 
+        "Enter new team name:", 
+        QLineEdit::Normal,
+        currentName, 
+        &ok
+        );
 
     if (ok && !newName.isEmpty()) {
         try {
-            if (teamManager.updateTeamName(currentTeam->teamId, newName.toStdString())) {
+            int currentTeamId = currentTeam->teamId;
+            if (teamManager.updateTeamName(currentTeamId, newName.toStdString())) {
+                currentTeam = &teamManager.loadTeam(currentTeamId);
+                
                 model->refresh();
                 
                 for(int i = 0; i < model->rowCount(); i++) {
                     QModelIndex idx = model->index(i, 0);
-                    if (model->data(idx, Qt::UserRole).toInt() == currentTeam->teamId) {
+                    if (model->data(idx, Qt::UserRole).toInt() == currentTeamId) {
                         teamList->setCurrentIndex(idx);
                         break;
                     }
                 }
+                
+                updateTeamInfo();
             } else {
-                QMessageBox::critical(this, "Error", "Failed to update team name");
+                QMessageBox::critical(this, "Error", "Failed to update team name in database");
             }
         } catch (const std::exception& e) {
             QMessageBox::critical(this, "Error", QString("Failed to update team name: %1").arg(e.what()));

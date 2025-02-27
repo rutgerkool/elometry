@@ -100,7 +100,7 @@ void PlayerListView::setupConnections() {
         }
     });
     connect(nextPageButton, &QPushButton::clicked, this, [this]() {
-        if ((currentPage + 1) * playersPerPage < model->totalPlayers()) {
+        if ((currentPage + 1) * playersPerPage < model->filteredPlayerCount()) {
             currentPage++;
             updatePagination();
         }
@@ -108,8 +108,8 @@ void PlayerListView::setupConnections() {
 }
 
 void PlayerListView::updatePagination() {
-    int totalPlayers = model->totalPlayers();
-    totalPages = (totalPlayers > 0) ? ((totalPlayers - 1) / playersPerPage) + 1 : 1;
+    int filteredCount = model->filteredPlayerCount();
+    totalPages = (filteredCount > 0) ? ((filteredCount - 1) / playersPerPage) + 1 : 1;
 
     if (currentPage >= totalPages) {
         currentPage = std::max(0, totalPages - 1);
@@ -137,7 +137,6 @@ void PlayerListView::filterByPosition(const QString& position) {
     model->setPositionFilter(position == "All Positions" ? "" : position);
     updatePagination();
 }
-
 
 void PlayerListView::filterPlayers() {
     searchPlayers(searchBox->text());
