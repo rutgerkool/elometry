@@ -11,6 +11,8 @@
 #include <sstream>
 #endif
 
+class KaggleAPIClient;
+
 typedef int PlayerId;
 
 class Database {
@@ -35,18 +37,21 @@ class Database {
         sqlite3 * db = nullptr;
         std::string dbPath;
         bool newDatabase = false;
+        KaggleAPIClient* kaggleClient = nullptr;
 
         std::string sanitizeCSVValue(std::string value);
         std::string join(const std::vector<std::string>& values, const std::string& delimiter);
         std::vector<std::string> getSanitizedValues(std::ifstream& file, std::string& line);
         void setLastUpdateTimestamp();
         time_t getLastUpdateTimestamp();
-        time_t extractLastUpdatedTimestamp();
         std::string getMetadataValue(const std::string& key);
         void setMetadataValue(const std::string& key, const std::string& value);
         void downloadAndExtractDataset(bool updateDataset = false, std::function<void(const std::string&, int)> progressCallback = nullptr);
-        bool fetchKaggleDatasetList();
+        time_t getKaggleDatasetLastUpdated();
+        std::string formatTimestamp(time_t timestamp);
         void compareAndUpdateDataset(time_t kaggleUpdatedTime, std::function<void(const std::string&, int)> progressCallback = nullptr);
+        
+        static size_t WriteDataCallback(void* ptr, size_t size, size_t nmemb, FILE* stream);
 };
 
 #endif
