@@ -46,10 +46,15 @@ class Database {
         time_t getLastUpdateTimestamp();
         std::string getMetadataValue(const std::string& key);
         void setMetadataValue(const std::string& key, const std::string& value);
-        void downloadAndExtractDataset(bool updateDataset = false, std::function<void(const std::string&, int)> progressCallback = nullptr);
+        bool downloadAndExtractDataset(bool updateDataset = false, std::function<void(const std::string&, int)> progressCallback = nullptr);
         time_t getKaggleDatasetLastUpdated();
         std::string formatTimestamp(time_t timestamp);
         void compareAndUpdateDataset(time_t kaggleUpdatedTime, std::function<void(const std::string&, int)> progressCallback = nullptr);
+        
+        bool isDatabaseInitialized();
+        bool tableExists(const std::string& tableName);
+        bool tableHasData(const std::string& tableName);
+        bool metadataHasEntry(const std::string& key);
         
         static size_t WriteDataCallback(void* ptr, size_t size, size_t nmemb, FILE* stream);
 };

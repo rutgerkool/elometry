@@ -100,39 +100,28 @@ std::string KaggleAPIClient::makeApiRequest(const std::string& endpoint, bool re
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     
-    // Only add authentication headers if credentials exist and auth is required
+    struct curl_slist* headers = NULL;
+    
     if (requireAuth && !username.empty() && !key.empty()) {
-        struct curl_slist* headers = NULL;
         headers = curl_slist_append(headers, authHeader.c_str());
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        
-        CURLcode res = curl_easy_perform(curl);
-        long http_code = 0;
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-        
+    }
+    
+    CURLcode res = curl_easy_perform(curl);
+    long http_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+    
+    if (headers != NULL) {
         curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
-        curl_global_cleanup();
-        
-        if (res != CURLE_OK || http_code != 200) {
-            std::cerr << "API request failed: " << curl_easy_strerror(res) 
-                    << ", HTTP code: " << http_code << std::endl;
-            return "";
-        }
-    } else {
-        // No authentication headers
-        CURLcode res = curl_easy_perform(curl);
-        long http_code = 0;
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-        
-        curl_easy_cleanup(curl);
-        curl_global_cleanup();
-        
-        if (res != CURLE_OK || http_code != 200) {
-            std::cerr << "API request failed: " << curl_easy_strerror(res) 
-                    << ", HTTP code: " << http_code << std::endl;
-            return "";
-        }
+    }
+    
+    curl_easy_cleanup(curl);
+    curl_global_cleanup();
+    
+    if (res != CURLE_OK || http_code != 200) {
+        std::cerr << "API request failed: " << curl_easy_strerror(res) 
+                << ", HTTP code: " << http_code << std::endl;
+        return "";
     }
     
     return responseBuffer;
@@ -188,9 +177,13 @@ time_t KaggleAPIClient::convertIsoDateToTimestamp(const std::string& dateString)
 }
 
 time_t KaggleAPIClient::getDatasetLastUpdated(const std::string& dataset) {
+    if (username.empty() || key.empty()) {
+        std::cerr << "Kaggle credentials required for checking dataset updates" << std::endl;
+        return 0;
+    }
+    
     std::string apiUrl = "https://www.kaggle.com/api/v1/datasets/list?search=" + dataset + "&sortBy=updated";
-    // Pass false to indicate authentication is not required for this operation
-    std::string response = makeApiRequest(apiUrl, false);
+    std::string response = makeApiRequest(apiUrl, true);
     
     if (response.empty()) {
         return 0;
@@ -201,11 +194,6 @@ time_t KaggleAPIClient::getDatasetLastUpdated(const std::string& dataset) {
 }
 
 bool KaggleAPIClient::downloadDataset(const std::string& dataset, const std::string& outputPath) {
-    if (username.empty() || key.empty()) {
-        std::cerr << "Kaggle credentials not set" << std::endl;
-        return false;
-    }
-    
     std::string apiUrl = "https://www.kaggle.com/api/v1/datasets/download/" + dataset;
     
     curl_global_init(CURL_GLOBAL_ALL);
@@ -232,8 +220,10 @@ bool KaggleAPIClient::downloadDataset(const std::string& dataset, const std::str
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     
     struct curl_slist* headers = NULL;
-    headers = curl_slist_append(headers, authHeader.c_str());
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    if (!username.empty() && !key.empty()) {
+        headers = curl_slist_append(headers, authHeader.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    }
     
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 30L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, 600L);
@@ -246,7 +236,11 @@ bool KaggleAPIClient::downloadDataset(const std::string& dataset, const std::str
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
     
     fclose(fp);
-    curl_slist_free_all(headers);
+    
+    if (headers != NULL) {
+        curl_slist_free_all(headers);
+    }
+    
     curl_easy_cleanup(curl);
     curl_global_cleanup();
     

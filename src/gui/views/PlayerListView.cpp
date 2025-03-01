@@ -39,7 +39,7 @@ void PlayerListView::setupUi() {
     searchBox = new QLineEdit(this);
     searchBox->setObjectName("searchBox");
     searchBox->setFixedWidth(240);
-    searchBox->setPlaceholderText("Search players...");
+    searchBox->setPlaceholderText("Search players");
     searchLayout->addWidget(searchLabel);
     searchLayout->addWidget(searchBox);
     searchLayout->addStretch();
