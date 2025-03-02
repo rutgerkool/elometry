@@ -14,6 +14,7 @@ PlayerRating::PlayerRating(double k, double homeAdvantage)
 void PlayerRating::initializePlayer(Player player) {
     if (ratedPlayers.find(player.playerId) == ratedPlayers.end()) {
         ratedPlayers[player.playerId] = player;
+        ratingHistory[player.playerId] = std::deque<RatingChange>();
     }
 }
 
@@ -54,13 +55,40 @@ void PlayerRating::processMatch(const Game& game, const std::vector<PlayerAppear
     for (const auto& player : appearances) {
         double expected = player.clubId == game.homeClubId ? homeExpected : awayExpected;
         double actual = player.clubId == game.homeClubId ? homeActual : awayActual;
-
-        double newRating = updateRating(ratedPlayers[player.playerId].rating, expected, actual, player.minutesPlayed, std::abs(game.homeGoals - game.awayGoals));
+        
+        bool isHomeGame = player.clubId == game.homeClubId;
+        int goalDifference = isHomeGame ? (game.homeGoals - game.awayGoals) : (game.awayGoals - game.homeGoals);
+        std::string opponent = isHomeGame ? game.awayClubName : game.homeClubName;
+        
+        double previousRating = ratedPlayers[player.playerId].rating;
+        double newRating = updateRating(previousRating, expected, actual, player.minutesPlayed, std::abs(goalDifference));
+        double matchImpact = kFactor * (static_cast<double>(player.minutesPlayed) / 90.0) * 
+                            (1.0 + static_cast<double>(std::abs(goalDifference)) / 5.0) * 
+                            (actual - expected);
 
         #pragma omp critical
         {
             ratedPlayers[player.playerId].rating = newRating;
             ratedPlayers[player.playerId].minutesPlayed += player.minutesPlayed;
+            
+            RatingChange change;
+            change.gameId = game.gameId;
+            change.previousRating = previousRating;
+            change.newRating = newRating;
+            change.opponent = opponent;
+            change.isHomeGame = isHomeGame;
+            change.minutesPlayed = player.minutesPlayed;
+            change.goalDifference = goalDifference;
+            change.matchImpact = matchImpact;
+            change.goals = player.goals;
+            change.assists = player.assists;
+            change.date = game.date;
+            
+            ratingHistory[player.playerId].push_front(change);
+            
+            if (ratingHistory[player.playerId].size() > MAX_HISTORY_SIZE) {
+                ratingHistory[player.playerId].pop_back();
+            }
         }
     }
 }
@@ -132,4 +160,21 @@ std::vector<std::pair<int, Player>> PlayerRating::getSortedRatedPlayers() {
     std::vector<std::pair<int, Player>> sortedRatedPlayers(ratedPlayers.begin(), ratedPlayers.end());
     std::sort(sortedRatedPlayers.begin(), sortedRatedPlayers.end(), sortPlayersByRating);
     return sortedRatedPlayers;
+}
+
+std::vector<RatingChange> PlayerRating::getPlayerRatingHistory(int playerId, int maxGames) {
+    std::vector<RatingChange> history;
+    
+    auto it = ratingHistory.find(playerId);
+    if (it != ratingHistory.end()) {
+        const auto& playerHistory = it->second;
+        int numEntries = std::min(static_cast<int>(playerHistory.size()), maxGames);
+        
+        history.reserve(numEntries);
+        for (int i = 0; i < numEntries; ++i) {
+            history.push_back(playerHistory[i]);
+        }
+    }
+    
+    return history;
 }

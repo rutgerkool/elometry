@@ -24,6 +24,12 @@ public:
     }
 
     std::vector<Player> getFilteredRatedPlayers(const std::vector<Player>& filterPlayers);
+    
+    std::vector<RatingChange> getPlayerRatingHistory(int playerId, int maxGames = 10) {
+        return ratingSystem.getPlayerRatingHistory(playerId, maxGames);
+    }
+    
+    std::vector<std::pair<int, double>> getRecentRatingProgression(int playerId, int maxGames = 10);
 };
 
 #endif

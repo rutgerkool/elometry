@@ -3,6 +3,7 @@
 
 #include "utils/database/Database.h"
 #include <vector>
+#include <string>
 
 struct Game {
     int gameId;
@@ -10,6 +11,9 @@ struct Game {
     int awayClubId;
     int homeGoals;
     int awayGoals;
+    std::string homeClubName;
+    std::string awayClubName;
+    std::string date;
 };
 
 class GameRepository {

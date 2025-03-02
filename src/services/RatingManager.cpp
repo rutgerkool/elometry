@@ -4,6 +4,8 @@
 #include "utils/database/repositories/PlayerRepository.h"
 #include <algorithm>
 #include <unordered_set>
+#include <iostream>
+#include <iomanip>
 
 RatingManager::RatingManager(Database& db): database(db) {}
 
@@ -49,4 +51,21 @@ std::vector<Player> RatingManager::getFilteredRatedPlayers(const std::vector<Pla
     }
     
     return filteredPlayers;
+}
+
+std::vector<std::pair<int, double>> RatingManager::getRecentRatingProgression(int playerId, int maxGames) {
+    std::vector<RatingChange> history = ratingSystem.getPlayerRatingHistory(playerId, maxGames);
+    std::vector<std::pair<int, double>> progression;
+    
+    if (history.empty()) {
+        return progression;
+    }
+    
+    progression.reserve(history.size());
+    
+    for (auto it = history.rbegin(); it != history.rend(); ++it) {
+        progression.push_back(std::make_pair(it->gameId, it->newRating));
+    }
+    
+    return progression;
 }

@@ -7,6 +7,21 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <deque>
+
+struct RatingChange {
+    int gameId;
+    double previousRating;
+    double newRating;
+    std::string opponent;
+    bool isHomeGame;
+    int minutesPlayed;
+    int goalDifference;
+    double matchImpact;
+    int goals;
+    int assists;
+    std::string date;
+};
 
 class PlayerRating {
     public:
@@ -19,12 +34,16 @@ class PlayerRating {
         static bool sortPlayersByRating(const std::pair<int, Player>& a, const std::pair<int, Player>& b);
         void processMatchesParallel(const std::vector<Game>& games, const std::vector<PlayerAppearance>& appearances);
         void saveRatingsToFile();
-        std::vector<std::pair<int, Player>>  getSortedRatedPlayers();
+        std::vector<std::pair<int, Player>> getSortedRatedPlayers();
+        std::vector<RatingChange> getPlayerRatingHistory(int playerId, int maxGames = 10);
 
     private:
         std::unordered_map<PlayerId, Player> ratedPlayers;
+        std::unordered_map<PlayerId, std::deque<RatingChange>> ratingHistory;
         double kFactor;
         double homeAdvantage;
+        
+        static constexpr int MAX_HISTORY_SIZE = 20;
 };
 
 #endif
