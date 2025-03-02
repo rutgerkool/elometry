@@ -70,7 +70,7 @@ elometry/
 ## **Installation**
 ### **Linux (Ubuntu/Debian)**
 ```bash
-sudo apt install build-essential cmake qt6-base-dev libglpk-dev libsqlite3-dev libcurl4-openssl-dev
+sudo apt install build-essential cmake qt6-base-dev libglpk-dev libsqlite3-dev libcurl4-openssl-dev libqt6charts6-dev
 git clone https://github.com/rutgerkool/elometry.git
 cd elometry
 ```
@@ -88,6 +88,7 @@ Windows setup requires several components to be installed separately:
 1. **Install Qt6 (MSVC 2022)**
    - Download and install Qt from the [Qt Online Installer](https://www.qt.io/download-qt-installer)
    - Select Qt 6.10.0 for MSVC 2022 64-bit during installation (Custom Installation)
+      - Ensure you also select "Qt Charts" during the installation under 'Additional Libraries'
    - Note the installation path (typically `C:\Qt\6.10.0\msvc2022_64`)
 
 2. **Install GLPK**

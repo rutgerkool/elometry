@@ -37,6 +37,8 @@ public:
     void loadTeams();
     void saveTeamPlayers(const Team& team);
 
+    RatingManager& getRatingManager() { return ratingManager; }
+
 private:
     TeamRepository& teamRepo;
     RatingManager& ratingManager;

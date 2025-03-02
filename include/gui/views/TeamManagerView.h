@@ -49,6 +49,7 @@ private slots:
     void editTeamName();
     void animateTeamView();
     void animatePlayerDetails();
+    void showPlayerHistory();
 
 private:
     TeamManager& teamManager;
@@ -75,6 +76,7 @@ private:
     QLabel* playerPosition;
     QLabel* playerMarketValue;
     QLabel* playerRating;
+    QPushButton* viewHistoryButton;
 
     QWidget* playerDetailsWidget;
 

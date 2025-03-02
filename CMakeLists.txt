@@ -36,7 +36,7 @@ endif()
 find_package(CURL REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(GLPK REQUIRED)
-find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Network)
+find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Network Charts)
 
 file(GLOB_RECURSE UI_HEADERS include/gui/*.h)
 
@@ -45,6 +45,14 @@ qt6_wrap_cpp(MOC_SOURCES ${UI_HEADERS})
 qt6_add_resources(RESOURCES src/gui/resources/resources.qrc)
 
 add_executable(Elometry ${SRC_FILES} ${MOC_SOURCES} ${RESOURCES})
+
+target_compile_definitions(Elometry PRIVATE QT_CHARTS_LIB)
+
+target_include_directories(Elometry PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CURL_INCLUDE_DIRS}
+)
 
 set_property(TARGET Elometry PROPERTY AUTOMOC ON)
 
@@ -62,7 +70,9 @@ target_link_libraries(Elometry
     OpenMP::OpenMP_CXX 
     Qt6::Widgets 
     Qt6::Network
+    Qt6::Charts
     ${CURL_LIBRARIES}
 )
 
-target_include_directories(Elometry PRIVATE ${CURL_INCLUDE_DIRS})
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/gui/components)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/gui/components)

@@ -1,6 +1,7 @@
 #include "gui/views/TeamManagerView.h"
 #include "gui/models/Models.h"
 #include "gui/components/ClubSelectDialog.h"
+#include "gui/components/PlayerHistoryDialog.h"
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
@@ -151,6 +152,10 @@ void TeamManagerView::setupUi() {
     playerRating->setObjectName("playerRating");
     playerRating->setWordWrap(true);
     playerRating->setAlignment(Qt::AlignLeft);
+
+    viewHistoryButton = new QPushButton("View Rating History", this);
+    viewHistoryButton->setObjectName("viewHistoryButton");
+    viewHistoryButton->setEnabled(false);
     
     QHBoxLayout* imageLayout = new QHBoxLayout();
     imageLayout->addStretch();
@@ -164,6 +169,7 @@ void TeamManagerView::setupUi() {
     rightLayout->addWidget(playerPosition);
     rightLayout->addWidget(playerMarketValue);
     rightLayout->addWidget(playerRating);
+    rightLayout->addWidget(viewHistoryButton);
     rightLayout->addStretch();
     
     playerDetailsScrollArea->setWidget(playerDetailsWidget);
@@ -242,6 +248,7 @@ void TeamManagerView::setupConnections() {
     connect(backButton, &QPushButton::clicked, this, &TeamManagerView::navigateBack);
     connect(deleteTeamButton, &QPushButton::clicked, this, &TeamManagerView::deleteSelectedTeam);
     connect(editTeamNameButton, &QPushButton::clicked, this, &TeamManagerView::editTeamName);
+    connect(viewHistoryButton, &QPushButton::clicked, this, &TeamManagerView::showPlayerHistory);
 
     if (teamList->selectionModel()) { 
         connect(teamList->selectionModel(), &QItemSelectionModel::currentChanged, this, &TeamManagerView::loadSelectedTeam);
@@ -383,6 +390,7 @@ void TeamManagerView::removeSelectedPlayer() {
     playerMarketValue->clear();
     playerRating->clear();
     playerImage->clear();
+    viewHistoryButton->setEnabled(false);
 }
 
 void TeamManagerView::editTeamName() {
@@ -521,6 +529,7 @@ void TeamManagerView::updatePlayerDetails() {
             }
             
             animatePlayerDetails();
+            viewHistoryButton->setEnabled(true);
             break;
         }
     }
@@ -621,4 +630,17 @@ void TeamManagerView::deleteSelectedTeam() {
             QMessageBox::critical(this, "Error", QString("Failed to delete team: %1").arg(e.what()));
         }
     }
+}
+
+void TeamManagerView::showPlayerHistory() {
+    QModelIndex index = currentTeamPlayers->currentIndex();
+    if (!index.isValid() || !currentTeam) return;
+
+    QModelIndex playerIdIndex = currentTeamPlayers->model()->index(index.row(), 0);
+    int playerId = playerIdIndex.data(Qt::UserRole).toInt();
+    
+    if (playerId <= 0) return;
+    
+    PlayerHistoryDialog dialog(teamManager.getRatingManager(), playerId, this);
+    dialog.exec();
 }

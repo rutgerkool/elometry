@@ -43,7 +43,7 @@ class PlayerRating {
         double kFactor;
         double homeAdvantage;
         
-        static constexpr int MAX_HISTORY_SIZE = 20;
+        static constexpr int MAX_HISTORY_SIZE = 10;
 };
 
 #endif

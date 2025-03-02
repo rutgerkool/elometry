@@ -84,10 +84,10 @@ void PlayerRating::processMatch(const Game& game, const std::vector<PlayerAppear
             change.assists = player.assists;
             change.date = game.date;
             
-            ratingHistory[player.playerId].push_front(change);
+            ratingHistory[player.playerId].push_back(change);
             
             if (ratingHistory[player.playerId].size() > MAX_HISTORY_SIZE) {
-                ratingHistory[player.playerId].pop_back();
+                ratingHistory[player.playerId].pop_front();
             }
         }
     }
@@ -105,7 +105,7 @@ void PlayerRating::processMatchesParallel(const std::vector<Game>& games, const 
 
     std::vector<Game> sortedGames = games;
     std::sort(sortedGames.begin(), sortedGames.end(), [](const Game& a, const Game& b) {
-        return a.gameId < b.gameId;
+        return a.date < b.date;
     });
 
     #pragma omp parallel for ordered
