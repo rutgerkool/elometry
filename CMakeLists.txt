@@ -33,6 +33,7 @@ else()
     set(SQLITE3_TARGET SQLite::SQLite3)
 endif()
 
+find_package(CURL REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(GLPK REQUIRED)
 find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Network)
@@ -61,4 +62,7 @@ target_link_libraries(Elometry
     OpenMP::OpenMP_CXX 
     Qt6::Widgets 
     Qt6::Network
+    ${CURL_LIBRARIES}
 )
+
+target_include_directories(Elometry PRIVATE ${CURL_INCLUDE_DIRS})

@@ -5,6 +5,13 @@
 #include <vector>
 #include <sqlite3.h>
 #include <functional>
+#ifdef _WIN32
+#include <stdlib.h>
+#include <iomanip>
+#include <sstream>
+#endif
+
+class KaggleAPIClient;
 
 typedef int PlayerId;
 
@@ -30,18 +37,26 @@ class Database {
         sqlite3 * db = nullptr;
         std::string dbPath;
         bool newDatabase = false;
+        KaggleAPIClient* kaggleClient = nullptr;
 
         std::string sanitizeCSVValue(std::string value);
         std::string join(const std::vector<std::string>& values, const std::string& delimiter);
         std::vector<std::string> getSanitizedValues(std::ifstream& file, std::string& line);
         void setLastUpdateTimestamp();
         time_t getLastUpdateTimestamp();
-        time_t extractLastUpdatedTimestamp();
         std::string getMetadataValue(const std::string& key);
         void setMetadataValue(const std::string& key, const std::string& value);
-        void downloadAndExtractDataset(bool updateDataset = false, std::function<void(const std::string&, int)> progressCallback = nullptr);
-        bool fetchKaggleDatasetList();
+        bool downloadAndExtractDataset(bool updateDataset = false, std::function<void(const std::string&, int)> progressCallback = nullptr);
+        time_t getKaggleDatasetLastUpdated();
+        std::string formatTimestamp(time_t timestamp);
         void compareAndUpdateDataset(time_t kaggleUpdatedTime, std::function<void(const std::string&, int)> progressCallback = nullptr);
+        
+        bool isDatabaseInitialized();
+        bool tableExists(const std::string& tableName);
+        bool tableHasData(const std::string& tableName);
+        bool metadataHasEntry(const std::string& key);
+        
+        static size_t WriteDataCallback(void* ptr, size_t size, size_t nmemb, FILE* stream);
 };
 
 #endif

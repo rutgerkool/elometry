@@ -1,23 +1,23 @@
 include(FindPackageHandleStandardArgs)
 
 if(WIN32)
-    set(GLPK_ROOT_DIR "" CACHE PATH "GLPK root directory")
-    
-    find_path(GLPK_INCLUDE_DIR
-        NAMES glpk.h
-        PATHS
-            ${GLPK_ROOT_DIR}/include
-            $ENV{GLPK_ROOT}/include
-            $ENV{INCLUDE}
-    )
-    
-    find_library(GLPK_LIBRARY
-        NAMES glpk glpk_4_65
-        PATHS
-            ${GLPK_ROOT_DIR}/lib
-            $ENV{GLPK_ROOT}/lib
-            $ENV{LIB}
-    )
+    set(GLPK_ROOT_DIR "C:/glpk-4.65" CACHE PATH "GLPK root directory")
+
+find_path(GLPK_INCLUDE_DIR
+    NAMES glpk.h
+    PATHS
+        ${GLPK_ROOT_DIR}/src
+        ${GLPK_ROOT_DIR}/src/glpk
+        ${GLPK_ROOT_DIR}/src/api
+        $ENV{GLPK_ROOT}/src
+)
+
+find_library(GLPK_LIBRARY
+    NAMES glpk glpk_4_65 glpk-0
+    PATHS
+        ${GLPK_ROOT_DIR}/w64
+        $ENV{GLPK_ROOT}/w64
+)
 elseif(APPLE)
     find_path(GLPK_INCLUDE_DIR
         NAMES glpk.h

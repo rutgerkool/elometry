@@ -1,4 +1,5 @@
 #include "utils/database/Database.h"
+#include "utils/KaggleAPI.h"
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -10,10 +11,16 @@
 #include <ctime>
 #include <cstdlib>
 #include <regex>
+#include <curl/curl.h>
 
 namespace fs = std::filesystem;
 
-Database::Database(const std::string& path) : dbPath(path) {
+size_t Database::WriteDataCallback(void* ptr, size_t size, size_t nmemb, FILE* stream) {
+    size_t written = fwrite(ptr, size, nmemb, stream);
+    return written;
+}
+
+Database::Database(const std::string& path) : dbPath(path), kaggleClient(nullptr) {
     newDatabase = !fileExists(dbPath);
     
     if (sqlite3_open(dbPath.c_str(), &db) != SQLITE_OK) {
@@ -22,6 +29,12 @@ Database::Database(const std::string& path) : dbPath(path) {
 }
 
 void Database::initialize(std::function<void(const std::string&, int)> progressCallback) {
+    newDatabase = !fileExists(dbPath);
+    
+    if (!newDatabase && !isDatabaseInitialized()) {
+        newDatabase = true;
+    }
+    
     if (newDatabase) {
         progressCallback("Creating database schema", 15);
         executeSQLFile("../db/data.sql");
@@ -33,9 +46,80 @@ void Database::initialize(std::function<void(const std::string&, int)> progressC
     }
 }
 
+bool Database::isDatabaseInitialized() {
+    std::vector<std::string> requiredTables = {
+        "appearances", "club_games", "clubs", "competitions",
+        "game_events", "game_lineups", "games", "player_valuations",
+        "players", "transfers", "metadata"
+    };
+    
+    for (const auto& table : requiredTables) {
+        if (!tableExists(table)) {
+            return false;
+        }
+        
+        if (table != "metadata" && !tableHasData(table)) {
+            return false;
+        }
+    }
+    
+    if (!metadataHasEntry("last_updated")) {
+        return false;
+    }
+    
+    return true;
+}
+
+bool Database::tableExists(const std::string& tableName) {
+    std::string query = "SELECT name FROM sqlite_master WHERE type='table' AND name=?;";
+    sqlite3_stmt* stmt;
+    bool exists = false;
+    
+    if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, tableName.c_str(), -1, SQLITE_TRANSIENT);
+        
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            exists = true;
+        }
+    }
+    
+    sqlite3_finalize(stmt);
+    return exists;
+}
+
+bool Database::tableHasData(const std::string& tableName) {
+    if (tableName == "metadata") {
+        return true;
+    }
+    
+    std::string query = "SELECT COUNT(*) FROM " + tableName + ";";
+    sqlite3_stmt* stmt;
+    bool hasData = false;
+    
+    if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            int count = sqlite3_column_int(stmt, 0);
+            hasData = (count > 0);
+        }
+    } else {
+        std::cerr << "Error checking data in table '" << tableName << "': " 
+                  << sqlite3_errmsg(db) << std::endl;
+    }
+    
+    sqlite3_finalize(stmt);
+    return hasData;
+}
+
+bool Database::metadataHasEntry(const std::string& key) {
+    std::string value = getMetadataValue(key);
+    return !value.empty();
+}
+
 Database::~Database() {
     if (db)
         sqlite3_close(db);
+    
+    delete kaggleClient;
 }
 
 bool Database::fileExists(const std::string& dbPath) {
@@ -51,7 +135,17 @@ void Database::loadDataIntoDatabase(bool updateDataset, std::function<void(const
     };
 
     progressCallback("Downloading dataset", 20);
-    downloadAndExtractDataset(updateDataset, progressCallback);
+    bool downloadSuccess = downloadAndExtractDataset(updateDataset, progressCallback);
+    
+    if (!downloadSuccess) {
+        std::cerr << "Failed to download or extract dataset. Database initialization aborted." << std::endl;
+        return;
+    }
+    
+    if (!fs::exists("data") || !fs::exists("data/players.csv")) {
+        std::cerr << "Data directory or essential CSV files missing. Database initialization aborted." << std::endl;
+        return;
+    }
 
     int baseProgress = 30;
     int progressPerTable = 40 / static_cast<int>(tableNames.size());
@@ -59,6 +153,11 @@ void Database::loadDataIntoDatabase(bool updateDataset, std::function<void(const
     for (size_t i = 0; i < tableNames.size(); i++) {
         std::string tableName = tableNames[i];
         std::string csvPath = "data/" + tableName + ".csv";
+        
+        if (!fileExists(csvPath)) {
+            std::cerr << "Warning: CSV file not found: " << csvPath << ". Skipping this table." << std::endl;
+            continue;
+        }
         
         progressCallback("Loading " + tableName + " data", baseProgress + static_cast<int>(i) * progressPerTable);
         loadCSVIntoTable(tableName, csvPath);
@@ -88,8 +187,6 @@ void Database::executeSQLFile(const std::string& filePath) {
     if (sqlite3_exec(db, ss.str().c_str(), 0, 0, &errMsg) != SQLITE_OK) {
         std::cerr << "SQL schema execution error: " << errMsg << std::endl;
         sqlite3_free(errMsg);
-    } else {
-        std::cout << filePath << " initialized successfully." << std::endl;
     }
 }
 
@@ -158,23 +255,54 @@ std::vector<std::string> Database::getSanitizedValues(std::ifstream& file, std::
     return values;
 }
 
-void Database::downloadAndExtractDataset(bool updateDataset, std::function<void(const std::string&, int)> progressCallback) {
+bool Database::downloadAndExtractDataset(bool updateDataset, std::function<void(const std::string&, int)> progressCallback) {
     std::string datasetPath = "player-scores.zip";
 
     if (updateDataset || !fileExists(datasetPath)) {
         progressCallback("Downloading dataset from Kaggle", 20);
-        int result = std::system("kaggle datasets download -d davidcariboo/player-scores -p ./ 2> kaggle_error.log");
-
-        if (result != 0) {
-            std::cerr << "Kaggle API error. Check kaggle_error.log for details." << std::endl;
-            return;
+        
+        KaggleAPIClient client;
+        
+        if (!client.downloadDataset("davidcariboo/player-scores", datasetPath)) {
+            std::cerr << "Failed to download dataset." << std::endl;
+            return false;
         }
     }
 
     if (updateDataset || !fs::exists("data")) {
         progressCallback("Extracting dataset files", 25);
-        std::system("unzip -o player-scores.zip -d data");
+        
+        if (!fs::exists("data")) {
+            fs::create_directory("data");
+        }
+        
+        try {
+            #ifdef _WIN32
+                std::string cmd = "powershell -Command \"Expand-Archive -Path player-scores.zip -DestinationPath data -Force\"";
+                int result = std::system(cmd.c_str());
+                if (result != 0) {
+                    std::cerr << "Error extracting zip file with PowerShell. Return code: " << result << std::endl;
+                    return false;
+                }
+            #else
+                int result = std::system("unzip -o player-scores.zip -d data");
+                if (result != 0) {
+                    std::cerr << "Error extracting zip file with unzip. Return code: " << result << std::endl;
+                    return false;
+                }
+            #endif
+        } catch (const std::exception& e) {
+            std::cerr << "Exception while extracting dataset: " << e.what() << std::endl;
+            return false;
+        }
     }
+    
+    if (!fs::exists("data/players.csv")) {
+        std::cerr << "Dataset extraction failed. Could not find CSV files in data directory." << std::endl;
+        return false;
+    }
+    
+    return true;
 }
 
 std::string Database::join(const std::vector<std::string>& values, const std::string& delimiter) {
@@ -187,7 +315,6 @@ std::string Database::join(const std::vector<std::string>& values, const std::st
     }
     return result.str();
 }
-
 
 void Database::loadCSVIntoTable(const std::string& tableName, const std::string& csvPath) {
     std::ifstream file(csvPath);
@@ -265,45 +392,53 @@ void Database::setLastUpdateTimestamp() {
     }
 }
 
+std::string Database::formatTimestamp(time_t timestamp) {
+    struct tm* timeinfo = localtime(&timestamp);
+    char buffer[80];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+    return std::string(buffer);
+}
+
 void Database::updateDatasetIfNeeded(std::function<void(const std::string&, int)> progressCallback) {
     std::string kaggleUsername = getMetadataValue("KAGGLE_USERNAME");
     std::string kaggleKey = getMetadataValue("KAGGLE_KEY");
 
     if (kaggleUsername.empty() || kaggleKey.empty()) {
+        progressCallback("Kaggle credentials not set. Skipping update check.", 70);
         return;
     }
-
-    progressCallback("Setting up Kaggle credentials", 20);
-        setenv("KAGGLE_USERNAME", kaggleUsername.c_str(), 1);
-        setenv("KAGGLE_KEY", kaggleKey.c_str(), 1);
 
     progressCallback("Checking for dataset updates", 25);
-    if (!fetchKaggleDatasetList()) {
-        std::cerr << "Failed to fetch dataset metadata." << std::endl;
-        return;
-    }
-
-    time_t kaggleUpdatedTime = extractLastUpdatedTimestamp();
+    
+    time_t kaggleUpdatedTime = getKaggleDatasetLastUpdated();
 
     if (kaggleUpdatedTime == 0) {
-        std::cerr << "Failed to extract last updated timestamp." << std::endl;
+        std::cerr << "Failed to get dataset last updated timestamp." << std::endl;
         return;
     }
 
     progressCallback("Comparing dataset versions", 30);
+    
+    time_t localUpdatedTime = getLastUpdateTimestamp();
+    
     compareAndUpdateDataset(kaggleUpdatedTime, progressCallback);
 }
 
 std::string Database::getMetadataValue(const std::string& key) {
-    std::string query = "SELECT value FROM metadata WHERE key = ?";
+    if (!tableExists("metadata")) {
+        return "";
+    }
+    
+    std::string query = "SELECT value FROM metadata WHERE key = ?;";
     sqlite3_stmt* stmt;
     std::string value;
 
     if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT);
 
         if (sqlite3_step(stmt) == SQLITE_ROW) {
-            value = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+            const unsigned char* storedValue = sqlite3_column_text(stmt, 0);
+            value = storedValue != nullptr ? reinterpret_cast<const char*>(storedValue) : "";
         }
     }
 
@@ -312,13 +447,23 @@ std::string Database::getMetadataValue(const std::string& key) {
 }
 
 void Database::setMetadataValue(const std::string& key, const std::string& value) {
+    if (!tableExists("metadata")) {
+        char* errMsg;
+        if (sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);", 
+                         NULL, NULL, &errMsg) != SQLITE_OK) {
+            std::cerr << "Failed to create metadata table: " << errMsg << std::endl;
+            sqlite3_free(errMsg);
+            return;
+        }
+    }
+    
     std::string query = "INSERT INTO metadata (key, value) VALUES (?, ?) "
-                        "ON CONFLICT(key) DO UPDATE SET value = excluded.value";
+                        "ON CONFLICT(key) DO UPDATE SET value = excluded.value;";
     sqlite3_stmt* stmt;
 
     if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 2, value.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 2, value.c_str(), -1, SQLITE_TRANSIENT);
 
         if (sqlite3_step(stmt) != SQLITE_DONE) {
             std::cerr << "Failed to set metadata value for key: " << key << std::endl;
@@ -328,46 +473,21 @@ void Database::setMetadataValue(const std::string& key, const std::string& value
     sqlite3_finalize(stmt);
 }
 
-bool Database::fetchKaggleDatasetList() {
-    int result = std::system("kaggle datasets list --search 'davidcariboo/player-scores' --sort-by updated > dataset-list.txt");
-    return result == 0;
-}
-
-time_t Database::extractLastUpdatedTimestamp() {
-    std::ifstream file("dataset-list.txt");
-
-    if (!file.is_open()) {
-        std::cerr << "Failed to read dataset metadata file." << std::endl;
+time_t Database::getKaggleDatasetLastUpdated() {
+    std::string kaggleUsername = getMetadataValue("KAGGLE_USERNAME");
+    std::string kaggleKey = getMetadataValue("KAGGLE_KEY");
+    
+    if (kaggleUsername.empty() || kaggleKey.empty()) {
+        std::cerr << "Kaggle credentials not set. Cannot check for dataset updates." << std::endl;
         return 0;
     }
-
-    std::string line;
-
-    while (std::getline(file, line)) {
-        if (line.find("davidcariboo/player-scores") != std::string::npos) {
-            break;
-        }
+    
+    if (!kaggleClient || kaggleClient->getUsername() != kaggleUsername || kaggleClient->getKey() != kaggleKey) {
+        delete kaggleClient;
+        kaggleClient = new KaggleAPIClient(kaggleUsername, kaggleKey);
     }
-
-    file.close();
-
-    std::regex pattern(R"(\s(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}))");
-    std::smatch match;
-
-    if (!std::regex_search(line, match, pattern)) {
-        std::cerr << "Failed to extract last updated timestamp from: " << line << std::endl;
-        return 0;
-    }
-
-    std::string lastUpdatedStr = match[1].str();
-    struct tm tm = {};
-
-        if (strptime(lastUpdatedStr.c_str(), "%Y-%m-%d %H:%M:%S", &tm) == nullptr) {
-        std::cerr << "Failed to parse timestamp: " << lastUpdatedStr << std::endl;
-        return 0;
-    }
-
-    return mktime(&tm);
+    
+    return kaggleClient->getDatasetLastUpdated("davidcariboo/player-scores");
 }
 
 void Database::compareAndUpdateDataset(time_t kaggleUpdatedTime, std::function<void(const std::string&, int)> progressCallback) {

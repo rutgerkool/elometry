@@ -47,8 +47,7 @@ elometry/
 │   ├── models/               # Implementation of data models
 │   ├── services/             # Service implementations
 │   └── utils/                # Utility implementations
-├── static/                   # Static resources
-└── data/                     # Dataset files
+└── static/                   # Static resources
 ```
 
 ## **Technology Stack**
@@ -66,37 +65,93 @@ elometry/
 - Qt6
 - SQLite3
 - GLPK (GNU Linear Programming Kit)
-- Kaggle CLI tool
+- CURL for API requests
 
 ## **Installation**
 ### **Linux (Ubuntu/Debian)**
 ```bash
-sudo apt install build-essential cmake qt6-base-dev libglpk-dev libsqlite3-dev
-pip install kaggle
+sudo apt install build-essential cmake qt6-base-dev libglpk-dev libsqlite3-dev libcurl4-openssl-dev
 git clone https://github.com/rutgerkool/elometry.git
 cd elometry
 ```
 
 ### **macOS**
 ```bash
-brew install cmake qt@6 glpk sqlite
-pip install kaggle
+brew install cmake qt@6 glpk sqlite curl
 git clone https://github.com/rutgerkool/elometry.git
 cd elometry
 ```
 
+### **Windows**
+Windows setup requires several components to be installed separately:
+
+1. **Install Qt6 (MSVC 2022)**
+   - Download and install Qt from the [Qt Online Installer](https://www.qt.io/download-qt-installer)
+   - Select Qt 6.10.0 for MSVC 2022 64-bit during installation (Custom Installation)
+   - Note the installation path (typically `C:\Qt\6.10.0\msvc2022_64`)
+
+2. **Install GLPK**
+   - Download GLPK 4.65 from [SourceForge](https://sourceforge.net/projects/winglpk/)
+   - Extract the archive to `C:\glpk-4.65`
+
+3. **Install vcpkg and dependencies**
+   ```powershell
+   cd C:\
+   git clone https://github.com/Microsoft/vcpkg.git
+   cd vcpkg
+   .\bootstrap-vcpkg.bat
+   .\vcpkg install sqlite3:x64-windows curl:x64-windows
+   ```
+
+4. **Install Visual Studio with C++ Desktop Development workload**
+   - Download from [Visual Studio](https://visualstudio.microsoft.com/downloads/)
+   - Ensure you select "Desktop development with C++" during installation
+
+5. **Install CMake**
+   - Download from [CMake website](https://cmake.org/download/)
+   - Add CMake to your system PATH during installation
+
+6. **Clone the repository**
+   ```powershell
+   git clone https://github.com/rutgerkool/elometry.git
+   cd elometry
+   ```
+
 ## **Building the project**
 
+### **Linux/macOS**
 ```bash
 mkdir build && cd build
 cmake ..
 cmake --build .
 ```
 
-## **Running the project (in `/build`)**
+### **Windows**
+```powershell
+mkdir build
+cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DQt6_DIR="C:\Qt\6.10.0\msvc2022_64\lib\cmake\Qt6"
+cmake --build . --config Release
+```
 
+## **Running the project**
+
+### **Linux/macOS (in `/build`)**
 ```bash
 ./Elometry
+```
+
+### **Windows (in `/build`)**
+```powershell
+# Copy necessary DLLs
+copy C:\glpk-4.65\w64\glpk_4_65.dll .\Release\
+copy C:\vcpkg\installed\x64-windows\bin\sqlite3.dll .\Release\
+
+# Deploy Qt dependencies
+C:\Qt\6.10.0\msvc2022_64\bin\windeployqt.exe .\Release\Elometry.exe
+
+# Run the application
+.\Release\Elometry.exe
 ```
 
 ## **Configuration**
