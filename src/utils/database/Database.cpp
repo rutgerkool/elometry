@@ -32,8 +32,6 @@ void Database::initialize(std::function<void(const std::string&, int)> progressC
     newDatabase = !fileExists(dbPath);
     
     if (!newDatabase && !isDatabaseInitialized()) {
-        std::cout << "Database exists but is incomplete or corrupted. Reinitializing" << std::endl;
-        progressCallback("Database exists but appears to be incomplete. Reinitializing", 10);
         newDatabase = true;
     }
     
@@ -57,18 +55,15 @@ bool Database::isDatabaseInitialized() {
     
     for (const auto& table : requiredTables) {
         if (!tableExists(table)) {
-            std::cerr << "Table '" << table << "' is missing." << std::endl;
             return false;
         }
         
         if (table != "metadata" && !tableHasData(table)) {
-            std::cerr << "Table '" << table << "' exists but has no data." << std::endl;
             return false;
         }
     }
     
     if (!metadataHasEntry("last_updated")) {
-        std::cerr << "Metadata 'last_updated' entry is missing." << std::endl;
         return false;
     }
     
