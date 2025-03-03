@@ -110,10 +110,21 @@ PlayerHistoryDialog::PlayerHistoryDialog(RatingManager& rm, int pId, QWidget* pa
     setupHistoryChart();
     setupHistoryTable();
     
-    QScreen* screen = QGuiApplication::primaryScreen();
-    if (screen) {
-        QRect screenGeometry = screen->availableGeometry();
-        move(screenGeometry.center() - rect().center());
+    if (parent) {
+        QWidget* parentWidget = qobject_cast<QWidget*>(parent);
+        if (parentWidget) {
+            QScreen* screen = parentWidget->screen();
+            if (screen) {
+                QRect screenGeometry = screen->availableGeometry();
+                move(screenGeometry.center() - rect().center());
+            }
+        }
+    } else {
+        QScreen* screen = QGuiApplication::primaryScreen();
+        if (screen) {
+            QRect screenGeometry = screen->availableGeometry();
+            move(screenGeometry.center() - rect().center());
+        }
     }
     
     QTimer::singleShot(100, this, &PlayerHistoryDialog::animateContent);
@@ -139,13 +150,13 @@ void PlayerHistoryDialog::setupHistoryTable()
         row.append(new QStandardItem(QString::fromStdString(change.date)));
         row.append(new QStandardItem(QString::fromStdString(change.opponent)));
         
-        QStandardItem* ratingItem = new QStandardItem(QString::number(change.newRating, 'f', 1));
+        QStandardItem* ratingItem = new QStandardItem(QString::number(change.newRating, 'f', 2));
         ratingItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         row.append(ratingItem);
         
         double ratingChange = change.newRating - change.previousRating;
         QStandardItem* changeItem = new QStandardItem((ratingChange >= 0 ? "+" : "") + 
-                                                       QString::number(ratingChange, 'f', 1));
+                                                       QString::number(ratingChange, 'f', 2));
         changeItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         if (ratingChange > 0) {
             changeItem->setForeground(QBrush(QColor(0, 150, 0)));
