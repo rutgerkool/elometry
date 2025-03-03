@@ -9,7 +9,7 @@ It is developed in C++ with CMake as the build system.
 ### Player ELO Rating Overview
 - Calculate player ratings based on match performances
 - Adaptive rating system
-
+- Interactive rating history dialog with performance stats
 
 ![Player Ratings Demo](img/player-list.gif)
 
@@ -23,6 +23,7 @@ It is developed in C++ with CMake as the build system.
 ### Team Management from Existing Clubs
 - Create and manage custom teams based on real data
 - Budget-constrained team building based on adapted ELO ratings
+- Access detailed player rating history from team manager
 
 ![Team Management Demo](img/team-manager-view-existing.gif)
 
