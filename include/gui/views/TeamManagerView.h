@@ -10,6 +10,7 @@
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QHeaderView>
+#include <QtWidgets/QScrollArea>
 #include <QtGui/QPixmap>
 #include <QtGui/QStandardItem>
 #include <QtGui/QStandardItemModel>
@@ -58,6 +59,37 @@ private slots:
     void updateComparisonButtons();
 
 private:
+    void setupUi();
+    QWidget* setupLeftPanel();
+    QWidget* setupCenterPanel();
+    QScrollArea* setupRightPanel();
+    void createPlayerInfoLabels();
+    void createPlayerActionButtons();
+    QHBoxLayout* setupImageLayout();
+    
+    void setupConnections();
+    void setupActionConnections();
+    void setupSelectionConnections();
+    void setupComparisonConnections();
+    
+    void setupAnimations();
+    void setupTeamListAnimations();
+    void setupTeamPlayersAnimations();
+    void setupPlayerDetailsAnimations();
+    
+    void enableTeamControls();
+    void disableTeamControls();
+    QStandardItemModel* createPlayerModel();
+    Player* findPlayerById(int playerId);
+    int getSelectedPlayerId();
+    
+    void loadPlayerImage(int playerId, const QString& imageUrl);
+    void handleImageResponse(QNetworkReply* reply, int playerId);
+    void loadLocalImage(int playerId, const QString& imageUrl);
+    void updatePlayerImageInModel(int playerId);
+    void fetchPlayerDetailImage(const QString& imageUrl);
+    void loadLocalPlayerDetailImage(const QString& imageUrl);
+
     TeamManager& teamManager;
     Team* currentTeam;
     TeamListModel* model;
@@ -103,16 +135,6 @@ private:
     QPropertyAnimation* playerDetailsOpacityAnimation;
     QPropertyAnimation* playerDetailsSlideAnimation;
     QParallelAnimationGroup* playerDetailsAnimGroup;
-
-    void setupUi();
-    void setupConnections();
-    void setupAnimations();
-    void loadPlayerImage(int playerId, const QString& imageUrl);
-    void handleImageResponse(QNetworkReply* reply, int playerId);
-    void loadLocalImage(int playerId, const QString& imageUrl);
-    void updatePlayerImageInModel(int playerId);
-    void fetchPlayerDetailImage(const QString& imageUrl);
-    void loadLocalPlayerDetailImage(const QString& imageUrl);
 };
 
 #endif

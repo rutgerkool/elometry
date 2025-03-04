@@ -139,12 +139,6 @@ std::vector<std::pair<int, Player>> ILPSelector::selectTeam() {
             for (const auto& var : vars) {
                 if (glp_mip_col_val(lp, var.varIdx) > 0.5) {
                     result.push_back(players[var.playerIdx]);
-                    std::cout << "Selected player: " << players[var.playerIdx].second.name 
-                        << " - Club: " << players[var.playerIdx].second.clubName
-                        << " - Rating: " << players[var.playerIdx].second.rating
-                        << " - Market Value: " << players[var.playerIdx].second.marketValue
-                        << " - Position: " << players[var.playerIdx].second.subPosition 
-                        << std::endl;
                 }
             }
         }

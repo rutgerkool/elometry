@@ -13,25 +13,19 @@ public:
     RatingManager(Database& db);
 
     void loadAndProcessRatings();
-
     std::vector<std::pair<int, Player>> selectOptimalTeamByPositions(
         const std::vector<std::string>& requiredPositions,
         int64_t budget
     );
-
-    std::vector<std::pair<int, Player>> getSortedRatedPlayers() {
-        return ratingSystem.getSortedRatedPlayers();
-    }
-
     std::vector<Player> getFilteredRatedPlayers(const std::vector<Player>& filterPlayers);
-    
+    std::vector<std::pair<int, double>> getRecentRatingProgression(int playerId, int maxGames = 10);
+    std::vector<Player> getAllPlayers();
     std::vector<RatingChange> getPlayerRatingHistory(int playerId, int maxGames = 10) {
         return ratingSystem.getPlayerRatingHistory(playerId, maxGames);
     }
-    
-    std::vector<std::pair<int, double>> getRecentRatingProgression(int playerId, int maxGames = 10);
-
-    std::vector<Player> getAllPlayers();
+    std::vector<std::pair<int, Player>> getSortedRatedPlayers() {
+        return ratingSystem.getSortedRatedPlayers();
+    }
 };
 
 #endif

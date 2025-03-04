@@ -50,7 +50,20 @@ void TeamManagerView::setupUi() {
     QHBoxLayout* mainContentLayout = new QHBoxLayout();
     mainContentLayout->setSpacing(20);
 
-    QVBoxLayout* leftLayout = new QVBoxLayout();
+    QWidget* leftWidget = setupLeftPanel();
+    QWidget* centerWidget = setupCenterPanel();
+    QScrollArea* playerDetailsScrollArea = setupRightPanel();
+
+    mainContentLayout->addWidget(leftWidget, 1);
+    mainContentLayout->addWidget(centerWidget, 1);
+    mainContentLayout->addWidget(playerDetailsScrollArea, 1);
+    
+    mainLayout->addLayout(mainContentLayout, 1);
+}
+
+QWidget* TeamManagerView::setupLeftPanel() {
+    QWidget* leftWidget = new QWidget();
+    QVBoxLayout* leftLayout = new QVBoxLayout(leftWidget);
     leftLayout->setContentsMargins(10, 10, 10, 10);
     
     QLabel* teamsLabel = new QLabel("Existing Teams:", this);
@@ -79,8 +92,15 @@ void TeamManagerView::setupUi() {
     leftLayout->addWidget(teamsLabel);
     leftLayout->addWidget(teamList, 1);
     leftLayout->addLayout(actionButtonsLayout);
+    
+    leftWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+    
+    return leftWidget;
+}
 
-    QVBoxLayout* centerLayout = new QVBoxLayout();
+QWidget* TeamManagerView::setupCenterPanel() {
+    QWidget* centerWidget = new QWidget();
+    QVBoxLayout* centerLayout = new QVBoxLayout(centerWidget);
     centerLayout->setContentsMargins(10, 10, 10, 10);
     
     QLabel* currentTeamLabel = new QLabel("Current Team:", this);
@@ -122,7 +142,13 @@ void TeamManagerView::setupUi() {
     centerLayout->addLayout(budgetLayout);
     centerLayout->addWidget(autoFillButton);
     centerLayout->addLayout(playerManagementLayout);
+    
+    centerWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+    
+    return centerWidget;
+}
 
+QScrollArea* TeamManagerView::setupRightPanel() {
     QScrollArea* playerDetailsScrollArea = new QScrollArea(this);
     playerDetailsScrollArea->setWidgetResizable(true);
     playerDetailsScrollArea->setFrameShape(QFrame::NoFrame);
@@ -140,6 +166,27 @@ void TeamManagerView::setupUi() {
     playerDetailsLabel->setObjectName("playerDetailsLabel");
     playerDetailsLabel->setAlignment(Qt::AlignLeft);
 
+    createPlayerInfoLabels();
+    createPlayerActionButtons();
+
+    rightLayout->addWidget(playerDetailsLabel);
+    rightLayout->addLayout(setupImageLayout());
+    rightLayout->addWidget(playerName);
+    rightLayout->addWidget(playerClub);
+    rightLayout->addWidget(playerPosition);
+    rightLayout->addWidget(playerMarketValue);
+    rightLayout->addWidget(playerRating);
+    rightLayout->addWidget(viewHistoryButton);
+    rightLayout->addWidget(selectForCompareButton);
+    rightLayout->addWidget(compareWithSelectedButton);
+    rightLayout->addWidget(clearComparisonButton);
+    rightLayout->addStretch();
+    
+    playerDetailsScrollArea->setWidget(playerDetailsWidget);
+    return playerDetailsScrollArea;
+}
+
+void TeamManagerView::createPlayerInfoLabels() {
     playerImage = new QLabel();
     playerImage->setObjectName("playerImage");
     playerImage->setFixedSize(175, 175);
@@ -170,7 +217,9 @@ void TeamManagerView::setupUi() {
     playerRating->setObjectName("playerRating");
     playerRating->setWordWrap(true);
     playerRating->setAlignment(Qt::AlignLeft);
+}
 
+void TeamManagerView::createPlayerActionButtons() {
     viewHistoryButton = new QPushButton("View Rating History", this);
     viewHistoryButton->setObjectName("viewHistoryButton");
     viewHistoryButton->setEnabled(false);
@@ -188,43 +237,23 @@ void TeamManagerView::setupUi() {
     clearComparisonButton->setObjectName("clearComparisonButton");
     clearComparisonButton->setEnabled(false);
     clearComparisonButton->setVisible(false);
-    
+}
+
+QHBoxLayout* TeamManagerView::setupImageLayout() {
     QHBoxLayout* imageLayout = new QHBoxLayout();
     imageLayout->addStretch();
     imageLayout->addWidget(playerImage);
     imageLayout->addStretch();
-
-    rightLayout->addWidget(playerDetailsLabel);
-    rightLayout->addLayout(imageLayout);
-    rightLayout->addWidget(playerName);
-    rightLayout->addWidget(playerClub);
-    rightLayout->addWidget(playerPosition);
-    rightLayout->addWidget(playerMarketValue);
-    rightLayout->addWidget(playerRating);
-    rightLayout->addWidget(viewHistoryButton);
-    rightLayout->addWidget(selectForCompareButton);
-    rightLayout->addWidget(compareWithSelectedButton);
-    rightLayout->addWidget(clearComparisonButton);
-    rightLayout->addStretch();
-    
-    playerDetailsScrollArea->setWidget(playerDetailsWidget);
-
-    QWidget* leftWidget = new QWidget();
-    leftWidget->setLayout(leftLayout);
-    leftWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
-
-    QWidget* centerWidget = new QWidget();
-    centerWidget->setLayout(centerLayout);
-    centerWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
-
-    mainContentLayout->addWidget(leftWidget, 1);
-    mainContentLayout->addWidget(centerWidget, 1);
-    mainContentLayout->addWidget(playerDetailsScrollArea, 1);
-    
-    mainLayout->addLayout(mainContentLayout, 1);
+    return imageLayout;
 }
 
 void TeamManagerView::setupAnimations() {
+    setupTeamListAnimations();
+    setupTeamPlayersAnimations();
+    setupPlayerDetailsAnimations();
+}
+
+void TeamManagerView::setupTeamListAnimations() {
     teamListOpacityEffect = new QGraphicsOpacityEffect(teamList);
     teamList->setGraphicsEffect(teamListOpacityEffect);
     teamListOpacityEffect->setOpacity(0.0);
@@ -234,7 +263,9 @@ void TeamManagerView::setupAnimations() {
     teamListOpacityAnimation->setStartValue(0.0);
     teamListOpacityAnimation->setEndValue(1.0);
     teamListOpacityAnimation->setEasingCurve(QEasingCurve::OutCubic);
-    
+}
+
+void TeamManagerView::setupTeamPlayersAnimations() {
     teamPlayersOpacityEffect = new QGraphicsOpacityEffect(currentTeamPlayers);
     currentTeamPlayers->setGraphicsEffect(teamPlayersOpacityEffect);
     teamPlayersOpacityEffect->setOpacity(0.0);
@@ -244,7 +275,9 @@ void TeamManagerView::setupAnimations() {
     teamPlayersOpacityAnimation->setStartValue(0.0);
     teamPlayersOpacityAnimation->setEndValue(1.0);
     teamPlayersOpacityAnimation->setEasingCurve(QEasingCurve::OutCubic);
-    
+}
+
+void TeamManagerView::setupPlayerDetailsAnimations() {
     playerDetailsOpacityEffect = new QGraphicsOpacityEffect(playerDetailsWidget);
     playerDetailsWidget->setGraphicsEffect(playerDetailsOpacityEffect);
     playerDetailsOpacityEffect->setOpacity(0.0);
@@ -283,6 +316,14 @@ void TeamManagerView::animatePlayerDetails() {
 }
 
 void TeamManagerView::setupConnections() {
+    setupActionConnections();
+    setupSelectionConnections();
+    setupComparisonConnections();
+    
+    disableTeamControls();
+}
+
+void TeamManagerView::setupActionConnections() {
     connect(newTeamButton, &QPushButton::clicked, this, &TeamManagerView::createNewTeam);
     connect(loadTeamByIdButton, &QPushButton::clicked, this, &TeamManagerView::loadTeamById);
     connect(autoFillButton, &QPushButton::clicked, this, &TeamManagerView::autoFillTeam);
@@ -293,23 +334,38 @@ void TeamManagerView::setupConnections() {
     connect(editTeamNameButton, &QPushButton::clicked, this, &TeamManagerView::editTeamName);
     connect(viewHistoryButton, &QPushButton::clicked, this, &TeamManagerView::showPlayerHistory);
     connect(addPlayersButton, &QPushButton::clicked, this, &TeamManagerView::searchAndAddPlayers);
+}
 
-    connect(selectForCompareButton, &QPushButton::clicked, this, &TeamManagerView::selectPlayerForComparison);
-    connect(compareWithSelectedButton, &QPushButton::clicked, this, &TeamManagerView::compareWithSelectedPlayer);
-    connect(clearComparisonButton, &QPushButton::clicked, this, &TeamManagerView::clearComparisonSelection);
-
+void TeamManagerView::setupSelectionConnections() {
     if (teamList->selectionModel()) { 
         connect(teamList->selectionModel(), &QItemSelectionModel::currentChanged, this, &TeamManagerView::loadSelectedTeam);
     } else {
         qWarning() << "Warning: `teamList` selection model is null.";
     }
+}
 
+void TeamManagerView::setupComparisonConnections() {
+    connect(selectForCompareButton, &QPushButton::clicked, this, &TeamManagerView::selectPlayerForComparison);
+    connect(compareWithSelectedButton, &QPushButton::clicked, this, &TeamManagerView::compareWithSelectedPlayer);
+    connect(clearComparisonButton, &QPushButton::clicked, this, &TeamManagerView::clearComparisonSelection);
+}
+
+void TeamManagerView::disableTeamControls() {
     currentTeamPlayers->setEnabled(false);
     autoFillButton->setEnabled(false);
     budgetInput->setEnabled(false);
     removePlayerButton->setEnabled(false);
     addPlayersButton->setEnabled(false);
     editTeamNameButton->setEnabled(false);
+}
+
+void TeamManagerView::enableTeamControls() {
+    currentTeamPlayers->setEnabled(true);
+    autoFillButton->setEnabled(true);
+    budgetInput->setEnabled(true);
+    removePlayerButton->setEnabled(true);
+    addPlayersButton->setEnabled(true);
+    editTeamNameButton->setEnabled(true);
 }
 
 void TeamManagerView::createNewTeam() {
@@ -334,13 +390,7 @@ void TeamManagerView::createNewTeam() {
         model->refresh();
         updateTeamInfo();
         
-        currentTeamPlayers->setEnabled(true);
-        autoFillButton->setEnabled(true);
-        budgetInput->setEnabled(true);
-        removePlayerButton->setEnabled(true);
-        addPlayersButton->setEnabled(true);
-        editTeamNameButton->setEnabled(true);
-        
+        enableTeamControls();
         teamPlayersOpacityAnimation->start();
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Error", QString("Failed to create team: %1").arg(e.what()));
@@ -358,13 +408,7 @@ void TeamManagerView::loadSelectedTeam() {
         currentTeam = &selectedTeam;
         updateTeamInfo();
         
-        currentTeamPlayers->setEnabled(true);
-        autoFillButton->setEnabled(true);
-        budgetInput->setEnabled(true);
-        removePlayerButton->setEnabled(true);
-        addPlayersButton->setEnabled(true);
-        editTeamNameButton->setEnabled(true);
-        
+        enableTeamControls();
         teamPlayersOpacityAnimation->start();
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Error", QString("Failed to load team: %1").arg(e.what()));
@@ -431,91 +475,7 @@ void TeamManagerView::navigateBack() {
     emit backToMain();
 }
 
-void TeamManagerView::removeSelectedPlayer() {
-    QModelIndex index = currentTeamPlayers->currentIndex();
-    if (!index.isValid() || !currentTeam) return;
-
-    QModelIndex playerIdIndex = currentTeamPlayers->model()->index(index.row(), 0);
-    int playerId = playerIdIndex.data(Qt::UserRole).toInt();
-
-    if (playerId == 0) {
-        QMessageBox::warning(this, "Error", "Invalid player selected.");
-        return;
-    }
-
-    teamManager.removePlayerFromTeam(currentTeam->teamId, playerId);
-    teamManager.saveTeamPlayers(*currentTeam);
-    updateTeamInfo();
-
-    playerName->clear();
-    playerClub->clear();
-    playerPosition->clear();
-    playerMarketValue->clear();
-    playerRating->clear();
-    playerImage->clear();
-    viewHistoryButton->setEnabled(false);
-    selectForCompareButton->setEnabled(false);
-    compareWithSelectedButton->setEnabled(false);
-    clearComparisonButton->setEnabled(false);
-}
-
-void TeamManagerView::editTeamName() {
-    QModelIndex index = teamList->currentIndex();
-    if (!index.isValid() || !currentTeam) {
-        QMessageBox::warning(this, "Error", "Please select a team first");
-        return;
-    }
-
-    bool ok;
-    QString currentName = QString::fromStdString(currentTeam->teamName);
-    QString newName = QInputDialog::getText(
-        this, 
-        "Edit Team Name", 
-        "Enter new team name:", 
-        QLineEdit::Normal,
-        currentName, 
-        &ok
-        );
-
-    if (ok && !newName.isEmpty()) {
-        try {
-            int currentTeamId = currentTeam->teamId;
-            if (teamManager.updateTeamName(currentTeamId, newName.toStdString())) {
-                currentTeam = &teamManager.loadTeam(currentTeamId);
-                
-                model->refresh();
-                
-                for(int i = 0; i < model->rowCount(); i++) {
-                    QModelIndex idx = model->index(i, 0);
-                    if (model->data(idx, Qt::UserRole).toInt() == currentTeamId) {
-                        teamList->setCurrentIndex(idx);
-                        break;
-                    }
-                }
-                
-                updateTeamInfo();
-            } else {
-                QMessageBox::critical(this, "Error", "Failed to update team name in database");
-            }
-        } catch (const std::exception& e) {
-            QMessageBox::critical(this, "Error", QString("Failed to update team name: %1").arg(e.what()));
-        }
-    }
-}
-
-void TeamManagerView::updateTeamInfo() {
-    if (!currentTeam) {
-        currentTeamPlayers->setModel(nullptr);
-        currentTeamPlayers->setEnabled(false);
-        budgetInput->setEnabled(false);
-        autoFillButton->setEnabled(false);
-        removePlayerButton->setEnabled(false);
-        addPlayersButton->setEnabled(false);
-        editTeamNameButton->setEnabled(false);
-        return;
-    }
-
-    QAbstractItemModel* oldModel = currentTeamPlayers->model();
+QStandardItemModel* TeamManagerView::createPlayerModel() {
     QStandardItemModel* playerModel = new QStandardItemModel(this);
     playerModel->setColumnCount(2);
 
@@ -545,6 +505,19 @@ void TeamManagerView::updateTeamInfo() {
         playerModel->appendRow({imageItem, nameItem});
     }
     
+    return playerModel;
+}
+
+void TeamManagerView::updateTeamInfo() {
+    if (!currentTeam) {
+        currentTeamPlayers->setModel(nullptr);
+        disableTeamControls();
+        return;
+    }
+
+    QAbstractItemModel* oldModel = currentTeamPlayers->model();
+    QStandardItemModel* playerModel = createPlayerModel();
+    
     currentTeamPlayers->setModel(playerModel);
     currentTeamPlayers->setColumnWidth(0, 40);
     currentTeamPlayers->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
@@ -561,46 +534,112 @@ void TeamManagerView::updateTeamInfo() {
         delete oldModel;
     }
 
-    currentTeamPlayers->setEnabled(true);
-    budgetInput->setEnabled(true);
+    enableTeamControls();
     budgetInput->setValue(currentTeam->budget);
-    autoFillButton->setEnabled(true);
-    removePlayerButton->setEnabled(true);
-    addPlayersButton->setEnabled(true);
-    editTeamNameButton->setEnabled(true);
+}
+
+Player* TeamManagerView::findPlayerById(int playerId) {
+    if (!currentTeam) return nullptr;
+    
+    for (auto& player : currentTeam->players) {
+        if (player.playerId == playerId) {
+            return &player;
+        }
+    }
+    return nullptr;
+}
+
+int TeamManagerView::getSelectedPlayerId() {
+    QModelIndex index = currentTeamPlayers->currentIndex();
+    if (!index.isValid() || !currentTeam) return -1;
+
+    QModelIndex playerIdIndex = currentTeamPlayers->model()->index(index.row(), 0);
+    return playerIdIndex.data(Qt::UserRole).toInt();
 }
 
 void TeamManagerView::updatePlayerDetails() {
-    QModelIndex index = currentTeamPlayers->currentIndex();
-    if (!index.isValid() || !currentTeam) return;
-
-    QModelIndex playerIdIndex = currentTeamPlayers->model()->index(index.row(), 0);
-    int playerId = playerIdIndex.data(Qt::UserRole).toInt();
+    int playerId = getSelectedPlayerId();
+    if (playerId <= 0) return;
     
-    for (const auto& player : currentTeam->players) {
-        if (player.playerId == playerId) {
-            playerName->setText("Name: " + QString::fromStdString(player.name));
-            playerClub->setText("Club: " + QString::fromStdString(player.clubName));
-            playerPosition->setText("Position: " + QString::fromStdString(player.position));
-            playerMarketValue->setText("Market Value: €" + QString::number(player.marketValue / 1000000) + "M");
-            playerRating->setText("Rating: " + QString::number(player.rating));
+    Player* player = findPlayerById(playerId);
+    if (!player) return;
+    
+    playerName->setText("Name: " + QString::fromStdString(player->name));
+    playerClub->setText("Club: " + QString::fromStdString(player->clubName));
+    playerPosition->setText("Position: " + QString::fromStdString(player->position));
+    playerMarketValue->setText("Market Value: €" + QString::number(player->marketValue / 1000000) + "M");
+    playerRating->setText("Rating: " + QString::number(player->rating));
 
-            QString imageUrl = QString::fromStdString(player.imageUrl);
-            if (imageUrl.contains(",")) {
-                imageUrl = imageUrl.split(",").first().trimmed(); 
-            }
+    QString imageUrl = QString::fromStdString(player->imageUrl);
+    if (imageUrl.contains(",")) {
+        imageUrl = imageUrl.split(",").first().trimmed(); 
+    }
 
-            if (imageUrl.startsWith("http")) {
-                fetchPlayerDetailImage(imageUrl);
+    if (imageUrl.startsWith("http")) {
+        fetchPlayerDetailImage(imageUrl);
+    } else {
+        loadLocalPlayerDetailImage(imageUrl);
+    }
+    
+    animatePlayerDetails();
+    viewHistoryButton->setEnabled(true);
+    selectForCompareButton->setEnabled(true);
+    updateComparisonButtons();
+}
+
+void TeamManagerView::removeSelectedPlayer() {
+    int playerId = getSelectedPlayerId();
+    if (playerId <= 0 || !currentTeam) return;
+
+    teamManager.removePlayerFromTeam(currentTeam->teamId, playerId);
+    teamManager.saveTeamPlayers(*currentTeam);
+    updateTeamInfo();
+
+    playerName->clear();
+    playerClub->clear();
+    playerPosition->clear();
+    playerMarketValue->clear();
+    playerRating->clear();
+    playerImage->clear();
+    viewHistoryButton->setEnabled(false);
+    selectForCompareButton->setEnabled(false);
+    compareWithSelectedButton->setEnabled(false);
+    clearComparisonButton->setEnabled(false);
+}
+
+void TeamManagerView::editTeamName() {
+    QModelIndex index = teamList->currentIndex();
+    if (!index.isValid() || !currentTeam) {
+        QMessageBox::warning(this, "Error", "Please select a team first");
+        return;
+    }
+
+    bool ok;
+    QString currentName = QString::fromStdString(currentTeam->teamName);
+    QString newName = QInputDialog::getText(this, "Edit Team Name", "Enter new team name:",  QLineEdit::Normal, currentName, &ok);
+
+    if (ok && !newName.isEmpty()) {
+        try {
+            int currentTeamId = currentTeam->teamId;
+            if (teamManager.updateTeamName(currentTeamId, newName.toStdString())) {
+                currentTeam = &teamManager.loadTeam(currentTeamId);
+                
+                model->refresh();
+                
+                for(int i = 0; i < model->rowCount(); i++) {
+                    QModelIndex idx = model->index(i, 0);
+                    if (model->data(idx, Qt::UserRole).toInt() == currentTeamId) {
+                        teamList->setCurrentIndex(idx);
+                        break;
+                    }
+                }
+                
+                updateTeamInfo();
             } else {
-                loadLocalPlayerDetailImage(imageUrl);
+                QMessageBox::critical(this, "Error", "Failed to update team name in database");
             }
-            
-            animatePlayerDetails();
-            viewHistoryButton->setEnabled(true);
-            selectForCompareButton->setEnabled(true);
-            updateComparisonButtons();
-            break;
+        } catch (const std::exception& e) {
+            QMessageBox::critical(this, "Error", QString("Failed to update team name: %1").arg(e.what()));
         }
     }
 }
