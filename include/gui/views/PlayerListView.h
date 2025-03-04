@@ -14,6 +14,7 @@
 #include <QSequentialAnimationGroup>
 #include <QGraphicsOpacityEffect>
 #include <QtNetwork/QNetworkAccessManager>
+#include <QScrollArea>
 #include <QMap>
 
 class PlayerListModel;
@@ -44,6 +45,24 @@ class PlayerListView : public QWidget {
         void updateComparisonButtons();
 
     private:
+        void setupUi();
+        QFrame* setupTableSection();
+        void configureTableView();
+        QScrollArea* setupPlayerDetailsSection();
+        QWidget* setupPaginationSection();
+        void setupInputSection();
+        QHBoxLayout* createInputLayout();
+        void createPlayerInfoWidgets();
+        void createPlayerActionButtons();
+        void setupConnections();
+        void setupPaginationConnections();
+        void setupTableConnections();
+        void setupButtonConnections();
+        void setupAnimations();
+        void setupTableAnimations();
+        void setupPlayerDetailsAnimations();
+        void updatePagination();
+
         int currentPage = 0;
         int totalPages = 1;
         const int playersPerPage = 20;
@@ -86,15 +105,6 @@ class PlayerListView : public QWidget {
         QPropertyAnimation* playerDetailsOpacityAnimation;
         QPropertyAnimation* playerDetailsSlideAnimation;
         QParallelAnimationGroup* playerDetailsAnimGroup;
-
-        void setupUi();
-        void setupConnections();
-        void setupAnimations();
-        void updatePagination();
-        void loadPlayerImage(int playerId, const QString& imageUrl);
-        void handleImageResponse(QNetworkReply* reply, int playerId);
-        void loadLocalImage(int playerId, const QString& imageUrl);
-        void updatePlayerImageInModel(int playerId);
 };
 
 #endif

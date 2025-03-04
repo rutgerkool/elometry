@@ -39,28 +39,50 @@ void PlayerListView::setupUi() {
     backButton = new QPushButton("Back to Menu", this);
     mainLayout->addWidget(backButton, 0, Qt::AlignLeft);
 
+    setupInputSection();
+    mainLayout->addLayout(createInputLayout());
+
+    QHBoxLayout* contentLayout = new QHBoxLayout();
+    contentLayout->setSpacing(20);
+    
+    QFrame* tableFrame = setupTableSection();
+    QScrollArea* playerDetailsScrollArea = setupPlayerDetailsSection();
+
+    contentLayout->addWidget(tableFrame, 3);
+    contentLayout->addWidget(playerDetailsScrollArea, 1);
+    
+    mainLayout->addLayout(contentLayout, 1);
+}
+
+void PlayerListView::setupInputSection() {
+    searchBox = new QLineEdit(this);
+    searchBox->setObjectName("searchBox");
+    searchBox->setFixedWidth(240);
+    searchBox->setPlaceholderText("Search players");
+
+    positionFilter = new QComboBox(this);
+    positionFilter->setObjectName("positionFilter");
+    positionFilter->addItem("All Positions");
+    positionFilter->addItems({"Goalkeeper", "Defender", "Midfield", "Attack"});
+    positionFilter->setFixedWidth(240);
+}
+
+QHBoxLayout* PlayerListView::createInputLayout() {
     QHBoxLayout* inputLayout = new QHBoxLayout();
     inputLayout->setContentsMargins(0, 0, 0, 0);
 
     QHBoxLayout* searchLayout = new QHBoxLayout();
     QLabel* searchLabel = new QLabel("Search:", this);
+    searchLabel->setObjectName("searchLabel");
     searchLabel->setProperty("section", "search");
-    searchBox = new QLineEdit(this);
-    searchBox->setObjectName("searchBox");
-    searchBox->setFixedWidth(240);
-    searchBox->setPlaceholderText("Search players");
     searchLayout->addWidget(searchLabel);
     searchLayout->addWidget(searchBox);
     searchLayout->addStretch();
 
     QHBoxLayout* filterLayout = new QHBoxLayout();
     QLabel* positionLabel = new QLabel("Position:", this);
+    positionLabel->setObjectName("positionLabel");
     positionLabel->setProperty("section", "position");
-    positionFilter = new QComboBox(this);
-    positionFilter->setObjectName("positionFilter");
-    positionFilter->addItem("All Positions");
-    positionFilter->addItems({"Goalkeeper", "Defender", "Midfield", "Attack"});
-    positionFilter->setFixedWidth(240);
     filterLayout->addWidget(positionLabel);
     filterLayout->addWidget(positionFilter);
     filterLayout->addStretch();
@@ -69,12 +91,11 @@ void PlayerListView::setupUi() {
     inputLayout->addSpacing(20);
     inputLayout->addLayout(filterLayout);
     inputLayout->addStretch();
+    
+    return inputLayout;
+}
 
-    mainLayout->addLayout(inputLayout);
-
-    QHBoxLayout* contentLayout = new QHBoxLayout();
-    contentLayout->setSpacing(20);
-
+QFrame* PlayerListView::setupTableSection() {
     QFrame* tableFrame = new QFrame(this);
     tableFrame->setFrameShape(QFrame::NoFrame);
     tableFrame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -84,6 +105,16 @@ void PlayerListView::setupUi() {
     tableLayout->setSpacing(10);
 
     tableView = new QTableView(tableFrame);
+    configureTableView();
+    tableLayout->addWidget(tableView, 1);
+
+    QWidget* paginationWidget = setupPaginationSection();
+    tableLayout->addWidget(paginationWidget, 0);
+    
+    return tableFrame;
+}
+
+void PlayerListView::configureTableView() {
     tableView->setObjectName("playerTable");
     tableView->setModel(model);
     tableView->setSortingEnabled(true);
@@ -96,10 +127,10 @@ void PlayerListView::setupUi() {
     tableView->verticalHeader()->setVisible(false);
     tableView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     tableView->horizontalHeader()->setSortIndicator(2, Qt::DescendingOrder);
+}
 
-    tableLayout->addWidget(tableView, 1);
-
-    QWidget* paginationWidget = new QWidget(tableFrame);
+QWidget* PlayerListView::setupPaginationSection() {
+    QWidget* paginationWidget = new QWidget();
     paginationWidget->setFixedHeight(50);
     QHBoxLayout* paginationLayout = new QHBoxLayout(paginationWidget);
     paginationLayout->setContentsMargins(0, 0, 0, 0);
@@ -129,8 +160,10 @@ void PlayerListView::setupUi() {
     paginationLayout->addWidget(nextPageButton);
     paginationLayout->addStretch();
     
-    tableLayout->addWidget(paginationWidget, 0);
+    return paginationWidget;
+}
 
+QScrollArea* PlayerListView::setupPlayerDetailsSection() {
     QScrollArea* playerDetailsScrollArea = new QScrollArea(this);
     playerDetailsScrollArea->setWidgetResizable(true);
     playerDetailsScrollArea->setFrameShape(QFrame::NoFrame);
@@ -148,6 +181,32 @@ void PlayerListView::setupUi() {
     QLabel* playerDetailsLabel = new QLabel("Selected Player:", this);
     playerDetailsLabel->setObjectName("playerDetailsLabel");
 
+    createPlayerInfoWidgets();
+    createPlayerActionButtons();
+    
+    QHBoxLayout* imageLayout = new QHBoxLayout();
+    imageLayout->addStretch();
+    imageLayout->addWidget(playerImage);
+    imageLayout->addStretch();
+
+    detailsLayout->addWidget(playerDetailsLabel);
+    detailsLayout->addLayout(imageLayout);
+    detailsLayout->addWidget(playerName);
+    detailsLayout->addWidget(playerClub);
+    detailsLayout->addWidget(playerPosition);
+    detailsLayout->addWidget(playerMarketValue);
+    detailsLayout->addWidget(playerRating);
+    detailsLayout->addWidget(viewHistoryButton);
+    detailsLayout->addWidget(selectForCompareButton);
+    detailsLayout->addWidget(compareWithSelectedButton);
+    detailsLayout->addWidget(clearComparisonButton);
+    detailsLayout->addStretch();
+    
+    playerDetailsScrollArea->setWidget(playerDetailsWidget);
+    return playerDetailsScrollArea;
+}
+
+void PlayerListView::createPlayerInfoWidgets() {
     playerImage = new QLabel();
     playerImage->setObjectName("playerImage");
     playerImage->setFixedSize(200, 200);
@@ -178,7 +237,9 @@ void PlayerListView::setupUi() {
     playerRating->setObjectName("playerRating");
     playerRating->setWordWrap(true);
     playerRating->setAlignment(Qt::AlignLeft);
-    
+}
+
+void PlayerListView::createPlayerActionButtons() {
     viewHistoryButton = new QPushButton("View Rating History", this);
     viewHistoryButton->setObjectName("viewHistoryButton");
     viewHistoryButton->setEnabled(false);
@@ -196,34 +257,14 @@ void PlayerListView::setupUi() {
     clearComparisonButton->setObjectName("clearComparisonButton");
     clearComparisonButton->setEnabled(false);
     clearComparisonButton->setVisible(false);
-    
-    QHBoxLayout* imageLayout = new QHBoxLayout();
-    imageLayout->addStretch();
-    imageLayout->addWidget(playerImage);
-    imageLayout->addStretch();
-
-    detailsLayout->addWidget(playerDetailsLabel);
-    detailsLayout->addLayout(imageLayout);
-    detailsLayout->addWidget(playerName);
-    detailsLayout->addWidget(playerClub);
-    detailsLayout->addWidget(playerPosition);
-    detailsLayout->addWidget(playerMarketValue);
-    detailsLayout->addWidget(playerRating);
-    detailsLayout->addWidget(viewHistoryButton);
-    detailsLayout->addWidget(selectForCompareButton);
-    detailsLayout->addWidget(compareWithSelectedButton);
-    detailsLayout->addWidget(clearComparisonButton);
-    detailsLayout->addStretch();
-    
-    playerDetailsScrollArea->setWidget(playerDetailsWidget);
-
-    contentLayout->addWidget(tableFrame, 3);
-    contentLayout->addWidget(playerDetailsScrollArea, 1);
-    
-    mainLayout->addLayout(contentLayout, 1);
 }
 
 void PlayerListView::setupAnimations() {
+    setupTableAnimations();
+    setupPlayerDetailsAnimations();
+}
+
+void PlayerListView::setupTableAnimations() {
     tableOpacityEffect = new QGraphicsOpacityEffect(tableView);
     tableView->setGraphicsEffect(tableOpacityEffect);
     tableOpacityEffect->setOpacity(0.0);
@@ -236,7 +277,9 @@ void PlayerListView::setupAnimations() {
     
     tableAnimGroup = new QParallelAnimationGroup(this);
     tableAnimGroup->addAnimation(tableOpacityAnimation);
-    
+}
+
+void PlayerListView::setupPlayerDetailsAnimations() {
     playerDetailsOpacityEffect = new QGraphicsOpacityEffect(playerDetailsWidget);
     playerDetailsWidget->setGraphicsEffect(playerDetailsOpacityEffect);
     playerDetailsOpacityEffect->setOpacity(0.0);
@@ -257,10 +300,12 @@ void PlayerListView::setupAnimations() {
 }
 
 void PlayerListView::setupConnections() {
-    connect(searchBox, &QLineEdit::textChanged, this, &PlayerListView::searchPlayers);
-    connect(positionFilter, &QComboBox::currentTextChanged, this, &PlayerListView::filterByPosition);
-    connect(tableView->horizontalHeader(), &QHeaderView::sortIndicatorChanged, model, &PlayerListModel::sort);
-    connect(backButton, &QPushButton::clicked, this, &PlayerListView::backToMain);
+    setupPaginationConnections();
+    setupTableConnections();
+    setupButtonConnections();
+}
+
+void PlayerListView::setupPaginationConnections() {
     connect(prevPageButton, &QPushButton::clicked, this, [this]() {
         if (currentPage > 0) {
             currentPage--;
@@ -268,6 +313,7 @@ void PlayerListView::setupConnections() {
             animateTable();
         }
     });
+    
     connect(nextPageButton, &QPushButton::clicked, this, [this]() {
         if ((currentPage + 1) * playersPerPage < model->filteredPlayerCount()) {
             currentPage++;
@@ -275,11 +321,21 @@ void PlayerListView::setupConnections() {
             animateTable();
         }
     });
+}
+
+void PlayerListView::setupTableConnections() {
+    connect(searchBox, &QLineEdit::textChanged, this, &PlayerListView::searchPlayers);
+    connect(positionFilter, &QComboBox::currentTextChanged, this, &PlayerListView::filterByPosition);
+    connect(tableView->horizontalHeader(), &QHeaderView::sortIndicatorChanged, model, &PlayerListModel::sort);
+    
     connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, 
         &PlayerListView::updatePlayerDetails);
-    connect(viewHistoryButton, &QPushButton::clicked, this, &PlayerListView::showPlayerHistory);
     connect(tableView, &QTableView::doubleClicked, this, &PlayerListView::showPlayerHistory);
-    
+}
+
+void PlayerListView::setupButtonConnections() {
+    connect(backButton, &QPushButton::clicked, this, &PlayerListView::backToMain);
+    connect(viewHistoryButton, &QPushButton::clicked, this, &PlayerListView::showPlayerHistory);
     connect(selectForCompareButton, &QPushButton::clicked, this, &PlayerListView::selectPlayerForComparison);
     connect(compareWithSelectedButton, &QPushButton::clicked, this, &PlayerListView::compareWithSelectedPlayer);
     connect(clearComparisonButton, &QPushButton::clicked, this, &PlayerListView::clearComparisonSelection);

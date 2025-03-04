@@ -360,3 +360,7 @@ QToolTip {
     color: #ffffff;
     font-weight: bold;
 }
+
+#searchLabel, #positionLabel {
+    font-size: 12px;
+}
