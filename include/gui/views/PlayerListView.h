@@ -37,12 +37,18 @@ class PlayerListView : public QWidget {
         void fetchPlayerDetailImage(const QString& imageUrl);
         void loadLocalPlayerDetailImage(const QString& imageUrl);
         void animatePlayerDetails();
+        void selectPlayerForComparison();
+        void compareWithSelectedPlayer();
+        void clearComparisonSelection();
+        void showPlayerComparison();
+        void updateComparisonButtons();
 
     private:
         int currentPage = 0;
         int totalPages = 1;
         const int playersPerPage = 20;
         int currentPlayerId = -1;
+        int comparisonPlayerId = -1;
 
         QPushButton* prevPageButton;
         QPushButton* nextPageButton;
@@ -62,6 +68,9 @@ class PlayerListView : public QWidget {
         QLabel* playerMarketValue;
         QLabel* playerRating;
         QPushButton* viewHistoryButton;
+        QPushButton* selectForCompareButton;
+        QPushButton* compareWithSelectedButton;
+        QPushButton* clearComparisonButton;
 
         RatingManager& ratingManager;
         PlayerListModel* model;

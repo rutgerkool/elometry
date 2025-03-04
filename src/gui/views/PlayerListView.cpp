@@ -1,6 +1,7 @@
 #include "gui/views/PlayerListView.h"
 #include "gui/models/PlayerListModel.h"
 #include "gui/components/PlayerHistoryDialog.h"
+#include "gui/components/PlayerComparisonDialog.h"
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
@@ -21,6 +22,7 @@ PlayerListView::PlayerListView(RatingManager& rm, QWidget *parent)
     , ratingManager(rm)
     , model(new PlayerListModel(ratingManager.getSortedRatedPlayers()))
     , networkManager(new QNetworkAccessManager(this))
+    , comparisonPlayerId(-1)
 {
     setupUi();
     setupAnimations();
@@ -181,6 +183,20 @@ void PlayerListView::setupUi() {
     viewHistoryButton->setObjectName("viewHistoryButton");
     viewHistoryButton->setEnabled(false);
     
+    selectForCompareButton = new QPushButton("Select for Compare", this);
+    selectForCompareButton->setObjectName("selectForCompareButton");
+    selectForCompareButton->setEnabled(false);
+    
+    compareWithSelectedButton = new QPushButton("Compare with Selected", this);
+    compareWithSelectedButton->setObjectName("compareWithSelectedButton");
+    compareWithSelectedButton->setEnabled(false);
+    compareWithSelectedButton->setVisible(false);
+    
+    clearComparisonButton = new QPushButton("Clear Comparison", this);
+    clearComparisonButton->setObjectName("clearComparisonButton");
+    clearComparisonButton->setEnabled(false);
+    clearComparisonButton->setVisible(false);
+    
     QHBoxLayout* imageLayout = new QHBoxLayout();
     imageLayout->addStretch();
     imageLayout->addWidget(playerImage);
@@ -194,6 +210,9 @@ void PlayerListView::setupUi() {
     detailsLayout->addWidget(playerMarketValue);
     detailsLayout->addWidget(playerRating);
     detailsLayout->addWidget(viewHistoryButton);
+    detailsLayout->addWidget(selectForCompareButton);
+    detailsLayout->addWidget(compareWithSelectedButton);
+    detailsLayout->addWidget(clearComparisonButton);
     detailsLayout->addStretch();
     
     playerDetailsScrollArea->setWidget(playerDetailsWidget);
@@ -260,6 +279,10 @@ void PlayerListView::setupConnections() {
         &PlayerListView::updatePlayerDetails);
     connect(viewHistoryButton, &QPushButton::clicked, this, &PlayerListView::showPlayerHistory);
     connect(tableView, &QTableView::doubleClicked, this, &PlayerListView::showPlayerHistory);
+    
+    connect(selectForCompareButton, &QPushButton::clicked, this, &PlayerListView::selectPlayerForComparison);
+    connect(compareWithSelectedButton, &QPushButton::clicked, this, &PlayerListView::compareWithSelectedPlayer);
+    connect(clearComparisonButton, &QPushButton::clicked, this, &PlayerListView::clearComparisonSelection);
 }
 
 void PlayerListView::updatePagination() {
@@ -300,7 +323,6 @@ void PlayerListView::filterPlayers() {
     filterByPosition(positionFilter->currentText());
 }
 
-
 void PlayerListView::animateTable() {
     tableOpacityEffect->setOpacity(0.0);
     tableAnimGroup->start();
@@ -340,6 +362,8 @@ void PlayerListView::updatePlayerDetails() {
             playerRating->setText("Rating: " + QString::number(p.second.rating, 'f', 1));
             
             viewHistoryButton->setEnabled(true);
+            selectForCompareButton->setEnabled(true);
+            updateComparisonButtons();
             
             QString imageUrl = QString::fromStdString(p.second.imageUrl);
             if (imageUrl.contains(",")) {
@@ -386,4 +410,49 @@ void PlayerListView::showPlayerHistory() {
     
     PlayerHistoryDialog dialog(ratingManager, currentPlayerId, this);
     dialog.exec();
+}
+
+void PlayerListView::selectPlayerForComparison() {
+    if (currentPlayerId <= 0) return;
+    
+    comparisonPlayerId = currentPlayerId;
+    updateComparisonButtons();
+}
+
+void PlayerListView::compareWithSelectedPlayer() {
+    if (currentPlayerId <= 0 || comparisonPlayerId <= 0 || currentPlayerId == comparisonPlayerId) return;
+    
+    showPlayerComparison();
+}
+
+void PlayerListView::clearComparisonSelection() {
+    comparisonPlayerId = -1;
+    updateComparisonButtons();
+}
+
+void PlayerListView::showPlayerComparison() {
+    if (comparisonPlayerId <= 0 || currentPlayerId <= 0) return;
+    
+    PlayerComparisonDialog dialog(ratingManager, comparisonPlayerId, currentPlayerId, this);
+    dialog.exec();
+}
+
+void PlayerListView::updateComparisonButtons() {
+    if (comparisonPlayerId <= 0) {
+        selectForCompareButton->setVisible(true);
+        selectForCompareButton->setEnabled(currentPlayerId > 0);
+        compareWithSelectedButton->setVisible(false);
+        clearComparisonButton->setVisible(false);
+    } else if (comparisonPlayerId == currentPlayerId) {
+        selectForCompareButton->setVisible(false);
+        compareWithSelectedButton->setVisible(false);
+        clearComparisonButton->setVisible(true);
+        clearComparisonButton->setEnabled(true);
+    } else {
+        selectForCompareButton->setVisible(false);
+        compareWithSelectedButton->setVisible(true);
+        compareWithSelectedButton->setEnabled(true);
+        clearComparisonButton->setVisible(true);
+        clearComparisonButton->setEnabled(true);
+    }
 }

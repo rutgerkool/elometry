@@ -3,6 +3,7 @@
 #include "gui/models/TeamListModel.h"
 #include "gui/components/ClubSelectDialog.h"
 #include "gui/components/PlayerHistoryDialog.h"
+#include "gui/components/PlayerComparisonDialog.h"
 #include "gui/components/PlayerSelectDialog.h"
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>
@@ -26,6 +27,7 @@ TeamManagerView::TeamManagerView(TeamManager& tm, QWidget *parent)
     , model(new TeamListModel(teamManager))
     , currentTeam(nullptr)
     , networkManager(new QNetworkAccessManager(this))
+    , comparisonPlayerId(-1)
 {
     setupUi();
     setupAnimations();
@@ -173,6 +175,20 @@ void TeamManagerView::setupUi() {
     viewHistoryButton->setObjectName("viewHistoryButton");
     viewHistoryButton->setEnabled(false);
     
+    selectForCompareButton = new QPushButton("Select for Compare", this);
+    selectForCompareButton->setObjectName("selectForCompareButton");
+    selectForCompareButton->setEnabled(false);
+    
+    compareWithSelectedButton = new QPushButton("Compare with Selected", this);
+    compareWithSelectedButton->setObjectName("compareWithSelectedButton");
+    compareWithSelectedButton->setEnabled(false);
+    compareWithSelectedButton->setVisible(false);
+    
+    clearComparisonButton = new QPushButton("Clear Comparison", this);
+    clearComparisonButton->setObjectName("clearComparisonButton");
+    clearComparisonButton->setEnabled(false);
+    clearComparisonButton->setVisible(false);
+    
     QHBoxLayout* imageLayout = new QHBoxLayout();
     imageLayout->addStretch();
     imageLayout->addWidget(playerImage);
@@ -186,6 +202,9 @@ void TeamManagerView::setupUi() {
     rightLayout->addWidget(playerMarketValue);
     rightLayout->addWidget(playerRating);
     rightLayout->addWidget(viewHistoryButton);
+    rightLayout->addWidget(selectForCompareButton);
+    rightLayout->addWidget(compareWithSelectedButton);
+    rightLayout->addWidget(clearComparisonButton);
     rightLayout->addStretch();
     
     playerDetailsScrollArea->setWidget(playerDetailsWidget);
@@ -274,6 +293,10 @@ void TeamManagerView::setupConnections() {
     connect(editTeamNameButton, &QPushButton::clicked, this, &TeamManagerView::editTeamName);
     connect(viewHistoryButton, &QPushButton::clicked, this, &TeamManagerView::showPlayerHistory);
     connect(addPlayersButton, &QPushButton::clicked, this, &TeamManagerView::searchAndAddPlayers);
+
+    connect(selectForCompareButton, &QPushButton::clicked, this, &TeamManagerView::selectPlayerForComparison);
+    connect(compareWithSelectedButton, &QPushButton::clicked, this, &TeamManagerView::compareWithSelectedPlayer);
+    connect(clearComparisonButton, &QPushButton::clicked, this, &TeamManagerView::clearComparisonSelection);
 
     if (teamList->selectionModel()) { 
         connect(teamList->selectionModel(), &QItemSelectionModel::currentChanged, this, &TeamManagerView::loadSelectedTeam);
@@ -431,6 +454,9 @@ void TeamManagerView::removeSelectedPlayer() {
     playerRating->clear();
     playerImage->clear();
     viewHistoryButton->setEnabled(false);
+    selectForCompareButton->setEnabled(false);
+    compareWithSelectedButton->setEnabled(false);
+    clearComparisonButton->setEnabled(false);
 }
 
 void TeamManagerView::editTeamName() {
@@ -572,6 +598,8 @@ void TeamManagerView::updatePlayerDetails() {
             
             animatePlayerDetails();
             viewHistoryButton->setEnabled(true);
+            selectForCompareButton->setEnabled(true);
+            updateComparisonButtons();
             break;
         }
     }
@@ -706,5 +734,79 @@ void TeamManagerView::searchAndAddPlayers() {
         teamManager.saveTeamPlayers(*currentTeam);
         updateTeamInfo();
         teamPlayersOpacityAnimation->start();
+    }
+}
+
+void TeamManagerView::selectPlayerForComparison() {
+    QModelIndex index = currentTeamPlayers->currentIndex();
+    if (!index.isValid() || !currentTeam) return;
+
+    QModelIndex playerIdIndex = currentTeamPlayers->model()->index(index.row(), 0);
+    int playerId = playerIdIndex.data(Qt::UserRole).toInt();
+    
+    if (playerId <= 0) return;
+    
+    comparisonPlayerId = playerId;
+    updateComparisonButtons();
+}
+
+void TeamManagerView::compareWithSelectedPlayer() {
+    QModelIndex index = currentTeamPlayers->currentIndex();
+    if (!index.isValid() || !currentTeam) return;
+
+    QModelIndex playerIdIndex = currentTeamPlayers->model()->index(index.row(), 0);
+    int playerId = playerIdIndex.data(Qt::UserRole).toInt();
+    
+    if (playerId <= 0 || comparisonPlayerId <= 0 || playerId == comparisonPlayerId) return;
+    
+    showPlayerComparison();
+}
+
+void TeamManagerView::clearComparisonSelection() {
+    comparisonPlayerId = -1;
+    updateComparisonButtons();
+}
+
+void TeamManagerView::showPlayerComparison() {
+    QModelIndex index = currentTeamPlayers->currentIndex();
+    if (!index.isValid() || !currentTeam) return;
+
+    QModelIndex playerIdIndex = currentTeamPlayers->model()->index(index.row(), 0);
+    int playerId = playerIdIndex.data(Qt::UserRole).toInt();
+    
+    if (playerId <= 0 || comparisonPlayerId <= 0) return;
+    
+    PlayerComparisonDialog dialog(teamManager.getRatingManager(), comparisonPlayerId, playerId, this);
+    dialog.exec();
+}
+
+void TeamManagerView::updateComparisonButtons() {
+    QModelIndex index = currentTeamPlayers->currentIndex();
+    if (!index.isValid() || !currentTeam) {
+        selectForCompareButton->setEnabled(false);
+        compareWithSelectedButton->setEnabled(false);
+        clearComparisonButton->setEnabled(false);
+        return;
+    }
+
+    QModelIndex playerIdIndex = currentTeamPlayers->model()->index(index.row(), 0);
+    int playerId = playerIdIndex.data(Qt::UserRole).toInt();
+    
+    if (comparisonPlayerId <= 0) {
+        selectForCompareButton->setVisible(true);
+        selectForCompareButton->setEnabled(playerId > 0);
+        compareWithSelectedButton->setVisible(false);
+        clearComparisonButton->setVisible(false);
+    } else if (comparisonPlayerId == playerId) {
+        selectForCompareButton->setVisible(false);
+        compareWithSelectedButton->setVisible(false);
+        clearComparisonButton->setVisible(true);
+        clearComparisonButton->setEnabled(true);
+    } else {
+        selectForCompareButton->setVisible(false);
+        compareWithSelectedButton->setVisible(true);
+        compareWithSelectedButton->setEnabled(true);
+        clearComparisonButton->setVisible(true);
+        clearComparisonButton->setEnabled(true);
     }
 }

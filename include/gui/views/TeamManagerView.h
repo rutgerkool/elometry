@@ -51,6 +51,11 @@ private slots:
     void animatePlayerDetails();
     void showPlayerHistory();
     void searchAndAddPlayers();
+    void selectPlayerForComparison();
+    void compareWithSelectedPlayer();
+    void clearComparisonSelection();
+    void showPlayerComparison();
+    void updateComparisonButtons();
 
 private:
     TeamManager& teamManager;
@@ -58,6 +63,7 @@ private:
     TeamListModel* model;
     QNetworkAccessManager* networkManager;
     QMap<int, QPixmap> playerImageCache;
+    int comparisonPlayerId = -1;
 
     QListView* teamList;
     QTableView* currentTeamPlayers;
@@ -79,6 +85,9 @@ private:
     QLabel* playerMarketValue;
     QLabel* playerRating;
     QPushButton* viewHistoryButton;
+    QPushButton* selectForCompareButton;
+    QPushButton* compareWithSelectedButton;
+    QPushButton* clearComparisonButton;
 
     QWidget* playerDetailsWidget;
 
