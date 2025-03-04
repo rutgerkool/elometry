@@ -30,6 +30,8 @@ public:
     }
     
     std::vector<std::pair<int, double>> getRecentRatingProgression(int playerId, int maxGames = 10);
+
+    std::vector<Player> getAllPlayers();
 };
 
 #endif

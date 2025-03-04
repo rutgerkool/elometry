@@ -69,3 +69,16 @@ std::vector<std::pair<int, double>> RatingManager::getRecentRatingProgression(in
     
     return progression;
 }
+
+std::vector<Player> RatingManager::getAllPlayers() {
+    std::vector<std::pair<int, Player>> ratedPairs = getSortedRatedPlayers();
+    
+    std::vector<Player> result;
+    result.reserve(ratedPairs.size());
+    
+    for (const auto& pair : ratedPairs) {
+        result.push_back(pair.second);
+    }
+    
+    return result;
+}

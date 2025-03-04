@@ -24,7 +24,7 @@
 #include <QGraphicsOpacityEffect>
 #include "utils/database/repositories/ClubRepository.h"
 #include "services/TeamManager.h"
-#include "gui/models/Models.h"
+#include "gui/models/TeamListModel.h"
 
 class TeamManagerView : public QWidget {
     Q_OBJECT
@@ -50,6 +50,7 @@ private slots:
     void animateTeamView();
     void animatePlayerDetails();
     void showPlayerHistory();
+    void searchAndAddPlayers();
 
 private:
     TeamManager& teamManager;
@@ -69,6 +70,7 @@ private:
     QPushButton* editTeamNameButton;
     QLineEdit* teamNameInput;
     QSpinBox* budgetInput;
+    QPushButton* addPlayersButton;
 
     QLabel* playerImage;
     QLabel* playerName;

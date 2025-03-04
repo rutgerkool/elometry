@@ -1,5 +1,5 @@
 #include "gui/views/PlayerListView.h"
-#include "gui/models/Models.h"
+#include "gui/models/PlayerListModel.h"
 #include "gui/components/PlayerHistoryDialog.h"
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>
