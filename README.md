@@ -10,6 +10,7 @@ It is developed in C++ with CMake as the build system.
 - Calculate player ratings based on match performances
 - Adaptive rating system
 - Interactive rating history dialog with performance stats
+- Comparison functionality to analyze difference in performance between players
 
 ![Player Ratings Demo](img/player-list.gif)
 
