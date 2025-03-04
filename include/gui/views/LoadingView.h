@@ -24,6 +24,16 @@ signals:
     void loadingFinished();
 
 private:
+    void setupUi();
+    void createLayout();
+    void setupAppNameLabel();
+    void setupProgressBar();
+    void setupStatusLabel();
+    void setupAnimations();
+    void setupProgressAnimation();
+    void setupStatusAnimation();
+    void setupAppNameAnimation();
+    
     QLabel* statusLabel;
     QLabel* appNameLabel;
     QProgressBar* progressBar;
@@ -32,9 +42,6 @@ private:
     QPropertyAnimation* statusOpacityAnimation;
     QGraphicsOpacityEffect* statusOpacityEffect;
     QPropertyAnimation* appNameAnimation;
-    
-    void setupUi();
-    void setupAnimations();
 };
 
 #endif
