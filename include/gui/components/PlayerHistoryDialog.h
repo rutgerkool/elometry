@@ -34,6 +34,21 @@ private slots:
     void animateContent();
 
 private:
+    void initializeUI();
+    void loadPlayerData();
+    void setupTitle();
+    void setupPlayerInfo();
+    void setupChartView();
+    void setupTableView();
+    void setupAnimations();
+    void centerDialog(QWidget* parent);
+    void createTable();
+    void populateTable();
+    void configureChartAppearance();
+    void createChartSeries(QLineSeries* series, QScatterSeries* pointSeries);
+    void setupChartAxes(QLineSeries* series, QScatterSeries* pointSeries, 
+                      double minRating, double maxRating, QDateTimeAxis* axisX, QValueAxis* axisY);
+
     RatingManager& ratingManager;
     int playerId;
     Player player;

@@ -21,6 +21,19 @@ PlayerHistoryDialog::PlayerHistoryDialog(RatingManager& rm, int pId, QWidget* pa
     resize(900, 700);
     setModal(true);
     
+    loadPlayerData();
+    initializeUI();
+    setupAnimations();
+    setupHistoryChart();
+    setupHistoryTable();
+    centerDialog(parent);
+    
+    QTimer::singleShot(100, this, &PlayerHistoryDialog::animateContent);
+}
+
+PlayerHistoryDialog::~PlayerHistoryDialog() {}
+
+void PlayerHistoryDialog::loadPlayerData() {
     auto allPlayers = ratingManager.getSortedRatedPlayers();
     bool playerFound = false;
     
@@ -39,11 +52,24 @@ PlayerHistoryDialog::PlayerHistoryDialog(RatingManager& rm, int pId, QWidget* pa
     
     playerHistory = ratingManager.getPlayerRatingHistory(playerId, 10);
     ratingProgression = ratingManager.getRecentRatingProgression(playerId, 10);
-    
+}
+
+void PlayerHistoryDialog::initializeUI() {
     mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(20);
     mainLayout->setContentsMargins(20, 20, 20, 20);
     
+    setupTitle();
+    setupPlayerInfo();
+    setupChartView();
+    setupTableView();
+    
+    closeButton = new QPushButton("Close", this);
+    connect(closeButton, &QPushButton::clicked, this, &QDialog::accept);
+    mainLayout->addWidget(closeButton, 0, Qt::AlignCenter);
+}
+
+void PlayerHistoryDialog::setupTitle() {
     titleLabel = new QLabel(QString("Rating History for %1").arg(QString::fromStdString(player.name)), this);
     QFont titleFont = titleLabel->font();
     titleFont.setPointSize(14);
@@ -51,14 +77,18 @@ PlayerHistoryDialog::PlayerHistoryDialog(RatingManager& rm, int pId, QWidget* pa
     titleLabel->setFont(titleFont);
     titleLabel->setAlignment(Qt::AlignCenter);
     mainLayout->addWidget(titleLabel);
-    
+}
+
+void PlayerHistoryDialog::setupPlayerInfo() {
     playerInfoLabel = new QLabel(QString("Club: %1 | Position: %2 | Current Rating: %3")
                                .arg(QString::fromStdString(player.clubName))
                                .arg(QString::fromStdString(player.position))
                                .arg(player.rating, 0, 'f', 1), this);
     playerInfoLabel->setAlignment(Qt::AlignCenter);
     mainLayout->addWidget(playerInfoLabel);
-    
+}
+
+void PlayerHistoryDialog::setupChartView() {
     chart = new QChart();
     chart->setTitle("Rating Progression");
     chart->setTitleBrush(QBrush(Qt::white));
@@ -70,7 +100,9 @@ PlayerHistoryDialog::PlayerHistoryDialog(RatingManager& rm, int pId, QWidget* pa
     chartView->setMinimumHeight(300);
     
     mainLayout->addWidget(chartView);
-    
+}
+
+void PlayerHistoryDialog::setupTableView() {
     historyTable = new QTableView(this);
     historyTable->setMinimumHeight(200);
     historyTable->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -78,11 +110,9 @@ PlayerHistoryDialog::PlayerHistoryDialog(RatingManager& rm, int pId, QWidget* pa
     historyTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     
     mainLayout->addWidget(historyTable);
-    
-    closeButton = new QPushButton("Close", this);
-    connect(closeButton, &QPushButton::clicked, this, &QDialog::accept);
-    mainLayout->addWidget(closeButton, 0, Qt::AlignCenter);
-    
+}
+
+void PlayerHistoryDialog::setupAnimations() {
     chartOpacityEffect = new QGraphicsOpacityEffect(chartView);
     chartView->setGraphicsEffect(chartOpacityEffect);
     chartOpacityEffect->setOpacity(0.0);
@@ -106,10 +136,9 @@ PlayerHistoryDialog::PlayerHistoryDialog(RatingManager& rm, int pId, QWidget* pa
     animationGroup = new QParallelAnimationGroup(this);
     animationGroup->addAnimation(chartAnimation);
     animationGroup->addAnimation(tableAnimation);
-    
-    setupHistoryChart();
-    setupHistoryTable();
-    
+}
+
+void PlayerHistoryDialog::centerDialog(QWidget* parent) {
     if (parent) {
         QWidget* parentWidget = qobject_cast<QWidget*>(parent);
         if (parentWidget) {
@@ -126,14 +155,9 @@ PlayerHistoryDialog::PlayerHistoryDialog(RatingManager& rm, int pId, QWidget* pa
             move(screenGeometry.center() - rect().center());
         }
     }
-    
-    QTimer::singleShot(100, this, &PlayerHistoryDialog::animateContent);
 }
 
-PlayerHistoryDialog::~PlayerHistoryDialog() {}
-
-void PlayerHistoryDialog::setupHistoryTable()
-{
+void PlayerHistoryDialog::createTable() {
     if (tableModel) {
         delete tableModel;
     }
@@ -143,7 +167,9 @@ void PlayerHistoryDialog::setupHistoryTable()
     QStringList headers;
     headers << "Date" << "Opponent" << "Rating" << "Change" << "Minutes" << "Goals" << "Assists";
     tableModel->setHorizontalHeaderLabels(headers);
-    
+}
+
+void PlayerHistoryDialog::populateTable() {
     for (const auto& change : playerHistory) {
         QList<QStandardItem*> row;
         
@@ -178,8 +204,12 @@ void PlayerHistoryDialog::setupHistoryTable()
     historyTable->verticalHeader()->setVisible(false);
 }
 
-void PlayerHistoryDialog::setupHistoryChart()
-{
+void PlayerHistoryDialog::setupHistoryTable() {
+    createTable();
+    populateTable();
+}
+
+void PlayerHistoryDialog::configureChartAppearance() {
     chart->removeAllSeries();
     
     chart->setBackgroundBrush(QBrush(QColor(0x25, 0x25, 0x25)));
@@ -188,23 +218,32 @@ void PlayerHistoryDialog::setupHistoryChart()
     chart->setTitleBrush(QBrush(Qt::white));
     chart->setTitleFont(QFont("Segoe UI", 14, QFont::Bold));
     
-    QLineSeries* series = new QLineSeries();
+    chart->legend()->setLabelColor(Qt::white);
+    chart->legend()->setBackgroundVisible(false);
+    chart->legend()->setFont(QFont("Segoe UI", 10));
+}
+
+void PlayerHistoryDialog::createChartSeries(QLineSeries* series, QScatterSeries* pointSeries)
+{
     series->setName("Rating");
     series->setColor(QColor(0x0c, 0x7b, 0xb3));
     series->setPen(QPen(QColor(0x0c, 0x7b, 0xb3), 3));
 
-    QScatterSeries* pointSeries = new QScatterSeries();
     pointSeries->setMarkerSize(10);
     pointSeries->setName("Games");
     pointSeries->setColor(QColor(0x2e, 0xa0, 0x43));
     pointSeries->setBorderColor(Qt::white);
     pointSeries->setMarkerShape(QScatterSeries::MarkerShapeCircle);
+}
 
-    chart->legend()->setLabelColor(Qt::white);
-    chart->legend()->setBackgroundVisible(false);
-    chart->legend()->setFont(QFont("Segoe UI", 10));
-    
-    QDateTimeAxis* axisX = new QDateTimeAxis();
+void PlayerHistoryDialog::setupChartAxes(
+    QLineSeries* series, 
+    QScatterSeries* pointSeries, 
+    double minRating, 
+    double maxRating, 
+    QDateTimeAxis* axisX, 
+    QValueAxis* axisY
+) {
     axisX->setTickCount(ratingProgression.size() > 5 ? 5 : ratingProgression.size());
     axisX->setFormat("MMM dd");
     axisX->setTitleText("Date");
@@ -213,6 +252,41 @@ void PlayerHistoryDialog::setupHistoryChart()
     axisX->setGridLineColor(QColor(0x3d, 0x3d, 0x3d));
     axisX->setLinePenColor(QColor(0x3d, 0x3d, 0x3d));
     
+    double padding = (maxRating - minRating) * 0.1;
+    if (padding < 10) padding = 10;
+    
+    minRating = std::max(0.0, minRating - padding);
+    maxRating = maxRating + padding;
+    
+    axisY->setRange(minRating, maxRating);
+    axisY->setLabelFormat("%.1f");
+    axisY->setTickCount(5);
+    axisY->setTitleText("Rating");
+    axisY->setLabelsColor(Qt::white);
+    axisY->setTitleBrush(QBrush(Qt::white));
+    axisY->setGridLineColor(QColor(0x3d, 0x3d, 0x3d));
+    axisY->setLinePenColor(QColor(0x3d, 0x3d, 0x3d));
+    
+    chart->addSeries(series);
+    chart->addSeries(pointSeries);
+    chart->addAxis(axisX, Qt::AlignBottom);
+    chart->addAxis(axisY, Qt::AlignLeft);
+    
+    series->attachAxis(axisX);
+    series->attachAxis(axisY);
+    pointSeries->attachAxis(axisX);
+    pointSeries->attachAxis(axisY);
+}
+
+void PlayerHistoryDialog::setupHistoryChart() {
+    configureChartAppearance();
+    
+    QLineSeries* series = new QLineSeries();
+    QScatterSeries* pointSeries = new QScatterSeries();
+    
+    createChartSeries(series, pointSeries);
+    
+    QDateTimeAxis* axisX = new QDateTimeAxis();
     QValueAxis* axisY = new QValueAxis();
     
     double minRating = 0;
@@ -245,33 +319,9 @@ void PlayerHistoryDialog::setupHistoryChart()
         }
     }
     
-    double padding = (maxRating - minRating) * 0.1;
-    if (padding < 10) padding = 10;
-    
-    minRating = std::max(0.0, minRating - padding);
-    maxRating = maxRating + padding;
-    
-    axisY->setRange(minRating, maxRating);
-    axisY->setLabelFormat("%.1f");
-    axisY->setTickCount(5);
-    axisY->setTitleText("Rating");
-    axisY->setLabelsColor(Qt::white);
-    axisY->setTitleBrush(QBrush(Qt::white));
-    axisY->setGridLineColor(QColor(0x3d, 0x3d, 0x3d));
-    axisY->setLinePenColor(QColor(0x3d, 0x3d, 0x3d));
-    
-    chart->addSeries(series);
-    chart->addSeries(pointSeries);
-    chart->addAxis(axisX, Qt::AlignBottom);
-    chart->addAxis(axisY, Qt::AlignLeft);
-    
-    series->attachAxis(axisX);
-    series->attachAxis(axisY);
-    pointSeries->attachAxis(axisX);
-    pointSeries->attachAxis(axisY);
+    setupChartAxes(series, pointSeries, minRating, maxRating, axisX, axisY);
 }
 
-void PlayerHistoryDialog::animateContent()
-{
+void PlayerHistoryDialog::animateContent() {
     animationGroup->start();
 }

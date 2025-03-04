@@ -37,8 +37,7 @@ PlayerComparisonDialog::PlayerComparisonDialog(RatingManager& rm, int pId1, int 
 
 PlayerComparisonDialog::~PlayerComparisonDialog() {}
 
-void PlayerComparisonDialog::initializeUI()
-{
+void PlayerComparisonDialog::initializeUI() {
     chart = new QChart();
     chartView = new QChartView(chart, this);
     
@@ -56,8 +55,7 @@ void PlayerComparisonDialog::initializeUI()
     chartView->setMinimumHeight(250);
 }
 
-void PlayerComparisonDialog::loadPlayerData()
-{
+void PlayerComparisonDialog::loadPlayerData() {
     auto allPlayers = ratingManager.getSortedRatedPlayers();
     bool player1Found = false;
     bool player2Found = false;
@@ -84,8 +82,7 @@ void PlayerComparisonDialog::loadPlayerData()
     rating2Progression = ratingManager.getRecentRatingProgression(playerId2, 10);
 }
 
-void PlayerComparisonDialog::createPlayerInfoLayouts()
-{
+void PlayerComparisonDialog::createPlayerInfoLayouts() {
     QHBoxLayout* playerInfoLayout = new QHBoxLayout();
     playerInfoLayout->setSpacing(20);
     
@@ -141,8 +138,7 @@ void PlayerComparisonDialog::createPlayerInfoLayouts()
     mainLayout->addLayout(playerInfoLayout);
 }
 
-void PlayerComparisonDialog::createTableLayouts()
-{
+void PlayerComparisonDialog::createTableLayouts() {
     QHBoxLayout* tablesLayout = new QHBoxLayout();
     
     QTableView* table1 = new QTableView(this);
@@ -175,8 +171,7 @@ void PlayerComparisonDialog::createTableLayouts()
     mainLayout->addLayout(tablesLayout);
 }
 
-void PlayerComparisonDialog::createButtonLayout()
-{
+void PlayerComparisonDialog::createButtonLayout() {
     closeButton = new QPushButton("Close", this);
     closeButton->setCursor(Qt::PointingHandCursor);
     closeButton->setMinimumWidth(120);
@@ -191,8 +186,7 @@ void PlayerComparisonDialog::createButtonLayout()
     mainLayout->addLayout(buttonLayout);
 }
 
-void PlayerComparisonDialog::centerDialogOnScreen(QWidget* parent)
-{
+void PlayerComparisonDialog::centerDialogOnScreen(QWidget* parent) {
     if (parent) {
         QWidget* parentWidget = qobject_cast<QWidget*>(parent);
         if (parentWidget) {
@@ -211,8 +205,7 @@ void PlayerComparisonDialog::centerDialogOnScreen(QWidget* parent)
     }
 }
 
-void PlayerComparisonDialog::setupPlayerTable(QTableView* table, const std::vector<RatingChange>& playerHistory)
-{
+void PlayerComparisonDialog::setupPlayerTable(QTableView* table, const std::vector<RatingChange>& playerHistory) {
     QStandardItemModel* model = new QStandardItemModel(this);
     
     QStringList headers = {"Date", "Rating", "Change"};
@@ -296,8 +289,7 @@ void PlayerComparisonDialog::addSeriesToChart(QLineSeries* series1, QLineSeries*
     series2->attachAxis(axisY);
 }
 
-void PlayerComparisonDialog::setupComparisonChart()
-{
+void PlayerComparisonDialog::setupComparisonChart() {
     chart->removeAllSeries();
 
     if (rating1Progression.empty() || rating2Progression.empty()) {
