@@ -27,9 +27,14 @@ double PlayerRating::updateRating(double currentRating, double expected, double 
     return currentRating + kFactor * performanceFactor * (actual - expected);
 }
 
-void PlayerRating::processMatch(const Game& game, const std::vector<PlayerAppearance>& appearances) {
-    double homeTeamRating = 0.0, awayTeamRating = 0.0;
+void PlayerRating::calculateTeamRatings(
+    const Game& game, const std::vector<PlayerAppearance>& appearances,
+    double& homeTeamRating, 
+    double& awayTeamRating
+) {
     int homeCount = 0, awayCount = 0;
+    homeTeamRating = 0.0;
+    awayTeamRating = 0.0;
 
     for (const auto& player : appearances) {
         if (player.clubId == game.homeClubId) {
@@ -45,68 +50,115 @@ void PlayerRating::processMatch(const Game& game, const std::vector<PlayerAppear
         homeTeamRating /= homeCount;
     if (awayCount > 0)
         awayTeamRating /= awayCount;
+}
 
-    double homeExpected = calculateExpectation(homeTeamRating + homeAdvantage, awayTeamRating);
-    double awayExpected = calculateExpectation(awayTeamRating, homeTeamRating + homeAdvantage);
+void PlayerRating::calculateMatchExpectations(double homeTeamRating, double awayTeamRating, double& homeExpected, double& awayExpected) {
+    homeExpected = calculateExpectation(homeTeamRating + homeAdvantage, awayTeamRating);
+    awayExpected = calculateExpectation(awayTeamRating, homeTeamRating + homeAdvantage);
+}
 
-    double homeActual = game.homeGoals > game.awayGoals ? 1.0 : (game.homeGoals == game.awayGoals ? 0.5 : 0.0);
+double PlayerRating::calculateActualResult(int homeGoals, int awayGoals) {
+    if (homeGoals > awayGoals) return 1.0;
+    if (homeGoals == awayGoals) return 0.5;
+    return 0.0;
+}
+
+double PlayerRating::calculateMatchImpact(double kFactor, int minutesPlayed, int goalDifference, double actual, double expected) {
+    return kFactor * (static_cast<double>(minutesPlayed) / 90.0) * 
+           (1.0 + static_cast<double>(goalDifference) / 5.0) * 
+           (actual - expected);
+}
+
+void PlayerRating::createRatingChangeRecord(
+    const PlayerAppearance& player,
+    const Game& game,
+    double previousRating,
+    double newRating,
+    double expected,
+    double actual
+) {
+    bool isHomeGame = player.clubId == game.homeClubId;
+    int goalDifference = isHomeGame ? (game.homeGoals - game.awayGoals) : (game.awayGoals - game.homeGoals);
+    std::string opponent = isHomeGame ? game.awayClubName : game.homeClubName;
+    
+    double matchImpact = calculateMatchImpact(kFactor, player.minutesPlayed, std::abs(goalDifference), actual, expected);
+
+    RatingChange change;
+    change.gameId = game.gameId;
+    change.previousRating = previousRating;
+    change.newRating = newRating;
+    change.opponent = opponent;
+    change.isHomeGame = isHomeGame;
+    change.minutesPlayed = player.minutesPlayed;
+    change.goalDifference = goalDifference;
+    change.matchImpact = matchImpact;
+    change.goals = player.goals;
+    change.assists = player.assists;
+    change.date = game.date;
+    
+    ratingHistory[player.playerId].push_back(change);
+    
+    if (ratingHistory[player.playerId].size() > MAX_HISTORY_SIZE) {
+        ratingHistory[player.playerId].pop_front();
+    }
+}
+
+void PlayerRating::updatePlayerRating(const PlayerAppearance& player, const Game& game, double expected, double actual) {
+    double previousRating = ratedPlayers[player.playerId].rating;
+    bool isHomeGame = player.clubId == game.homeClubId;
+    int goalDifference = isHomeGame ? (game.homeGoals - game.awayGoals) : (game.awayGoals - game.homeGoals);
+    
+    double newRating = updateRating(previousRating, expected, actual, player.minutesPlayed, std::abs(goalDifference));
+    
+    #pragma omp critical
+    {
+        ratedPlayers[player.playerId].rating = newRating;
+        ratedPlayers[player.playerId].minutesPlayed += player.minutesPlayed;
+        
+        createRatingChangeRecord(player, game, previousRating, newRating, expected, actual);
+    }
+}
+
+void PlayerRating::processMatch(const Game& game, const std::vector<PlayerAppearance>& appearances) {
+    double homeTeamRating, awayTeamRating;
+    calculateTeamRatings(game, appearances, homeTeamRating, awayTeamRating);
+    
+    double homeExpected, awayExpected;
+    calculateMatchExpectations(homeTeamRating, awayTeamRating, homeExpected, awayExpected);
+    
+    double homeActual = calculateActualResult(game.homeGoals, game.awayGoals);
     double awayActual = 1.0 - homeActual;
 
     for (const auto& player : appearances) {
         double expected = player.clubId == game.homeClubId ? homeExpected : awayExpected;
         double actual = player.clubId == game.homeClubId ? homeActual : awayActual;
         
-        bool isHomeGame = player.clubId == game.homeClubId;
-        int goalDifference = isHomeGame ? (game.homeGoals - game.awayGoals) : (game.awayGoals - game.homeGoals);
-        std::string opponent = isHomeGame ? game.awayClubName : game.homeClubName;
-        
-        double previousRating = ratedPlayers[player.playerId].rating;
-        double newRating = updateRating(previousRating, expected, actual, player.minutesPlayed, std::abs(goalDifference));
-        double matchImpact = kFactor * (static_cast<double>(player.minutesPlayed) / 90.0) * 
-                            (1.0 + static_cast<double>(std::abs(goalDifference)) / 5.0) * 
-                            (actual - expected);
-
-        #pragma omp critical
-        {
-            ratedPlayers[player.playerId].rating = newRating;
-            ratedPlayers[player.playerId].minutesPlayed += player.minutesPlayed;
-            
-            RatingChange change;
-            change.gameId = game.gameId;
-            change.previousRating = previousRating;
-            change.newRating = newRating;
-            change.opponent = opponent;
-            change.isHomeGame = isHomeGame;
-            change.minutesPlayed = player.minutesPlayed;
-            change.goalDifference = goalDifference;
-            change.matchImpact = matchImpact;
-            change.goals = player.goals;
-            change.assists = player.assists;
-            change.date = game.date;
-            
-            ratingHistory[player.playerId].push_back(change);
-            
-            if (ratingHistory[player.playerId].size() > MAX_HISTORY_SIZE) {
-                ratingHistory[player.playerId].pop_front();
-            }
-        }
+        updatePlayerRating(player, game, expected, actual);
     }
 }
 
-
-void PlayerRating::processMatchesParallel(const std::vector<Game>& games, const std::vector<PlayerAppearance>& appearances) {
-    std::unordered_map<int, std::vector<PlayerAppearance>> gameAppearances;
-
+void PlayerRating::groupAppearancesByGame(const std::vector<PlayerAppearance>& appearances,
+                                      std::unordered_map<int, std::vector<PlayerAppearance>>& gameAppearances) {
     for (const auto& appearance : appearances) {
         if (ratedPlayers.find(appearance.playerId) != ratedPlayers.end()) {
             gameAppearances[appearance.gameId].push_back(appearance);
         }
     }
+}
 
-    std::vector<Game> sortedGames = games;
+void PlayerRating::sortGamesByDate(const std::vector<Game>& games, std::vector<Game>& sortedGames) {
+    sortedGames = games;
     std::sort(sortedGames.begin(), sortedGames.end(), [](const Game& a, const Game& b) {
         return a.date < b.date;
     });
+}
+
+void PlayerRating::processMatchesParallel(const std::vector<Game>& games, const std::vector<PlayerAppearance>& appearances) {
+    std::unordered_map<int, std::vector<PlayerAppearance>> gameAppearances;
+    groupAppearancesByGame(appearances, gameAppearances);
+
+    std::vector<Game> sortedGames;
+    sortGamesByDate(games, sortedGames);
 
     #pragma omp parallel for ordered
     for (int i = 0; i < sortedGames.size(); ++i) {

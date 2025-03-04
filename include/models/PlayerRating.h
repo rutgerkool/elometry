@@ -38,6 +38,14 @@ class PlayerRating {
         std::vector<RatingChange> getPlayerRatingHistory(int playerId, int maxGames = 10);
 
     private:
+        void calculateTeamRatings(const Game& game, const std::vector<PlayerAppearance>& appearances, double& homeTeamRating, double& awayTeamRating);
+        void calculateMatchExpectations(double homeTeamRating, double awayTeamRating, double& homeExpected, double& awayExpected);
+        double calculateActualResult(int homeGoals, int awayGoals);
+        void updatePlayerRating(const PlayerAppearance& player, const Game& game,double expected, double actual);
+        void createRatingChangeRecord(const PlayerAppearance& player, const Game& game, double previousRating, double newRating, double expected, double actual);
+        double calculateMatchImpact(double kFactor, int minutesPlayed, int goalDifference, double actual, double expected);
+        void groupAppearancesByGame(const std::vector<PlayerAppearance>& appearances, std::unordered_map<int, std::vector<PlayerAppearance>>& gameAppearances);
+        void sortGamesByDate(const std::vector<Game>& games, std::vector<Game>& sortedGames);
         std::unordered_map<PlayerId, Player> ratedPlayers;
         std::unordered_map<PlayerId, std::deque<RatingChange>> ratingHistory;
         double kFactor;
