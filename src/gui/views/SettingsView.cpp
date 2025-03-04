@@ -12,6 +12,7 @@ SettingsView::SettingsView(Database& db, QWidget *parent)
 {
     setupUi();
     setupAnimations();
+    setupConnections();
 
     usernameLineEdit->setText(QString::fromStdString(database.getKaggleUsername()));
     keyLineEdit->setText(QString::fromStdString(database.getKaggleKey()));
@@ -34,12 +35,26 @@ void SettingsView::setupUi() {
     formWidget->setMinimumWidth(500);
     formWidget->setMaximumWidth(600);
     
+    createFormLayout();
+
+    mainLayout->addStretch();
+    mainLayout->addWidget(formWidget);
+    mainLayout->addStretch();
+}
+
+void SettingsView::createFormLayout() {
     QFormLayout* formLayout = new QFormLayout(formWidget);
     formLayout->setLabelAlignment(Qt::AlignRight);
     formLayout->setFormAlignment(Qt::AlignHCenter | Qt::AlignTop);
     formLayout->setHorizontalSpacing(20);
     formLayout->setVerticalSpacing(20);
 
+    createFormHeader(formLayout);
+    createFormFields(formLayout);
+    createFormButtons(formLayout);
+}
+
+void SettingsView::createFormHeader(QFormLayout* formLayout) {
     QLabel* headerLabel = new QLabel("Settings", formWidget);
     headerLabel->setStyleSheet("font-size: 24px; font-weight: bold; color: #0c7bb3; margin-bottom: 20px;");
     headerLabel->setAlignment(Qt::AlignCenter);
@@ -52,7 +67,9 @@ void SettingsView::setupUi() {
     explanationLabel->setAlignment(Qt::AlignJustify);
     explanationLabel->setStyleSheet("color: #a0a0a0; margin: 15px 0;");
     formLayout->addRow(explanationLabel);
+}
 
+void SettingsView::createFormFields(QFormLayout* formLayout) {
     usernameLineEdit = new QLineEdit(formWidget);
     usernameLineEdit->setStyleSheet("padding: 8px; border-radius: 4px; background-color: #252525; color: #e0e0e0;");
     QLabel* usernameLabel = new QLabel("Kaggle Username:", formWidget);
@@ -65,23 +82,27 @@ void SettingsView::setupUi() {
     QLabel* keyLabel = new QLabel("Kaggle Key:", formWidget);
     keyLabel->setStyleSheet("font-weight: bold; color: #e0e0e0;");
     formLayout->addRow(keyLabel, keyLineEdit);
+}
 
+void SettingsView::createFormButtons(QFormLayout* formLayout) {
     QHBoxLayout* buttonLayout = new QHBoxLayout();
     saveButton = new QPushButton("Save Settings", formWidget);
     saveButton->setStyleSheet("padding: 10px 20px;");
     buttonLayout->addStretch();
     buttonLayout->addWidget(saveButton);
     formLayout->addRow(buttonLayout);
+}
 
-    mainLayout->addStretch();
-    mainLayout->addWidget(formWidget);
-    mainLayout->addStretch();
-
+void SettingsView::setupConnections() {
     connect(saveButton, &QPushButton::clicked, this, &SettingsView::saveSettings);
     connect(backButton, &QPushButton::clicked, this, &SettingsView::backToMain);
 }
 
 void SettingsView::setupAnimations() {
+    setupFormAnimations();
+}
+
+void SettingsView::setupFormAnimations() {
     formOpacityEffect = new QGraphicsOpacityEffect(formWidget);
     formWidget->setGraphicsEffect(formOpacityEffect);
     formOpacityEffect->setOpacity(0.0);
@@ -111,12 +132,7 @@ void SettingsView::animateForm() {
     formAnimationGroup->start();
 }
 
-void SettingsView::saveSettings() {
-    QString updatedUsername = usernameLineEdit->text();
-    QString updatedKey = keyLineEdit->text();
-
-    database.setKaggleCredentials(updatedUsername.toStdString(), updatedKey.toStdString());
-
+void SettingsView::showSuccessMessage() {
     QMessageBox msgBox;
     msgBox.setWindowTitle("Settings Saved");
     msgBox.setText("Kaggle credentials have been saved successfully.");
@@ -133,4 +149,12 @@ void SettingsView::saveSettings() {
     );
     
     msgBox.exec();
+}
+
+void SettingsView::saveSettings() {
+    QString updatedUsername = usernameLineEdit->text();
+    QString updatedKey = keyLineEdit->text();
+
+    database.setKaggleCredentials(updatedUsername.toStdString(), updatedKey.toStdString());
+    showSuccessMessage();
 }

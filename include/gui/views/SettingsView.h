@@ -7,6 +7,7 @@
 #include <QPropertyAnimation>
 #include <QGraphicsOpacityEffect>
 #include <QParallelAnimationGroup>
+#include <QtWidgets/QFormLayout>
 #include "utils/database/Database.h"
 
 class SettingsView : public QWidget {
@@ -23,6 +24,17 @@ private slots:
     void saveSettings();
 
 private:
+    void setupUi();
+    void createFormLayout();
+    void createFormHeader(QFormLayout* formLayout);
+    void createFormFields(QFormLayout* formLayout);
+    void createFormButtons(QFormLayout* formLayout);
+    void setupConnections();
+    void setupAnimations();
+    void setupFormAnimations();
+    void animateForm();
+    void showSuccessMessage();
+
     Database& database;
     QLineEdit* usernameLineEdit;
     QLineEdit* keyLineEdit;
@@ -34,10 +46,6 @@ private:
     QPropertyAnimation* formOpacityAnimation;
     QPropertyAnimation* formSlideAnimation;
     QParallelAnimationGroup* formAnimationGroup;
-    
-    void setupUi();
-    void setupAnimations();
-    void animateForm();
 };
 
 #endif
