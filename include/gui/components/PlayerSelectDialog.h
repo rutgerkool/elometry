@@ -38,6 +38,21 @@ private slots:
     void loadMorePlayersIfNeeded();
 
 private:
+    void setupUi();
+    void setupTitleAndLabels();
+    void setupSearchControls();
+    void setupTableView();
+    void setupButtons();
+    void setupConnections();
+    void setupScrollConnections();
+    void setupTableConnections();
+    void initializePositionFilter();
+    void updatePlayerList();
+    void configureTableColumns();
+    void selectCurrentTeamPlayers();
+    void createNewModel();
+    QHBoxLayout* createSearchLayout();
+
     TeamManager& teamManager;
     PlayerSelectModel* playersModel;
     Team* currentTeam;
@@ -55,11 +70,6 @@ private:
     int currentOffset = 0;
     const int pageSize = 20;
     bool isLoading = false;
-
-    void setupUi();
-    void setupConnections();
-    void initializePositionFilter();
-    void updatePlayerList();
 };
 
 #endif

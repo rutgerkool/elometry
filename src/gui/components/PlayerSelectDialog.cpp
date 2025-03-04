@@ -20,10 +20,7 @@ PlayerSelectDialog::PlayerSelectDialog(TeamManager& tm, Team* currentTeam, QWidg
     updatePlayerList();
     
     if (currentTeam) {
-        for (const auto& player : currentTeam->players) {
-            playersModel->selectPlayer(player.playerId);
-        }
-        updateSelectionInfo();
+        selectCurrentTeamPlayers();
     }
     
     setWindowTitle("Select Players");
@@ -35,15 +32,49 @@ void PlayerSelectDialog::setupUi() {
     mainLayout->setSpacing(10);
     mainLayout->setContentsMargins(15, 15, 15, 15);
     
+    setupTitleAndLabels();
+    setupSearchControls();
+    setupTableView();
+    setupButtons();
+    
+    mainLayout->addWidget(titleLabel);
+    mainLayout->addWidget(selectionInfoLabel);
+    mainLayout->addLayout(createSearchLayout());
+    mainLayout->addWidget(instructionLabel);
+    mainLayout->addWidget(playersTable, 1);
+    mainLayout->addWidget(loadingIndicator);
+    mainLayout->addWidget(buttonBox);
+}
+
+void PlayerSelectDialog::setupTitleAndLabels() {
     titleLabel = new QLabel("Player Search", this);
     titleLabel->setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #e0e0e0;");
     
     selectionInfoLabel = new QLabel("Selected: 0 players", this);
     selectionInfoLabel->setStyleSheet("font-weight: bold; color: #e0e0e0;");
     
+    instructionLabel = new QLabel(
+        "Double-click on a row or checkbox to select players to add to your team", this);
+    instructionLabel->setStyleSheet("color: #b0b0b0; font-style: italic;");
+    
+    loadingIndicator = new QLabel("Loading more players...", this);
+    loadingIndicator->setStyleSheet("color: #b0b0b0; font-style: italic; padding: 5px;");
+    loadingIndicator->setAlignment(Qt::AlignCenter);
+    loadingIndicator->hide();
+}
+
+QHBoxLayout* PlayerSelectDialog::createSearchLayout() {
     QHBoxLayout* searchLayout = new QHBoxLayout();
     searchLayout->setSpacing(8);
     
+    searchLayout->addWidget(searchInput, 3);
+    searchLayout->addWidget(positionFilter, 2);
+    searchLayout->addWidget(clearButton);
+    
+    return searchLayout;
+}
+
+void PlayerSelectDialog::setupSearchControls() {
     searchInput = new QLineEdit(this);
     searchInput->setPlaceholderText("Enter player name");
     searchInput->setMinimumHeight(28);
@@ -55,11 +86,9 @@ void PlayerSelectDialog::setupUi() {
     clearButton = new QPushButton("Clear Filters", this);
     clearButton->setMinimumHeight(28);
     clearButton->setCursor(Qt::PointingHandCursor);
-    
-    searchLayout->addWidget(searchInput, 3);
-    searchLayout->addWidget(positionFilter, 2);
-    searchLayout->addWidget(clearButton);
-    
+}
+
+void PlayerSelectDialog::setupTableView() {
     playersTable = new QTableView(this);
     playersTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     playersTable->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -70,52 +99,32 @@ void PlayerSelectDialog::setupUi() {
     playersTable->setShowGrid(false);
     playersTable->setAlternatingRowColors(true);
     playersTable->horizontalHeader()->setStretchLastSection(true);
-    
-    playersTable->horizontalHeader()->setStyleSheet(
-        "QHeaderView::section {"
-        "    background-color: #2a2a2a;"
-        "    color: #e0e0e0;"
-        "    padding: 6px;"
-        "    border: none;"
-        "    border-bottom: 1px solid #3a3a3a;"
-        "    font-weight: bold;"
-        "}");
-    
-    instructionLabel = new QLabel(
-        "Double-click on a row or checkbox to select players to add to your team", this);
-    instructionLabel->setStyleSheet("color: #b0b0b0; font-style: italic;");
-    
-    loadingIndicator = new QLabel("Loading more players...", this);
-    loadingIndicator->setStyleSheet("color: #b0b0b0; font-style: italic; padding: 5px;");
-    loadingIndicator->setAlignment(Qt::AlignCenter);
-    loadingIndicator->hide();
-    
+}
+
+void PlayerSelectDialog::setupButtons() {
     buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttonBox->button(QDialogButtonBox::Ok)->setText("Add Selected Players");
     buttonBox->button(QDialogButtonBox::Ok)->setCursor(Qt::PointingHandCursor);
     buttonBox->button(QDialogButtonBox::Cancel)->setCursor(Qt::PointingHandCursor);
-    
-    mainLayout->addWidget(titleLabel);
-    mainLayout->addWidget(selectionInfoLabel);
-    mainLayout->addLayout(searchLayout);
-    mainLayout->addWidget(instructionLabel);
-    mainLayout->addWidget(playersTable, 1);
-    mainLayout->addWidget(loadingIndicator);
-    mainLayout->addWidget(buttonBox);
 }
 
 void PlayerSelectDialog::setupConnections() {
     connect(searchInput, &QLineEdit::textChanged, this, &PlayerSelectDialog::searchPlayers);
-    
     connect(positionFilter, &QComboBox::currentIndexChanged, this, &PlayerSelectDialog::positionFilterChanged);
     connect(clearButton, &QPushButton::clicked, this, &PlayerSelectDialog::clearFilters);
-    
-    connect(playersTable->verticalScrollBar(), &QScrollBar::valueChanged, 
-            this, &PlayerSelectDialog::checkScrollPosition);
-    
     connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     
+    setupScrollConnections();
+    setupTableConnections();
+}
+
+void PlayerSelectDialog::setupScrollConnections() {
+    connect(playersTable->verticalScrollBar(), &QScrollBar::valueChanged, 
+            this, &PlayerSelectDialog::checkScrollPosition);
+}
+
+void PlayerSelectDialog::setupTableConnections() {
     connect(playersTable, &QTableView::doubleClicked, this, &PlayerSelectDialog::toggleSelection);
     
     connect(playersTable, &QTableView::clicked, [this](const QModelIndex &index) {
@@ -137,9 +146,7 @@ void PlayerSelectDialog::initializePositionFilter() {
     }
 }
 
-void PlayerSelectDialog::updatePlayerList() {
-    currentOffset = 0;
-    
+void PlayerSelectDialog::createNewModel() {
     std::vector<std::pair<int, Player>> allPlayers;
     std::vector<Player> players = teamManager.getRatingManager().getAllPlayers();
     
@@ -151,31 +158,46 @@ void PlayerSelectDialog::updatePlayerList() {
     playersModel = new PlayerSelectModel(allPlayers, this);
     playersTable->setModel(playersModel);
     
-    if (currentTeam) {
-        for (const auto& player : currentTeam->players) {
-            playersModel->selectPlayer(player.playerId);
-        }
+    if (oldModel && oldModel != playersModel) {
+        delete oldModel;
     }
     
+    connect(playersModel, &QAbstractItemModel::dataChanged, this, &PlayerSelectDialog::updateSelectionInfo);
+}
+
+void PlayerSelectDialog::configureTableColumns() {
     playersTable->setColumnWidth(0, 40);
     playersTable->setColumnWidth(1, 60);
     playersTable->setColumnWidth(2, 250);
     playersTable->setColumnWidth(3, 80);
     playersTable->setColumnWidth(4, 100);
     playersTable->horizontalHeader()->setSectionResizeMode(5, QHeaderView::Stretch);
+}
+
+void PlayerSelectDialog::selectCurrentTeamPlayers() {
+    if (!currentTeam || !playersModel) return;
     
-    playersModel->setPagination(0, pageSize);
+    for (const auto& player : currentTeam->players) {
+        playersModel->selectPlayer(player.playerId);
+    }
+    updateSelectionInfo();
+}
+
+void PlayerSelectDialog::updatePlayerList() {
+    currentOffset = 0;
     
-    if (oldModel && oldModel != playersModel) {
-        delete oldModel;
+    createNewModel();
+    
+    if (currentTeam) {
+        selectCurrentTeamPlayers();
     }
     
-    connect(playersModel, &QAbstractItemModel::dataChanged, this, &PlayerSelectDialog::updateSelectionInfo);
+    configureTableColumns();
     
+    playersModel->setPagination(0, pageSize);
     updateSelectionInfo();
     
     playersTable->horizontalHeader()->setSortIndicator(0, Qt::DescendingOrder);
-    
     playersTable->verticalScrollBar()->setValue(0);
 }
 
