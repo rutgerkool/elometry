@@ -57,6 +57,7 @@ private slots:
     void clearComparisonSelection();
     void showPlayerComparison();
     void updateComparisonButtons();
+    void hidePlayerDetails();
 
 private:
     void setupUi();

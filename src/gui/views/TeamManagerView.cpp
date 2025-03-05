@@ -36,6 +36,7 @@ TeamManagerView::TeamManagerView(TeamManager& tm, QWidget *parent)
     teamManager.loadTeams();
     model->refresh();
     updateTeamInfo();
+    playerDetailsOpacityEffect->setOpacity(0.0);
     animateTeamView();
 }
 
@@ -402,6 +403,8 @@ void TeamManagerView::loadSelectedTeam() {
     QModelIndex index = teamList->currentIndex();
     if (!index.isValid()) return;
 
+    hidePlayerDetails();
+
     try {
         int teamId = model->data(index, Qt::UserRole).toInt();
         Team& selectedTeam = teamManager.loadTeam(teamId);
@@ -595,16 +598,7 @@ void TeamManagerView::removeSelectedPlayer() {
     teamManager.saveTeamPlayers(*currentTeam);
     updateTeamInfo();
 
-    playerName->clear();
-    playerClub->clear();
-    playerPosition->clear();
-    playerMarketValue->clear();
-    playerRating->clear();
-    playerImage->clear();
-    viewHistoryButton->setEnabled(false);
-    selectForCompareButton->setEnabled(false);
-    compareWithSelectedButton->setEnabled(false);
-    clearComparisonButton->setEnabled(false);
+    hidePlayerDetails();
 }
 
 void TeamManagerView::editTeamName() {
@@ -735,6 +729,8 @@ void TeamManagerView::deleteSelectedTeam() {
             model->refresh();
             currentTeam = nullptr;
             updateTeamInfo();
+            
+            hidePlayerDetails();
         } catch (const std::exception& e) {
             QMessageBox::critical(this, "Error", QString("Failed to delete team: %1").arg(e.what()));
         }
@@ -848,4 +844,33 @@ void TeamManagerView::updateComparisonButtons() {
         clearComparisonButton->setVisible(true);
         clearComparisonButton->setEnabled(true);
     }
+}
+
+void TeamManagerView::hidePlayerDetails() {
+    playerName->clear();
+    playerClub->clear();
+    playerPosition->clear();
+    playerMarketValue->clear();
+    playerRating->clear();
+    playerImage->clear();
+    
+    viewHistoryButton->setEnabled(false);
+    selectForCompareButton->setEnabled(false);
+    compareWithSelectedButton->setEnabled(false);
+    clearComparisonButton->setEnabled(false);
+    
+    compareWithSelectedButton->setVisible(false);
+    clearComparisonButton->setVisible(false);
+    selectForCompareButton->setVisible(true);
+    
+    comparisonPlayerId = -1;
+    
+    QPropertyAnimation* fadeOutAnimation = new QPropertyAnimation(playerDetailsOpacityEffect, "opacity");
+    fadeOutAnimation->setDuration(100);
+    fadeOutAnimation->setStartValue(playerDetailsOpacityEffect->opacity());
+    fadeOutAnimation->setEndValue(0.0);
+    fadeOutAnimation->setEasingCurve(QEasingCurve::InCubic);
+    
+    connect(fadeOutAnimation, &QPropertyAnimation::finished, fadeOutAnimation, &QPropertyAnimation::deleteLater);
+    fadeOutAnimation->start();
 }
