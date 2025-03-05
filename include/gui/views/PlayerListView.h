@@ -2,6 +2,7 @@
 #define PLAYERLISTVIEW_H
 
 #include "services/RatingManager.h"
+#include "services/TeamManager.h"
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QTableView>
 #include <QtWidgets/QLineEdit>
@@ -16,6 +17,7 @@
 #include <QtNetwork/QNetworkAccessManager>
 #include <QScrollArea>
 #include <QMap>
+#include <set>
 
 class PlayerListModel;
 
@@ -23,7 +25,7 @@ class PlayerListView : public QWidget {
     Q_OBJECT
 
     public:
-        explicit PlayerListView(RatingManager& ratingManager, QWidget *parent = nullptr);
+        explicit PlayerListView(RatingManager& ratingManager, TeamManager& teamManager, QWidget *parent = nullptr);
 
     signals:
         void backToMain(); 
@@ -43,6 +45,7 @@ class PlayerListView : public QWidget {
         void clearComparisonSelection();
         void showPlayerComparison();
         void updateComparisonButtons();
+        void addPlayerToTeams();
 
     private:
         void setupUi();
@@ -62,6 +65,13 @@ class PlayerListView : public QWidget {
         void setupTableAnimations();
         void setupPlayerDetailsAnimations();
         void updatePagination();
+        bool findPlayerById(int playerId, Player& player);
+        std::set<int> getTeamsContainingPlayer(int playerId);
+        std::vector<int> getTeamsToAdd(const std::set<int>& initialTeamIds, const std::set<int>& finalTeamIds);
+        std::vector<int> getTeamsToRemove(const std::set<int>& initialTeamIds, const std::set<int>& finalTeamIds);
+        int processAddPlayerToTeams(const std::vector<int>& teamIds, const Player& player);
+        int removePlayerFromTeams(const std::vector<int>& teamIds);
+        void showResultMessage(int addedCount, int removedCount);
 
         int currentPage = 0;
         int totalPages = 1;
@@ -90,8 +100,10 @@ class PlayerListView : public QWidget {
         QPushButton* selectForCompareButton;
         QPushButton* compareWithSelectedButton;
         QPushButton* clearComparisonButton;
+        QPushButton* addToTeamButton;
 
         RatingManager& ratingManager;
+        TeamManager& teamManager;
         PlayerListModel* model;
         QNetworkAccessManager* networkManager;
         QMap<int, QPixmap> playerImageCache;

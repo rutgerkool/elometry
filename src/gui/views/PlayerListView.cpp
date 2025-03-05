@@ -2,6 +2,8 @@
 #include "gui/models/PlayerListModel.h"
 #include "gui/components/PlayerHistoryDialog.h"
 #include "gui/components/PlayerComparisonDialog.h"
+#include "gui/components/TeamSelectDialog.h"
+#include <QtWidgets/QMessageBox>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
@@ -16,10 +18,12 @@
 #include <QEasingCurve>
 #include <QParallelAnimationGroup>
 #include <QTimer>
+#include <set>
 
-PlayerListView::PlayerListView(RatingManager& rm, QWidget *parent)
+PlayerListView::PlayerListView(RatingManager& rm, TeamManager& tm, QWidget *parent)
     : QWidget(parent)
     , ratingManager(rm)
+    , teamManager(tm)
     , model(new PlayerListModel(ratingManager.getSortedRatedPlayers()))
     , networkManager(new QNetworkAccessManager(this))
     , comparisonPlayerId(-1)
@@ -203,6 +207,7 @@ QScrollArea* PlayerListView::setupPlayerDetailsSection() {
     detailsLayout->addWidget(playerPosition);
     detailsLayout->addWidget(playerMarketValue);
     detailsLayout->addWidget(playerRating);
+    detailsLayout->addWidget(addToTeamButton);
     detailsLayout->addWidget(viewHistoryButton);
     detailsLayout->addWidget(selectForCompareButton);
     detailsLayout->addWidget(compareWithSelectedButton);
@@ -250,6 +255,10 @@ void PlayerListView::createPlayerActionButtons() {
     viewHistoryButton = new QPushButton("View Rating History", this);
     viewHistoryButton->setObjectName("viewHistoryButton");
     viewHistoryButton->setEnabled(false);
+    
+    addToTeamButton = new QPushButton("Add to Team", this);
+    addToTeamButton->setObjectName("addToTeamButton");
+    addToTeamButton->setEnabled(false);
     
     selectForCompareButton = new QPushButton("Select for Compare", this);
     selectForCompareButton->setObjectName("selectForCompareButton");
@@ -343,6 +352,7 @@ void PlayerListView::setupTableConnections() {
 void PlayerListView::setupButtonConnections() {
     connect(backButton, &QPushButton::clicked, this, &PlayerListView::backToMain);
     connect(viewHistoryButton, &QPushButton::clicked, this, &PlayerListView::showPlayerHistory);
+    connect(addToTeamButton, &QPushButton::clicked, this, &PlayerListView::addPlayerToTeams);
     connect(selectForCompareButton, &QPushButton::clicked, this, &PlayerListView::selectPlayerForComparison);
     connect(compareWithSelectedButton, &QPushButton::clicked, this, &PlayerListView::compareWithSelectedPlayer);
     connect(clearComparisonButton, &QPushButton::clicked, this, &PlayerListView::clearComparisonSelection);
@@ -425,6 +435,7 @@ void PlayerListView::updatePlayerDetails() {
             playerRating->setText("Rating: " + QString::number(p.second.rating, 'f', 1));
             
             viewHistoryButton->setEnabled(true);
+            addToTeamButton->setEnabled(true);
             selectForCompareButton->setEnabled(true);
             updateComparisonButtons();
             
@@ -517,5 +528,137 @@ void PlayerListView::updateComparisonButtons() {
         compareWithSelectedButton->setEnabled(true);
         clearComparisonButton->setVisible(true);
         clearComparisonButton->setEnabled(true);
+    }
+}
+
+void PlayerListView::addPlayerToTeams() {
+    if (currentPlayerId <= 0) return;
+    
+    TeamSelectDialog dialog(teamManager, currentPlayerId, this);
+    
+    if (dialog.exec() != QDialog::Accepted) return;
+    
+    Player currentPlayer;
+    if (!findPlayerById(currentPlayerId, currentPlayer)) {
+        QMessageBox::warning(this, "Error", "Player data not found");
+        return;
+    }
+    
+    std::vector<int> selectedTeamIds = dialog.getSelectedTeamIds();
+    std::set<int> initialTeamIds = getTeamsContainingPlayer(currentPlayerId);
+    std::set<int> finalTeamIds(selectedTeamIds.begin(), selectedTeamIds.end());
+    
+    auto teamsToAdd = getTeamsToAdd(initialTeamIds, finalTeamIds);
+    auto teamsToRemove = getTeamsToRemove(initialTeamIds, finalTeamIds);
+    
+    int addedCount = processAddPlayerToTeams(teamsToAdd, currentPlayer);
+    int removedCount = removePlayerFromTeams(teamsToRemove);
+    
+    showResultMessage(addedCount, removedCount);
+}
+
+bool PlayerListView::findPlayerById(int playerId, Player& player) {
+    std::vector<std::pair<int, Player>> allPlayers = ratingManager.getSortedRatedPlayers();
+    
+    for (const auto& pair : allPlayers) {
+        if (pair.first == playerId) {
+            player = pair.second;
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+std::set<int> PlayerListView::getTeamsContainingPlayer(int playerId) {
+    std::set<int> teamIds;
+    std::vector<Team> allTeams = teamManager.getAllTeams();
+    
+    for (const auto& team : allTeams) {
+        for (const auto& player : team.players) {
+            if (player.playerId == playerId) {
+                teamIds.insert(team.teamId);
+                break;
+            }
+        }
+    }
+    
+    return teamIds;
+}
+
+std::vector<int> PlayerListView::getTeamsToAdd(const std::set<int>& initialTeamIds, const std::set<int>& finalTeamIds) {
+    std::vector<int> teamsToAdd;
+    
+    for (int teamId : finalTeamIds) {
+        if (initialTeamIds.find(teamId) == initialTeamIds.end()) {
+            teamsToAdd.push_back(teamId);
+        }
+    }
+    
+    return teamsToAdd;
+}
+
+std::vector<int> PlayerListView::getTeamsToRemove(const std::set<int>& initialTeamIds, const std::set<int>& finalTeamIds) {
+    std::vector<int> teamsToRemove;
+    
+    for (int teamId : initialTeamIds) {
+        if (finalTeamIds.find(teamId) == finalTeamIds.end()) {
+            teamsToRemove.push_back(teamId);
+        }
+    }
+    
+    return teamsToRemove;
+}
+
+int PlayerListView::processAddPlayerToTeams(const std::vector<int>& teamIds, const Player& player) {
+    int addedCount = 0;
+    
+    for (int teamId : teamIds) {
+        try {
+            teamManager.addPlayerToTeam(teamId, player);
+            Team& team = teamManager.loadTeam(teamId);
+            teamManager.saveTeamPlayers(team);
+            addedCount++;
+        } catch (const std::exception& e) {
+            QMessageBox::warning(this, "Error", 
+                QString("Failed to add player to team: %1").arg(e.what()));
+        }
+    }
+    
+    return addedCount;
+}
+
+int PlayerListView::removePlayerFromTeams(const std::vector<int>& teamIds) {
+    int removedCount = 0;
+    
+    for (int teamId : teamIds) {
+        try {
+            teamManager.removePlayerFromTeam(teamId, currentPlayerId);
+            Team& team = teamManager.loadTeam(teamId);
+            teamManager.saveTeamPlayers(team);
+            removedCount++;
+        } catch (const std::exception& e) {
+            QMessageBox::warning(this, "Error", 
+                QString("Failed to remove player from team: %1").arg(e.what()));
+        }
+    }
+    
+    return removedCount;
+}
+
+void PlayerListView::showResultMessage(int addedCount, int removedCount) {
+    if (addedCount > 0 || removedCount > 0) {
+        QString message;
+        if (addedCount > 0 && removedCount > 0) {
+            message = QString("Player added to %1 team(s) and removed from %2 team(s)")
+                .arg(addedCount).arg(removedCount);
+        } else if (addedCount > 0) {
+            message = QString("Player added to %1 team(s)").arg(addedCount);
+        } else {
+            message = QString("Player removed from %1 team(s)").arg(removedCount);
+        }
+        QMessageBox::information(this, "Success", message);
+    } else {
+        QMessageBox::information(this, "No Changes", "No changes were made to any teams");
     }
 }

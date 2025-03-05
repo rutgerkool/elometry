@@ -149,7 +149,7 @@ void MainWindow::animateViewTransition(QWidget* newWidget) {
 
 void MainWindow::showMainView() {
     if (!appInitialized) {
-        playerListView = new PlayerListView(ratingManager, this);
+        playerListView = new PlayerListView(ratingManager, teamManager, this);
         teamManagerView = new TeamManagerView(teamManager, this);
         settingsView = new SettingsView(database, this);
         
