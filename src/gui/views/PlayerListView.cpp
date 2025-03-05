@@ -43,16 +43,21 @@ void PlayerListView::setupUi() {
     backButton = new QPushButton("Back to Menu", this);
     mainLayout->addWidget(backButton, 0, Qt::AlignLeft);
 
-    setupInputSection();
-    mainLayout->addLayout(createInputLayout());
-
     QHBoxLayout* contentLayout = new QHBoxLayout();
     contentLayout->setSpacing(20);
     
+    QVBoxLayout* leftSideLayout = new QVBoxLayout();
+    leftSideLayout->setSpacing(15);
+    
+    setupInputSection();
+    leftSideLayout->addLayout(createInputLayout());
+    
     QFrame* tableFrame = setupTableSection();
+    leftSideLayout->addWidget(tableFrame, 1);
+    
+    contentLayout->addLayout(leftSideLayout, 3);
+    
     QScrollArea* playerDetailsScrollArea = setupPlayerDetailsSection();
-
-    contentLayout->addWidget(tableFrame, 3);
     contentLayout->addWidget(playerDetailsScrollArea, 1);
     
     mainLayout->addLayout(contentLayout, 1);
@@ -187,10 +192,13 @@ QScrollArea* PlayerListView::setupPlayerDetailsSection() {
     playerDetailsWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     
     QVBoxLayout* detailsLayout = new QVBoxLayout(playerDetailsWidget);
-    detailsLayout->setContentsMargins(0, 0, 0, 0);
+    detailsLayout->setContentsMargins(5, 5, 5, 5);
+    detailsLayout->setSpacing(12);
     
-    QLabel* playerDetailsLabel = new QLabel("Selected Player:", this);
-    playerDetailsLabel->setObjectName("playerDetailsLabel");
+    playerName = new QLabel("No Player Selected", this);
+    playerName->setObjectName("playerDetailsLabel");
+    playerName->setAlignment(Qt::AlignCenter);
+    playerName->setWordWrap(true);
 
     createPlayerInfoWidgets();
     createPlayerActionButtons();
@@ -200,19 +208,19 @@ QScrollArea* PlayerListView::setupPlayerDetailsSection() {
     imageLayout->addWidget(playerImage);
     imageLayout->addStretch();
 
-    detailsLayout->addWidget(playerDetailsLabel);
-    detailsLayout->addLayout(imageLayout);
     detailsLayout->addWidget(playerName);
+    detailsLayout->addLayout(imageLayout);
     detailsLayout->addWidget(playerClub);
     detailsLayout->addWidget(playerPosition);
     detailsLayout->addWidget(playerMarketValue);
-    detailsLayout->addWidget(playerRating);
+    
     detailsLayout->addWidget(addToTeamButton);
     detailsLayout->addWidget(viewHistoryButton);
     detailsLayout->addWidget(selectForCompareButton);
     detailsLayout->addWidget(compareWithSelectedButton);
     detailsLayout->addWidget(clearComparisonButton);
-    detailsLayout->addStretch();
+    
+    detailsLayout->addStretch(1);
     
     playerDetailsScrollArea->setWidget(playerDetailsWidget);
     return playerDetailsScrollArea;
@@ -225,11 +233,6 @@ void PlayerListView::createPlayerInfoWidgets() {
     playerImage->setAlignment(Qt::AlignCenter);
     playerImage->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-    playerName = new QLabel("");
-    playerName->setObjectName("playerName");
-    playerName->setWordWrap(true);
-    playerName->setAlignment(Qt::AlignLeft);
-    
     playerClub = new QLabel("");
     playerClub->setObjectName("playerClub");
     playerClub->setWordWrap(true);
@@ -244,11 +247,6 @@ void PlayerListView::createPlayerInfoWidgets() {
     playerMarketValue->setObjectName("playerMarketValue");
     playerMarketValue->setWordWrap(true);
     playerMarketValue->setAlignment(Qt::AlignLeft);
-    
-    playerRating = new QLabel("");
-    playerRating->setObjectName("playerRating");
-    playerRating->setWordWrap(true);
-    playerRating->setAlignment(Qt::AlignLeft);
 }
 
 void PlayerListView::createPlayerActionButtons() {
@@ -415,7 +413,20 @@ void PlayerListView::animatePlayerDetails() {
 void PlayerListView::updatePlayerDetails() {
     QModelIndexList indices = tableView->selectionModel()->selectedRows();
     
-    if (indices.isEmpty()) return;
+    if (indices.isEmpty()) {
+        playerName->setText("No Player Selected");
+        playerClub->setText("");
+        playerPosition->setText("");
+        playerMarketValue->setText("");
+        playerImage->clear();
+        playerImage->setText("No Image");
+        
+        viewHistoryButton->setEnabled(false);
+        addToTeamButton->setEnabled(false);
+        selectForCompareButton->setEnabled(false);
+        updateComparisonButtons();
+        return;
+    }
     
     QModelIndex index = indices.first();
     
@@ -427,12 +438,11 @@ void PlayerListView::updatePlayerDetails() {
     auto allPlayers = ratingManager.getSortedRatedPlayers();
     for (const auto& p : allPlayers) {
         if (p.first == playerId) {
-            playerName->setText("Name: " + QString::fromStdString(p.second.name));
+            playerName->setText(QString::fromStdString(p.second.name));
             playerClub->setText("Club: " + QString::fromStdString(p.second.clubName));
             playerPosition->setText("Position: " + QString::fromStdString(p.second.position) + 
                                    " (" + QString::fromStdString(p.second.subPosition) + ")");
             playerMarketValue->setText("Market Value: €" + QString::number(p.second.marketValue / 1000000.0, 'f', 1) + "M");
-            playerRating->setText("Rating: " + QString::number(p.second.rating, 'f', 1));
             
             viewHistoryButton->setEnabled(true);
             addToTeamButton->setEnabled(true);

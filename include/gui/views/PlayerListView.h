@@ -95,7 +95,6 @@ class PlayerListView : public QWidget {
         QLabel* playerClub;
         QLabel* playerPosition;
         QLabel* playerMarketValue;
-        QLabel* playerRating;
         QPushButton* viewHistoryButton;
         QPushButton* selectForCompareButton;
         QPushButton* compareWithSelectedButton;
