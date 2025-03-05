@@ -109,6 +109,10 @@ QFrame* PlayerListView::setupTableSection() {
     tableLayout->addWidget(tableView, 1);
 
     QWidget* paginationWidget = setupPaginationSection();
+    
+    paginationWidget->setMinimumWidth(tableView->minimumWidth());
+    paginationWidget->setMaximumWidth(tableView->maximumWidth());
+    
     tableLayout->addWidget(paginationWidget, 0);
     
     return tableFrame;
@@ -138,6 +142,8 @@ QWidget* PlayerListView::setupPaginationSection() {
     prevPageButton = new QPushButton("Previous", paginationWidget);
     prevPageButton->setObjectName("prevPageButton");
     
+    QSpacerItem* leftSpacer = new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    
     QWidget* pageInfoContainer = new QWidget(paginationWidget);
     QHBoxLayout* pageInfoLayout = new QHBoxLayout(pageInfoContainer);
     pageInfoLayout->setContentsMargins(0, 0, 0, 0);
@@ -147,18 +153,19 @@ QWidget* PlayerListView::setupPaginationSection() {
     totalPagesLabel = new QLabel("/ 1", pageInfoContainer);
     totalPagesLabel->setObjectName("totalPagesLabel");
     
-    pageInfoLayout->addStretch(1);
     pageInfoLayout->addWidget(pageInfoLabel);
     pageInfoLayout->addWidget(totalPagesLabel);
-    pageInfoLayout->addStretch(1);
+    
+    QSpacerItem* rightSpacer = new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum);
     
     nextPageButton = new QPushButton("Next", paginationWidget);
     nextPageButton->setObjectName("nextPageButton");
     
     paginationLayout->addWidget(prevPageButton);
+    paginationLayout->addSpacerItem(leftSpacer);
     paginationLayout->addWidget(pageInfoContainer);
+    paginationLayout->addSpacerItem(rightSpacer);
     paginationLayout->addWidget(nextPageButton);
-    paginationLayout->addStretch();
     
     return paginationWidget;
 }
