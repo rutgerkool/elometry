@@ -28,6 +28,7 @@ TeamManagerView::TeamManagerView(TeamManager& tm, QWidget *parent)
     , currentTeam(nullptr)
     , networkManager(new QNetworkAccessManager(this))
     , comparisonPlayerId(-1)
+    , lineupView(nullptr)
 {
     setupUi();
     setupAnimations();
@@ -45,21 +46,78 @@ void TeamManagerView::setupUi() {
     mainLayout->setContentsMargins(40, 40, 40, 40);
     mainLayout->setSpacing(20);
 
+    QHBoxLayout* topButtonLayout = new QHBoxLayout();
     backButton = new QPushButton("Back to Menu", this);
-    mainLayout->addWidget(backButton, 0, Qt::AlignLeft);
-
-    QHBoxLayout* mainContentLayout = new QHBoxLayout();
-    mainContentLayout->setSpacing(20);
-
-    QWidget* leftWidget = setupLeftPanel();
-    QWidget* centerWidget = setupCenterPanel();
-    QScrollArea* playerDetailsScrollArea = setupRightPanel();
-
-    mainContentLayout->addWidget(leftWidget, 1);
-    mainContentLayout->addWidget(centerWidget, 1);
-    mainContentLayout->addWidget(playerDetailsScrollArea, 1);
+    topButtonLayout->addWidget(backButton, 0, Qt::AlignLeft);
     
-    mainLayout->addLayout(mainContentLayout, 1);
+    viewPlayersButton = new QPushButton("Manage Players", this);
+    viewPlayersButton->setCheckable(true);
+    viewPlayersButton->setChecked(true);
+    viewPlayersButton->setEnabled(false);
+    viewPlayersButton->setFixedWidth(150);
+    
+    viewLineupButton = new QPushButton("Manage Lineup", this);
+    viewLineupButton->setCheckable(true);
+    viewLineupButton->setEnabled(false);
+    viewLineupButton->setFixedWidth(150);
+    
+    viewPlayersButton->setStyleSheet(
+        "QPushButton:checked { background-color: #3498db; color: white; }"
+    );
+    viewLineupButton->setStyleSheet(
+        "QPushButton:checked { background-color: #3498db; color: white; }"
+    );
+    
+    QHBoxLayout* viewToggleLayout = new QHBoxLayout();
+    viewToggleLayout->addWidget(viewPlayersButton);
+    viewToggleLayout->addWidget(viewLineupButton);
+    viewToggleLayout->addStretch();
+    
+    mainLayout->addLayout(topButtonLayout);
+    mainLayout->addLayout(viewToggleLayout);
+
+    QWidget* threeColumnContainer = new QWidget(this);
+    QHBoxLayout* threeColumnLayout = new QHBoxLayout(threeColumnContainer);
+    threeColumnLayout->setSpacing(20);
+    threeColumnLayout->setContentsMargins(0, 0, 0, 0);
+
+    leftWidget = setupLeftPanel();
+    leftWidget->setFixedWidth(width() / 3 - 30);
+    
+    QWidget* centerContainer = new QWidget(this);
+    QVBoxLayout* centerLayout = new QVBoxLayout(centerContainer);
+    centerLayout->setContentsMargins(0, 0, 0, 0);
+    
+    centerStackedWidget = new QStackedWidget(this);
+    centerStackedWidget->setFixedWidth(width() / 3 - 30);
+    
+    QWidget* centerWidget = setupCenterPanel();
+    lineupWidget = setupLineupPanel();
+    
+    centerStackedWidget->addWidget(centerWidget);
+    centerStackedWidget->addWidget(lineupWidget);
+    
+    centerLayout->addWidget(centerStackedWidget);
+    
+    playerDetailsScrollArea = setupRightPanel();
+    playerDetailsScrollArea->setFixedWidth(width() / 3 - 30);
+    
+    threeColumnLayout->addWidget(leftWidget);
+    threeColumnLayout->addWidget(centerContainer);
+    threeColumnLayout->addWidget(playerDetailsScrollArea);
+    
+    QWidget* lineupContainer = new QWidget(this);
+    QVBoxLayout* lineupContainerLayout = new QVBoxLayout(lineupContainer);
+    lineupContainerLayout->setContentsMargins(0, 0, 0, 0);
+    
+    QStackedWidget* mainViewStack = new QStackedWidget(this);
+    mainViewStack->addWidget(threeColumnContainer);
+    mainViewStack->addWidget(lineupContainer);
+    
+    mainLayout->addWidget(mainViewStack, 1);
+    
+    this->mainViewStack = mainViewStack;
+    this->lineupContainer = lineupContainer;
 }
 
 QWidget* TeamManagerView::setupLeftPanel() {
@@ -94,7 +152,7 @@ QWidget* TeamManagerView::setupLeftPanel() {
     leftLayout->addWidget(teamList, 1);
     leftLayout->addLayout(actionButtonsLayout);
     
-    leftWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+    leftWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     
     return leftWidget;
 }
@@ -144,21 +202,42 @@ QWidget* TeamManagerView::setupCenterPanel() {
     centerLayout->addWidget(autoFillButton);
     centerLayout->addLayout(playerManagementLayout);
     
-    centerWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+    centerWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     
     return centerWidget;
 }
 
+QWidget* TeamManagerView::setupLineupPanel() {
+    QWidget* lineupPanelWidget = new QWidget();
+    QVBoxLayout* lineupLayout = new QVBoxLayout(lineupPanelWidget);
+    lineupLayout->setContentsMargins(10, 10, 10, 10);
+    
+    QLabel* lineupLabel = new QLabel("Team Lineup:", this);
+    lineupLabel->setObjectName("lineupLabel");
+    lineupLabel->setAlignment(Qt::AlignLeft);
+    
+    QLabel* placeholderLabel = new QLabel("Select a team to manage lineup", this);
+    placeholderLabel->setAlignment(Qt::AlignCenter);
+    placeholderLabel->setStyleSheet("font-size: 16px; color: #888;");
+    
+    lineupLayout->addWidget(lineupLabel);
+    lineupLayout->addWidget(placeholderLabel, 1);
+    
+    lineupPanelWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    
+    return lineupPanelWidget;
+}
+
 QScrollArea* TeamManagerView::setupRightPanel() {
-    QScrollArea* playerDetailsScrollArea = new QScrollArea(this);
+    playerDetailsScrollArea = new QScrollArea(this);
     playerDetailsScrollArea->setWidgetResizable(true);
     playerDetailsScrollArea->setFrameShape(QFrame::NoFrame);
     playerDetailsScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     playerDetailsScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    playerDetailsScrollArea->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+    playerDetailsScrollArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     
     playerDetailsWidget = new QWidget();
-    playerDetailsWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+    playerDetailsWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     
     QVBoxLayout* rightLayout = new QVBoxLayout(playerDetailsWidget);
     rightLayout->setContentsMargins(10, 10, 10, 10);
@@ -322,6 +401,58 @@ void TeamManagerView::setupConnections() {
     setupComparisonConnections();
     
     disableTeamControls();
+
+    connect(viewPlayersButton, &QPushButton::clicked, this, &TeamManagerView::switchToPlayersView);
+    connect(viewLineupButton, &QPushButton::clicked, this, &TeamManagerView::switchToLineupView);
+}
+
+void TeamManagerView::switchToPlayersView() {
+    if (!viewPlayersButton->isChecked()) {
+        viewPlayersButton->setChecked(true);
+    }
+    viewLineupButton->setChecked(false);
+    
+    mainViewStack->setCurrentIndex(0);
+    
+    centerStackedWidget->setCurrentIndex(0);
+}
+
+void TeamManagerView::switchToLineupView() {
+    if (!viewLineupButton->isChecked()) {
+        viewLineupButton->setChecked(true);
+    }
+    viewPlayersButton->setChecked(false);
+    
+    if (!lineupView) {
+        lineupView = new LineupView(teamManager, currentTeam, lineupContainer);
+        
+        connect(lineupView, &LineupView::playerClicked, 
+                this, &TeamManagerView::showLineupPlayerHistory);
+        
+        QVBoxLayout* containerLayout = qobject_cast<QVBoxLayout*>(lineupContainer->layout());
+        if (containerLayout) {
+            containerLayout->addWidget(lineupView);
+        }
+    }
+    
+    if (currentTeam && lineupView) {
+        lineupView->setTeam(currentTeam);
+    }
+    
+    mainViewStack->setCurrentIndex(1);
+}
+
+void TeamManagerView::resizeEvent(QResizeEvent* event) {
+    QWidget::resizeEvent(event);
+    updatePanelSizes();
+}
+
+void TeamManagerView::updatePanelSizes() {
+    int sectionWidth = width() / 3 - 30;
+    
+    leftWidget->setFixedWidth(sectionWidth);
+    centerStackedWidget->setFixedWidth(sectionWidth);
+    playerDetailsScrollArea->setFixedWidth(sectionWidth);
 }
 
 void TeamManagerView::setupActionConnections() {
@@ -358,6 +489,9 @@ void TeamManagerView::disableTeamControls() {
     removePlayerButton->setEnabled(false);
     addPlayersButton->setEnabled(false);
     editTeamNameButton->setEnabled(false);
+    
+    viewPlayersButton->setEnabled(false);
+    viewLineupButton->setEnabled(false);
 }
 
 void TeamManagerView::enableTeamControls() {
@@ -367,6 +501,9 @@ void TeamManagerView::enableTeamControls() {
     removePlayerButton->setEnabled(true);
     addPlayersButton->setEnabled(true);
     editTeamNameButton->setEnabled(true);
+    
+    viewPlayersButton->setEnabled(true);
+    viewLineupButton->setEnabled(true);
 }
 
 void TeamManagerView::createNewTeam() {
@@ -539,6 +676,10 @@ void TeamManagerView::updateTeamInfo() {
 
     enableTeamControls();
     budgetInput->setValue(currentTeam->budget);
+    
+    if (lineupView) {
+        lineupView->setTeam(currentTeam);
+    }
 }
 
 Player* TeamManagerView::findPlayerById(int playerId) {
@@ -593,11 +734,17 @@ void TeamManagerView::updatePlayerDetails() {
 void TeamManagerView::removeSelectedPlayer() {
     int playerId = getSelectedPlayerId();
     if (playerId <= 0 || !currentTeam) return;
-
+    
     teamManager.removePlayerFromTeam(currentTeam->teamId, playerId);
     teamManager.saveTeamPlayers(*currentTeam);
+    
     updateTeamInfo();
-
+    
+    if (lineupView) {
+        lineupView->setTeam(nullptr);
+        lineupView->setTeam(currentTeam);
+    }
+    
     hidePlayerDetails();
 }
 
@@ -873,4 +1020,11 @@ void TeamManagerView::hidePlayerDetails() {
     
     connect(fadeOutAnimation, &QPropertyAnimation::finished, fadeOutAnimation, &QPropertyAnimation::deleteLater);
     fadeOutAnimation->start();
+}
+
+void TeamManagerView::showLineupPlayerHistory(int playerId) {
+    if (playerId <= 0 || !currentTeam) return;
+    
+    PlayerHistoryDialog dialog(teamManager.getRatingManager(), playerId, this);
+    dialog.exec();
 }

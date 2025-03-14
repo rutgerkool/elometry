@@ -1,0 +1,333 @@
+#include "gui/components/LineupPitchView.h"
+#include <QPainter>
+#include <QPainterPath>
+#include <QStyleOption>
+#include <QtWidgets/QListWidget>
+#include <QDrag>
+
+LineupPitchView::LineupPitchView(QWidget *parent)
+    : QWidget(parent)
+{
+    setMinimumHeight(500);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    
+    mainLayout = new QGridLayout(this);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
+    mainLayout->setSpacing(5);
+    
+    formationPositionsMap["4-3-3"] = {"GK", "LB", "CB1", "CB2", "RB", "CM1", "CM2", "CM3", "LW", "ST", "RW"};
+    formationPositionsMap["4-4-2"] = {"GK", "LB", "CB1", "CB2", "RB", "LM", "CM1", "CM2", "RM", "ST1", "ST2"};
+    formationPositionsMap["5-3-2"] = {"GK", "LWB", "CB1", "CB2", "CB3", "RWB", "CM1", "CM2", "CM3", "ST1", "ST2"};
+    formationPositionsMap["3-5-2"] = {"GK", "CB1", "CB2", "CB3", "LM", "CM1", "CM2", "CM3", "RM", "ST1", "ST2"};
+    formationPositionsMap["4-2-3-1"] = {"GK", "LB", "CB1", "CB2", "RB", "CDM1", "CDM2", "CAM1", "CAM2", "CAM3", "ST"};
+    
+    createPlayerWidgets();
+    
+    setFormation("4-3-3");
+}
+
+void LineupPitchView::createPlayerWidgets() {
+    QStringList allPositions = {"GK", 
+                               "LB", "CB1", "CB2", "CB3", "RB", 
+                               "LWB", "RWB",
+                               "CDM1", "CDM2", 
+                               "CM1", "CM2", "CM3", 
+                               "LM", "RM", 
+                               "CAM1", "CAM2", "CAM3", 
+                               "LW", "RW", 
+                               "ST", "ST1", "ST2"};
+    
+    for (const QString& position : allPositions) {
+        PlayerPositionWidget* posWidget = new PlayerPositionWidget(position, this);
+        posWidget->setVisible(false);
+        
+        connect(posWidget, &PlayerPositionWidget::playerDragged, 
+                [this](int playerId, const QString& fromPosition) {});
+                
+        connect(posWidget, &PlayerPositionWidget::playerDropped,
+        [this](int playerId, const QString& fromPosition, const QString& toPosition) {
+            emit playerDragDropped(playerId, fromPosition, toPosition);
+        });
+        
+        connect(posWidget, &PlayerPositionWidget::playerClicked, 
+                [this](int playerId) {
+                    emit playerClicked(playerId);
+                });
+                
+        positionWidgets[position] = posWidget;
+    }
+}
+
+void LineupPitchView::paintEvent(QPaintEvent* event) {
+    Q_UNUSED(event);
+    
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+    
+    QRect fieldRect = rect().adjusted(20, 20, -20, -20);
+    
+    QLinearGradient gradient(fieldRect.topLeft(), fieldRect.bottomRight());
+    gradient.setColorAt(0, QColor(80, 170, 80));
+    gradient.setColorAt(1, QColor(50, 150, 50));
+    painter.fillRect(fieldRect, gradient);
+    
+    painter.setPen(QPen(Qt::white, 3));
+    painter.drawRect(fieldRect);
+    
+    int centerY = fieldRect.top() + fieldRect.height() / 2;
+    painter.drawLine(fieldRect.left(), centerY, fieldRect.right(), centerY);
+    
+    int centerX = fieldRect.left() + fieldRect.width() / 2;
+    int radius = fieldRect.width() / 10;
+    painter.drawEllipse(QPoint(centerX, centerY), radius, radius);
+    
+    painter.setBrush(Qt::white);
+    painter.drawEllipse(QPoint(centerX, centerY), 5, 5);
+    
+    int penaltyWidth = fieldRect.width() / 3;
+    int penaltyHeight = fieldRect.height() / 5;
+    
+    QRect topPenaltyArea(
+        centerX - penaltyWidth / 2,
+        fieldRect.top(),
+        penaltyWidth,
+        penaltyHeight
+    );
+    painter.drawRect(topPenaltyArea);
+    
+    QRect bottomPenaltyArea(
+        centerX - penaltyWidth / 2,
+        fieldRect.bottom() - penaltyHeight,
+        penaltyWidth,
+        penaltyHeight
+    );
+    painter.drawRect(bottomPenaltyArea);
+    
+    int goalWidth = penaltyWidth / 2;
+    int goalHeight = penaltyHeight / 2;
+    
+    painter.drawRect(
+        centerX - goalWidth / 2,
+        fieldRect.top(),
+        goalWidth,
+        goalHeight
+    );
+    
+    painter.drawRect(
+        centerX - goalWidth / 2,
+        fieldRect.bottom() - goalHeight,
+        goalWidth,
+        goalHeight
+    );
+    
+    int goalLineWidth = goalWidth / 1.5;
+    
+    QPen goalPen(Qt::white, 4);
+    painter.setPen(goalPen);
+    
+    QRect topGoalRect(
+        centerX - goalLineWidth / 2,
+        fieldRect.top() - 15,
+        goalLineWidth,
+        15
+    );
+    painter.drawRect(topGoalRect);
+    
+    QRect bottomGoalRect(
+        centerX - goalLineWidth / 2,
+        fieldRect.bottom(),
+        goalLineWidth,
+        15
+    );
+    painter.drawRect(bottomGoalRect);
+    
+    painter.setPen(QPen(QColor(255, 255, 255, 60), 1, Qt::DashLine));
+    
+    for (int i = 1; i < 10; i++) {
+        int x = fieldRect.left() + (fieldRect.width() * i) / 10;
+        painter.drawLine(x, fieldRect.top(), x, fieldRect.bottom());
+        
+        int y = fieldRect.top() + (fieldRect.height() * i) / 10;
+        painter.drawLine(fieldRect.left(), y, fieldRect.right(), y);
+    }
+    
+    QStyleOption opt;
+    opt.initFrom(this);
+    style()->drawPrimitive(QStyle::PE_Widget, &opt, &painter, this);
+}
+
+void LineupPitchView::setFormation(const QString& formation) {
+    if (!formationPositionsMap.contains(formation)) {
+        return;
+    }
+    
+    currentFormation = formation;
+    clearPositions();
+    setupFormationPositions(formation);
+}
+
+void LineupPitchView::clearPositions() {
+    for (auto it = positionWidgets.begin(); it != positionWidgets.end(); ++it) {
+        it.value()->clearPlayer();
+        it.value()->setVisible(false);
+        
+        if (it.value()->parentWidget() == this) {
+            mainLayout->removeWidget(it.value());
+        }
+    }
+}
+
+void LineupPitchView::clearPosition(const QString& position) {
+    if (positionWidgets.contains(position)) {
+        positionWidgets[position]->clearPlayer();
+    }
+}
+
+QPoint LineupPitchView::getPositionCoordinates(const QString& position) {
+    QMap<QString, QPoint> positionCoords;
+    
+    positionCoords["GK"] = QPoint(4, 9);
+    
+    if (currentFormation == "4-3-3") {
+        positionCoords["LB"] = QPoint(1, 7);
+        positionCoords["CB1"] = QPoint(3, 7);
+        positionCoords["CB2"] = QPoint(5, 7);
+        positionCoords["RB"] = QPoint(7, 7);
+        
+        positionCoords["CM1"] = QPoint(2, 5);
+        positionCoords["CM2"] = QPoint(4, 5);
+        positionCoords["CM3"] = QPoint(6, 5);
+        
+        positionCoords["LW"] = QPoint(1, 2);
+        positionCoords["ST"] = QPoint(4, 2);
+        positionCoords["RW"] = QPoint(7, 2);
+    }
+    else if (currentFormation == "4-4-2") {
+        positionCoords["LB"] = QPoint(1, 7);
+        positionCoords["CB1"] = QPoint(3, 7);
+        positionCoords["CB2"] = QPoint(5, 7);
+        positionCoords["RB"] = QPoint(7, 7);
+        
+        positionCoords["LM"] = QPoint(1, 5);
+        positionCoords["CM1"] = QPoint(3, 5);
+        positionCoords["CM2"] = QPoint(5, 5);
+        positionCoords["RM"] = QPoint(7, 5);
+        
+        positionCoords["ST1"] = QPoint(3, 2);
+        positionCoords["ST2"] = QPoint(5, 2);
+    }
+    else if (currentFormation == "5-3-2") {
+        positionCoords["LWB"] = QPoint(0, 7);
+        positionCoords["CB1"] = QPoint(2, 7);
+        positionCoords["CB2"] = QPoint(4, 7);
+        positionCoords["CB3"] = QPoint(6, 7);
+        positionCoords["RWB"] = QPoint(8, 7);
+        
+        positionCoords["CM1"] = QPoint(2, 5);
+        positionCoords["CM2"] = QPoint(4, 5);
+        positionCoords["CM3"] = QPoint(6, 5);
+        
+        positionCoords["ST1"] = QPoint(3, 2);
+        positionCoords["ST2"] = QPoint(5, 2);
+    }
+    else if (currentFormation == "3-5-2") {
+        positionCoords["CB1"] = QPoint(2, 7);
+        positionCoords["CB2"] = QPoint(4, 7);
+        positionCoords["CB3"] = QPoint(6, 7);
+        
+        positionCoords["LM"] = QPoint(0, 5);
+        positionCoords["CM1"] = QPoint(2, 5);
+        positionCoords["CM2"] = QPoint(4, 5);
+        positionCoords["CM3"] = QPoint(6, 5);
+        positionCoords["RM"] = QPoint(8, 5);
+        
+        positionCoords["ST1"] = QPoint(3, 2);
+        positionCoords["ST2"] = QPoint(5, 2);
+    }
+    else if (currentFormation == "4-2-3-1") {
+        positionCoords["LB"] = QPoint(1, 7);
+        positionCoords["CB1"] = QPoint(3, 7);
+        positionCoords["CB2"] = QPoint(5, 7);
+        positionCoords["RB"] = QPoint(7, 7);
+        
+        positionCoords["CDM1"] = QPoint(3, 5);
+        positionCoords["CDM2"] = QPoint(5, 5);
+        
+        positionCoords["CAM1"] = QPoint(2, 3);
+        positionCoords["CAM2"] = QPoint(4, 3);
+        positionCoords["CAM3"] = QPoint(6, 3);
+        
+        positionCoords["ST"] = QPoint(4, 1);
+    }
+    
+    if (!positionCoords.contains(position)) {
+        return QPoint(4, 5);
+    }
+    
+    return positionCoords[position];
+}
+
+void LineupPitchView::setupFormationPositions(const QString& formation) {
+    if (!formationPositionsMap.contains(formation)) {
+        return;
+    }
+    
+    mainLayout->setSpacing(4);
+    
+    for (int i = 0; i < 10; i++) {
+        mainLayout->setColumnStretch(i, 1);
+        mainLayout->setRowStretch(i, 1);
+    }
+    
+    mainLayout->setColumnStretch(0, 1);
+    mainLayout->setColumnStretch(8, 1);
+    
+    QStringList positions = formationPositionsMap[formation];
+    
+    for (const QString& pos : positions) {
+        if (positionWidgets.contains(pos)) {
+            PlayerPositionWidget* widget = positionWidgets[pos];
+            QPoint coords = getPositionCoordinates(pos);
+            
+            mainLayout->addWidget(widget, coords.y(), coords.x(), Qt::AlignCenter);
+            widget->setVisible(true);
+        }
+    }
+}
+
+void LineupPitchView::setPlayerAtPosition(int playerId, const QString& playerName, const QPixmap& playerImage, const QString& position) {
+    if (!positionWidgets.contains(position)) {
+        return;
+    }
+    
+    for (auto it = positionWidgets.begin(); it != positionWidgets.end(); ++it) {
+        if (it.value()->getPlayerId() == playerId && it.key() != position) {
+            it.value()->clearPlayer();
+        }
+    }
+    
+    positionWidgets[position]->setPlayer(playerId, playerName, playerImage);
+}
+
+void LineupPitchView::setPlayerAtPosition(int playerId, const QString& position) {
+    setPlayerAtPosition(playerId, QString::number(playerId), QPixmap(), position);
+}
+
+QStringList LineupPitchView::getPositionsForFormation(const QString& formation) {
+    if (formationPositionsMap.contains(formation)) {
+        return formationPositionsMap[formation];
+    }
+    return QStringList();
+}
+
+QMap<QString, int> LineupPitchView::getPlayersPositions() const {
+    QMap<QString, int> result;
+    
+    for (auto it = positionWidgets.begin(); it != positionWidgets.end(); ++it) {
+        if (it.value()->isVisible() && it.value()->hasPlayer()) {
+            result[it.key()] = it.value()->getPlayerId();
+        }
+    }
+    
+    return result;
+}

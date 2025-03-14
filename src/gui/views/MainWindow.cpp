@@ -31,7 +31,7 @@ MainWindow::MainWindow(RatingManager& rm, TeamManager& tm, Database& db, QWidget
     , loadingThread(nullptr)
     , appInitialized(false)
 {
-    setFixedSize(1024, 768);
+    setFixedSize(1024, 848);
 
     stackedWidget = new QStackedWidget(this);
 

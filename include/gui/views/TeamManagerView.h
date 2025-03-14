@@ -2,6 +2,7 @@
 #define TEAMMANAGERVIEW_H
 
 #include <QtWidgets/QWidget>
+#include <QtWidgets/QStackedWidget>
 #include <QtWidgets/QTableView>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QLineEdit>
@@ -26,6 +27,8 @@
 #include "utils/database/repositories/ClubRepository.h"
 #include "services/TeamManager.h"
 #include "gui/models/TeamListModel.h"
+#include "gui/components/LineupView.h"
+#include "gui/components/LineupCreationDialog.h"
 
 class TeamManagerView : public QWidget {
     Q_OBJECT
@@ -58,15 +61,23 @@ private slots:
     void showPlayerComparison();
     void updateComparisonButtons();
     void hidePlayerDetails();
+    void switchToPlayersView();
+    void switchToLineupView();
+    void showLineupPlayerHistory(int playerId);
+
+protected:
+    virtual void resizeEvent(QResizeEvent* event) override;
 
 private:
     void setupUi();
     QWidget* setupLeftPanel();
     QWidget* setupCenterPanel();
     QScrollArea* setupRightPanel();
+    QWidget* setupLineupPanel();
     void createPlayerInfoLabels();
     void createPlayerActionButtons();
     QHBoxLayout* setupImageLayout();
+    void updatePanelSizes();
     
     void setupConnections();
     void setupActionConnections();
@@ -110,6 +121,7 @@ private:
     QLineEdit* teamNameInput;
     QSpinBox* budgetInput;
     QPushButton* addPlayersButton;
+    QScrollArea* playerDetailsScrollArea;
 
     QLabel* playerImage;
     QLabel* playerName;
@@ -122,7 +134,10 @@ private:
     QPushButton* compareWithSelectedButton;
     QPushButton* clearComparisonButton;
 
+    QWidget* leftWidget;
     QWidget* playerDetailsWidget;
+    QWidget* lineupContainer;
+    QStackedWidget* mainViewStack;
 
     std::vector<std::pair<int, std::string>> availableClubs;
 
@@ -136,6 +151,12 @@ private:
     QPropertyAnimation* playerDetailsOpacityAnimation;
     QPropertyAnimation* playerDetailsSlideAnimation;
     QParallelAnimationGroup* playerDetailsAnimGroup;
+
+    QPushButton* viewPlayersButton;
+    QPushButton* viewLineupButton;
+    LineupView* lineupView;
+    QStackedWidget* centerStackedWidget;
+    QWidget* lineupWidget;
 };
 
 #endif

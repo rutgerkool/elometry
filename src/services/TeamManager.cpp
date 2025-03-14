@@ -52,6 +52,19 @@ bool TeamManager::addPlayerToTeam(int teamId, const Player& player) {
 bool TeamManager::removePlayerFromTeam(int teamId, int playerId) {
     if (teams.find(teamId) == teams.end()) return false;
 
+    teamRepo.removePlayerFromAllLineups(teamId, playerId);
+    
+    std::vector<Lineup> lineups = getTeamLineups(teamId);
+    for (auto& lineup : lineups) {
+        auto& positions = lineup.playerPositions;
+        positions.erase(
+            std::remove_if(positions.begin(), positions.end(),
+                [playerId](const PlayerPosition& pos) { return pos.playerId == playerId; }
+            ),
+            positions.end()
+        );
+    }
+
     auto& players = teams[teamId].players;
     players.erase(
         std::remove_if(players.begin(), players.end(),
@@ -59,6 +72,7 @@ bool TeamManager::removePlayerFromTeam(int teamId, int playerId) {
         ),
         players.end()
     );
+    
     return true;
 }
 
@@ -187,4 +201,66 @@ void TeamManager::loadTeams() {
         teams[team.teamId].players = ratingManager.getFilteredRatedPlayers(selection);
         nextTeamId = std::max(nextTeamId, team.teamId);
     }
+}
+
+std::vector<Formation> TeamManager::getAllFormations() {
+    return teamRepo.getAllFormations();
+}
+
+Lineup TeamManager::createLineup(int teamId, int formationId, const std::string& lineupName) {
+    int lineupId = teamRepo.createLineup(teamId, formationId, lineupName);
+    Lineup lineup;
+    lineup.lineupId = lineupId;
+    lineup.teamId = teamId;
+    lineup.formationId = formationId;
+    lineup.name = lineupName;
+
+    std::vector<Formation> formations = getAllFormations();
+    for (const auto& formation : formations) {
+        if (formation.id == formationId) {
+            lineup.formationName = formation.name;
+            break;
+        }
+    }
+
+    lineup.isActive = true;
+    
+    auto it = teams.find(teamId);
+    if (it != teams.end()) {
+        for (const auto& player : it->second.players) {
+            PlayerPosition playerPos;
+            playerPos.playerId = player.playerId;
+            playerPos.positionType = PositionType::RESERVE;
+            playerPos.fieldPosition = "";
+            playerPos.order = 0;
+            lineup.playerPositions.push_back(playerPos);
+        }
+    }
+    
+    saveLineup(lineup);
+    return lineup;
+}
+
+Lineup TeamManager::getActiveLineup(int teamId) {
+    return teamRepo.getActiveLineup(teamId);
+}
+
+bool TeamManager::setActiveLineup(int teamId, int lineupId) {
+    return teamRepo.setActiveLineup(teamId, lineupId);
+}
+
+bool TeamManager::updatePlayerPosition(int lineupId, int playerId, PositionType positionType, const std::string& fieldPosition, int order) {
+    return teamRepo.updatePlayerPosition(lineupId, playerId, positionType, fieldPosition, order);
+}
+
+bool TeamManager::saveLineup(const Lineup& lineup) {
+    return teamRepo.saveLineup(lineup);
+}
+
+bool TeamManager::deleteLineup(int lineupId) {
+    return teamRepo.deleteLineup(lineupId);
+}
+
+std::vector<Lineup> TeamManager::getTeamLineups(int teamId) {
+    return teamRepo.getTeamLineups(teamId);
 }
