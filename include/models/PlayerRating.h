@@ -48,6 +48,7 @@ class PlayerRating {
         void sortGamesByDate(const std::vector<Game>& games, std::vector<Game>& sortedGames);
         std::unordered_map<PlayerId, Player> ratedPlayers;
         std::unordered_map<PlayerId, std::deque<RatingChange>> ratingHistory;
+        
         double kFactor;
         double homeAdvantage;
         

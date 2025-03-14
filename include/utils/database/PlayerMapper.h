@@ -5,8 +5,8 @@
 #include <sqlite3.h>
 
 class PlayerMapper {
-public:
-    static Player mapPlayerFromStatement(sqlite3_stmt *stmt);
+    public:
+        static Player mapPlayerFromStatement(sqlite3_stmt *stmt);
 };
 
 #endif 

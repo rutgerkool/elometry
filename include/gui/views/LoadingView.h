@@ -12,36 +12,36 @@
 class LoadingView : public QWidget {
     Q_OBJECT
 
-public:
-    explicit LoadingView(QWidget *parent = nullptr);
+    public:
+        explicit LoadingView(QWidget *parent = nullptr);
 
-public slots:
-    void updateStatus(const QString& status);
-    void updateProgress(int value);
-    void markLoadingComplete();
-    
-signals:
-    void loadingFinished();
+    public slots:
+        void updateStatus(const QString& status);
+        void updateProgress(int value);
+        void markLoadingComplete();
+        
+    signals:
+        void loadingFinished();
 
-private:
-    void setupUi();
-    void createLayout();
-    void setupAppNameLabel();
-    void setupProgressBar();
-    void setupStatusLabel();
-    void setupAnimations();
-    void setupProgressAnimation();
-    void setupStatusAnimation();
-    void setupAppNameAnimation();
-    
-    QLabel* statusLabel;
-    QLabel* appNameLabel;
-    QProgressBar* progressBar;
-    
-    QPropertyAnimation* progressAnimation;
-    QPropertyAnimation* statusOpacityAnimation;
-    QGraphicsOpacityEffect* statusOpacityEffect;
-    QPropertyAnimation* appNameAnimation;
+    private:
+        void setupUi();
+        void createLayout();
+        void setupAppNameLabel();
+        void setupProgressBar();
+        void setupStatusLabel();
+        void setupAnimations();
+        void setupProgressAnimation();
+        void setupStatusAnimation();
+        void setupAppNameAnimation();
+        
+        QLabel* statusLabel;
+        QLabel* appNameLabel;
+        QProgressBar* progressBar;
+        
+        QPropertyAnimation* progressAnimation;
+        QPropertyAnimation* statusOpacityAnimation;
+        QGraphicsOpacityEffect* statusOpacityEffect;
+        QPropertyAnimation* appNameAnimation;
 };
 
 #endif

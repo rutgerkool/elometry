@@ -23,53 +23,53 @@
 class PlayerSelectDialog : public QDialog {
     Q_OBJECT
 
-public:
-    explicit PlayerSelectDialog(TeamManager& teamManager, Team* currentTeam = nullptr, QWidget *parent = nullptr);
-    std::vector<Player> getSelectedPlayers() const;
+    public:
+        explicit PlayerSelectDialog(TeamManager& teamManager, Team* currentTeam = nullptr, QWidget *parent = nullptr);
+        std::vector<Player> getSelectedPlayers() const;
 
-private slots:
-    void searchPlayers();
-    void positionFilterChanged();
-    void clearFilters();
-    void toggleSelection();
-    void updateSelectionInfo();
-    void sortPlayerList(int column, Qt::SortOrder order);
-    void checkScrollPosition();
-    void loadMorePlayersIfNeeded();
+    private slots:
+        void searchPlayers();
+        void positionFilterChanged();
+        void clearFilters();
+        void toggleSelection();
+        void updateSelectionInfo();
+        void sortPlayerList(int column, Qt::SortOrder order);
+        void checkScrollPosition();
+        void loadMorePlayersIfNeeded();
 
-private:
-    void setupUi();
-    void setupTitleAndLabels();
-    void setupSearchControls();
-    void setupTableView();
-    void setupButtons();
-    void setupConnections();
-    void setupScrollConnections();
-    void setupTableConnections();
-    void initializePositionFilter();
-    void updatePlayerList();
-    void configureTableColumns();
-    void selectCurrentTeamPlayers();
-    void createNewModel();
-    QHBoxLayout* createSearchLayout();
+    private:
+        void setupUi();
+        void setupTitleAndLabels();
+        void setupSearchControls();
+        void setupTableView();
+        void setupButtons();
+        void setupConnections();
+        void setupScrollConnections();
+        void setupTableConnections();
+        void initializePositionFilter();
+        void updatePlayerList();
+        void configureTableColumns();
+        void selectCurrentTeamPlayers();
+        void createNewModel();
+        QHBoxLayout* createSearchLayout();
 
-    TeamManager& teamManager;
-    PlayerSelectModel* playersModel;
-    Team* currentTeam;
+        TeamManager& teamManager;
+        PlayerSelectModel* playersModel;
+        Team* currentTeam;
 
-    QTableView* playersTable;
-    QLineEdit* searchInput;
-    QComboBox* positionFilter;
-    QPushButton* clearButton;
-    QDialogButtonBox* buttonBox;
-    QLabel* selectionInfoLabel;
-    QLabel* titleLabel;
-    QLabel* instructionLabel;
-    QLabel* loadingIndicator;
+        QTableView* playersTable;
+        QLineEdit* searchInput;
+        QComboBox* positionFilter;
+        QPushButton* clearButton;
+        QDialogButtonBox* buttonBox;
+        QLabel* selectionInfoLabel;
+        QLabel* titleLabel;
+        QLabel* instructionLabel;
+        QLabel* loadingIndicator;
 
-    int currentOffset = 0;
-    const int pageSize = 20;
-    bool isLoading = false;
+        int currentOffset = 0;
+        const int pageSize = 20;
+        bool isLoading = false;
 };
 
 #endif

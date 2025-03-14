@@ -8,30 +8,30 @@
 #include <cstdint>
 
 class ILPSelector {
-public:
-    ILPSelector(std::vector<std::pair<int, Player>>& p, 
-                const std::vector<std::string>& pos, 
-                int64_t b);
+    public:
+        ILPSelector(std::vector<std::pair<int, Player>>& p, 
+                    const std::vector<std::string>& pos, 
+                    int64_t b);
 
-    std::vector<std::pair<int, Player>> selectTeam();
+        std::vector<std::pair<int, Player>> selectTeam();
 
-private:
-    struct Variable {
-        size_t playerIdx;
-        size_t positionIdx;
-        int varIdx;
-        double rating;
-        int64_t cost;
-    };
+    private:
+        struct Variable {
+            size_t playerIdx;
+            size_t positionIdx;
+            int varIdx;
+            double rating;
+            int64_t cost;
+        };
 
-    std::vector<std::pair<int, Player>>& players;
-    const std::vector<std::string>& requiredPositions;
-    int64_t budget;
+        std::vector<std::pair<int, Player>>& players;
+        const std::vector<std::string>& requiredPositions;
+        int64_t budget;
 
-    std::vector<Variable> createVariables();
-    void addBudgetConstraint(glp_prob* lp, const std::vector<Variable>& vars);
-    void addPositionConstraints(glp_prob* lp, const std::vector<Variable>& vars);
-    void setupObjectiveFunction(glp_prob* lp, const std::vector<Variable>& vars);
+        std::vector<Variable> createVariables();
+        void addBudgetConstraint(glp_prob* lp, const std::vector<Variable>& vars);
+        void addPositionConstraints(glp_prob* lp, const std::vector<Variable>& vars);
+        void setupObjectiveFunction(glp_prob* lp, const std::vector<Variable>& vars);
 };
 
 #endif
