@@ -37,6 +37,18 @@ class PlayerPositionWidget : public QLabel {
         void dropEvent(QDropEvent* event) override;
         
     private:
+        void createPlayerLayout(const QPixmap& playerImage);
+        void createPlayerWithImage(const QPixmap& playerImage);
+        void createPlayerWithInitials();
+        QString truncateNameForDisplay(const QString& name) const;
+        QString generateInitials() const;
+        void setupContentWidget(QWidget* contentWidget, QVBoxLayout* contentLayout);
+        void configureWithPlayer();
+        void configureWithoutPlayer();
+        QPixmap createCircularAvatar(const QPixmap& playerImage);
+        QMimeData* setupDragMimeData();
+        QPixmap createDragPixmap();
+        
         QString positionName;
         int playerId;
         QString playerName;
