@@ -8,47 +8,53 @@ LineupCreationDialog::LineupCreationDialog(TeamManager& tm, QWidget *parent)
     : QDialog(parent)
     , teamManager(tm)
 {
-    setWindowTitle("Create New Lineup");
+    setWindowTitle(tr("Create New Lineup"));
     setupUi();
+    populateFormations();
     setupConnections();
     setModal(true);
+    resize(400, 150);
 }
 
 void LineupCreationDialog::setupUi() {
-    QVBoxLayout* mainLayout = new QVBoxLayout(this);
+    auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(20, 20, 20, 20);
     mainLayout->setSpacing(10);
 
-    QHBoxLayout* formationLayout = new QHBoxLayout();
-    QLabel* formationLabel = new QLabel("Formation:", this);
+    setupFormationSection(mainLayout);
+    setupNameSection(mainLayout);
+    setupButtonSection(mainLayout);
+}
+
+void LineupCreationDialog::setupFormationSection(QVBoxLayout* mainLayout) {
+    auto* formationLayout = new QHBoxLayout();
+    auto* formationLabel = new QLabel(tr("Formation:"), this);
     formationComboBox = new QComboBox(this);
     formationComboBox->setMinimumWidth(200);
-
-    std::vector<Formation> formations = teamManager.getAllFormations();
-    for (const auto& formation : formations) {
-        formationComboBox->addItem(
-            QString::fromStdString(formation.name), 
-            formation.id
-        );
-    }
 
     formationLayout->addWidget(formationLabel);
     formationLayout->addWidget(formationComboBox);
     mainLayout->addLayout(formationLayout);
+}
 
-    QHBoxLayout* nameLayout = new QHBoxLayout();
-    QLabel* nameLabel = new QLabel("Lineup Name:", this);
+void LineupCreationDialog::setupNameSection(QVBoxLayout* mainLayout) {
+    auto* nameLayout = new QHBoxLayout();
+    auto* nameLabel = new QLabel(tr("Lineup Name:"), this);
     lineupNameInput = new QLineEdit(this);
-    lineupNameInput->setPlaceholderText("Optional: Enter a name for the lineup");
+    lineupNameInput->setPlaceholderText(tr("Optional: Enter a name for the lineup"));
     lineupNameInput->setMinimumWidth(200);
 
     nameLayout->addWidget(nameLabel);
     nameLayout->addWidget(lineupNameInput);
     mainLayout->addLayout(nameLayout);
+}
 
-    QHBoxLayout* buttonLayout = new QHBoxLayout();
-    createButton = new QPushButton("Create", this);
-    cancelButton = new QPushButton("Cancel", this);
+void LineupCreationDialog::setupButtonSection(QVBoxLayout* mainLayout) {
+    auto* buttonLayout = new QHBoxLayout();
+    createButton = new QPushButton(tr("Create"), this);
+    cancelButton = new QPushButton(tr("Cancel"), this);
+    
+    createButton->setDefault(true);
 
     buttonLayout->addStretch();
     buttonLayout->addWidget(cancelButton);
@@ -57,26 +63,62 @@ void LineupCreationDialog::setupUi() {
     mainLayout->addLayout(buttonLayout);
 }
 
+void LineupCreationDialog::populateFormations() {
+    if (!formationComboBox) {
+        return;
+    }
+    
+    formationComboBox->clear();
+    
+    const std::vector<Formation>& formations = teamManager.getAllFormations();
+    for (const auto& formation : formations) {
+        formationComboBox->addItem(
+            QString::fromStdString(formation.name), 
+            formation.id
+        );
+    }
+}
+
 void LineupCreationDialog::setupConnections() {
+    if (!cancelButton || !createButton) {
+        return;
+    }
+    
     connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
     
     connect(createButton, &QPushButton::clicked, [this]() {
-        int formationId = getSelectedFormationId();
-        
-        if (formationId <= 0) {
-            QMessageBox::warning(this, "Error", "Please select a formation.");
-            return;
+        if (validateInput()) {
+            accept();
         }
-        
-        accept();
     });
+    
+    connect(lineupNameInput, &QLineEdit::returnPressed, createButton, &QPushButton::click);
+}
+
+bool LineupCreationDialog::validateInput() const {
+    int formationId = getSelectedFormationId();
+    
+    if (formationId <= 0) {
+        QMessageBox::warning(
+            const_cast<LineupCreationDialog*>(this), 
+            tr("Error"), 
+            tr("Please select a formation.")
+        );
+        return false;
+    }
+    
+    return true;
 }
 
 int LineupCreationDialog::getSelectedFormationId() const {
+    if (!formationComboBox || formationComboBox->count() == 0) {
+        return -1;
+    }
+    
     int index = formationComboBox->currentIndex();
     return formationComboBox->itemData(index).toInt();
 }
 
 QString LineupCreationDialog::getLineupName() const {
-    return lineupNameInput->text().trimmed();
+    return lineupNameInput ? lineupNameInput->text().trimmed() : QString();
 }
