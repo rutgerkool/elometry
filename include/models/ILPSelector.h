@@ -9,9 +9,7 @@
 
 class ILPSelector {
     public:
-        ILPSelector(std::vector<std::pair<int, Player>>& p, 
-                    const std::vector<std::string>& pos, 
-                    int64_t b);
+        ILPSelector(std::vector<std::pair<int, Player>>& p, const std::vector<std::string>& pos, int64_t b);
 
         std::vector<std::pair<int, Player>> selectTeam();
 

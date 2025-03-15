@@ -45,8 +45,7 @@ class PlayerHistoryDialog : public QDialog {
         void populateTable();
         void configureChartAppearance();
         void createChartSeries(QLineSeries* series, QScatterSeries* pointSeries);
-        void setupChartAxes(QLineSeries* series, QScatterSeries* pointSeries, 
-                        double minRating, double maxRating, QDateTimeAxis* axisX, QValueAxis* axisY);
+        void setupChartAxes(QLineSeries* series, QScatterSeries* pointSeries, double minRating, double maxRating, QDateTimeAxis* axisX, QValueAxis* axisY);
 
         RatingManager& ratingManager;
         int playerId;

@@ -59,10 +59,7 @@ class LineupView : public QWidget {
         void collectReservePlayers(const std::set<int>& teamPlayerIds, QSet<int>& usedPlayerIds);
         void addRemainingPlayersToReserveList(const QSet<int>& usedPlayerIds);
         void updateLineupVisibility(bool visible);
-        QListWidgetItem* createPlayerItem(const Player& player);
-        Player* findPlayerById(int playerId);
         bool eventFilter(QObject* watched, QEvent* event);
-        QMap<int, QPixmap> playerImageCache;
         void loadPlayerImage(int playerId, const QString& imageUrl, const QString& position);
         void handleImageLoaded(QNetworkReply* reply, int playerId, const QString& position);
         void loadTeamPlayerImages();
@@ -82,15 +79,18 @@ class LineupView : public QWidget {
         void collectPlayerPositionsFromPitch();
         void collectPlayerPositionsFromBench();
         void collectPlayerPositionsFromReserves();
+        void removePlayerFromList(int playerId, QListWidget* sourceList);
         void addRemainingPlayersToReserves();
         bool isPlayerInListAlready(int playerId, QListWidget* targetList);
+        QListWidgetItem* createPlayerItem(const Player& player);
+        Player* findPlayerById(int playerId);
         QPixmap getPlayerImage(int playerId, const QString& position);
-        void removePlayerFromList(int playerId, QListWidget* sourceList);
 
         TeamManager& teamManager;
         Team* currentTeam;
         Lineup currentLineup;
         QMap<int, Formation> formations;
+        QMap<int, QPixmap> playerImageCache;
 
         QComboBox* existingLineupsComboBox;
         QPushButton* newLineupButton;

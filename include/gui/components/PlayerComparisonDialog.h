@@ -50,8 +50,7 @@ class PlayerComparisonDialog : public QDialog {
         QStandardItemModel* createTableModel(const std::vector<RatingChange>& playerHistory);
         
         void setupLegend();
-        void populateSeries(QLineSeries* series, const std::vector<std::pair<int, double>>& progression, 
-                          double& minRating, double& maxRating);
+        void populateSeries(QLineSeries* series, const std::vector<std::pair<int, double>>& progression, double& minRating, double& maxRating);
         std::pair<double, double> findRatingBounds();
         
         void prepareChartSeries(QLineSeries*& series1, QLineSeries*& series2);
