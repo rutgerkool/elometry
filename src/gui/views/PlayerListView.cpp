@@ -151,9 +151,25 @@ QWidget* PlayerListView::setupPaginationSection() {
     prevPageButton = new QPushButton("Previous", paginationWidget);
     prevPageButton->setObjectName("prevPageButton");
     
-    QSpacerItem* leftSpacer = new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    QWidget* pageInfoContainer = createPageInfoContainer(paginationWidget);
     
-    QWidget* pageInfoContainer = new QWidget(paginationWidget);
+    nextPageButton = new QPushButton("Next", paginationWidget);
+    nextPageButton->setObjectName("nextPageButton");
+    
+    QSpacerItem* leftSpacer = new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    QSpacerItem* rightSpacer = new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    
+    paginationLayout->addWidget(prevPageButton);
+    paginationLayout->addSpacerItem(leftSpacer);
+    paginationLayout->addWidget(pageInfoContainer);
+    paginationLayout->addSpacerItem(rightSpacer);
+    paginationLayout->addWidget(nextPageButton);
+    
+    return paginationWidget;
+}
+
+QWidget* PlayerListView::createPageInfoContainer(QWidget* parent) {
+    QWidget* pageInfoContainer = new QWidget(parent);
     QHBoxLayout* pageInfoLayout = new QHBoxLayout(pageInfoContainer);
     pageInfoLayout->setContentsMargins(0, 0, 0, 0);
     
@@ -165,18 +181,7 @@ QWidget* PlayerListView::setupPaginationSection() {
     pageInfoLayout->addWidget(pageInfoLabel);
     pageInfoLayout->addWidget(totalPagesLabel);
     
-    QSpacerItem* rightSpacer = new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum);
-    
-    nextPageButton = new QPushButton("Next", paginationWidget);
-    nextPageButton->setObjectName("nextPageButton");
-    
-    paginationLayout->addWidget(prevPageButton);
-    paginationLayout->addSpacerItem(leftSpacer);
-    paginationLayout->addWidget(pageInfoContainer);
-    paginationLayout->addSpacerItem(rightSpacer);
-    paginationLayout->addWidget(nextPageButton);
-    
-    return paginationWidget;
+    return pageInfoContainer;
 }
 
 QScrollArea* PlayerListView::setupPlayerDetailsSection() {
@@ -191,39 +196,54 @@ QScrollArea* PlayerListView::setupPlayerDetailsSection() {
     playerDetailsWidget = new QWidget();
     playerDetailsWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     
+    setupPlayerDetailsContent();
+    
+    playerDetailsScrollArea->setWidget(playerDetailsWidget);
+    return playerDetailsScrollArea;
+}
+
+void PlayerListView::setupPlayerDetailsContent() {
     QVBoxLayout* detailsLayout = new QVBoxLayout(playerDetailsWidget);
     detailsLayout->setContentsMargins(5, 5, 5, 5);
     detailsLayout->setSpacing(12);
     
+    createPlayerName(detailsLayout);
+    createPlayerInfoWidgets();
+    createPlayerActionButtons();
+    
+    addPlayerInfoToLayout(detailsLayout);
+    addPlayerButtonsToLayout(detailsLayout);
+    
+    detailsLayout->addStretch(1);
+}
+
+void PlayerListView::createPlayerName(QVBoxLayout* layout) {
     playerName = new QLabel("No Player Selected", this);
     playerName->setObjectName("playerDetailsLabel");
     playerName->setAlignment(Qt::AlignCenter);
     playerName->setWordWrap(true);
-
-    createPlayerInfoWidgets();
-    createPlayerActionButtons();
     
+    layout->addWidget(playerName);
+}
+
+void PlayerListView::addPlayerInfoToLayout(QVBoxLayout* layout) {
     QHBoxLayout* imageLayout = new QHBoxLayout();
     imageLayout->addStretch();
     imageLayout->addWidget(playerImage);
     imageLayout->addStretch();
 
-    detailsLayout->addWidget(playerName);
-    detailsLayout->addLayout(imageLayout);
-    detailsLayout->addWidget(playerClub);
-    detailsLayout->addWidget(playerPosition);
-    detailsLayout->addWidget(playerMarketValue);
-    
-    detailsLayout->addWidget(addToTeamButton);
-    detailsLayout->addWidget(viewHistoryButton);
-    detailsLayout->addWidget(selectForCompareButton);
-    detailsLayout->addWidget(compareWithSelectedButton);
-    detailsLayout->addWidget(clearComparisonButton);
-    
-    detailsLayout->addStretch(1);
-    
-    playerDetailsScrollArea->setWidget(playerDetailsWidget);
-    return playerDetailsScrollArea;
+    layout->addLayout(imageLayout);
+    layout->addWidget(playerClub);
+    layout->addWidget(playerPosition);
+    layout->addWidget(playerMarketValue);
+}
+
+void PlayerListView::addPlayerButtonsToLayout(QVBoxLayout* layout) {
+    layout->addWidget(addToTeamButton);
+    layout->addWidget(viewHistoryButton);
+    layout->addWidget(selectForCompareButton);
+    layout->addWidget(compareWithSelectedButton);
+    layout->addWidget(clearComparisonButton);
 }
 
 void PlayerListView::createPlayerInfoWidgets() {
@@ -343,7 +363,9 @@ void PlayerListView::setupTableConnections() {
     connect(tableView->horizontalHeader(), &QHeaderView::sortIndicatorChanged, model, &PlayerListModel::sort);
     
     connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, 
-        &PlayerListView::updatePlayerDetails);
+        [this](const QItemSelection&, const QItemSelection&) {
+            updatePlayerDetails();
+        });
     connect(tableView, &QTableView::doubleClicked, this, &PlayerListView::showPlayerHistory);
 }
 
@@ -410,64 +432,83 @@ void PlayerListView::animatePlayerDetails() {
     playerDetailsAnimGroup->start();
 }
 
-void PlayerListView::updatePlayerDetails() {
+void PlayerListView::handleTableSelectionChanged() {
     QModelIndexList indices = tableView->selectionModel()->selectedRows();
     
-    if (indices.isEmpty()) {
-        playerName->setText("No Player Selected");
-        playerClub->setText("");
-        playerPosition->setText("");
-        playerMarketValue->setText("");
-        playerImage->clear();
-        playerImage->setText("No Image");
-        
-        viewHistoryButton->setEnabled(false);
-        addToTeamButton->setEnabled(false);
-        selectForCompareButton->setEnabled(false);
-        updateComparisonButtons();
+    if (indices.isEmpty() || !indices.first().isValid()) {
+        clearPlayerDetails();
         return;
     }
     
     QModelIndex index = indices.first();
-    
-    if (!index.isValid()) return;
-    
     int playerId = model->data(model->index(index.row(), 0), Qt::DisplayRole).toInt();
     currentPlayerId = playerId;
     
+    findAndUpdatePlayerDetails(playerId);
+}
+
+void PlayerListView::clearPlayerDetails() {
+    playerName->setText("No Player Selected");
+    playerClub->setText("");
+    playerPosition->setText("");
+    playerMarketValue->setText("");
+    playerImage->clear();
+    playerImage->setText("No Image");
+    
+    viewHistoryButton->setEnabled(false);
+    addToTeamButton->setEnabled(false);
+    selectForCompareButton->setEnabled(false);
+    updateComparisonButtons();
+}
+
+void PlayerListView::findAndUpdatePlayerDetails(int playerId) {
     auto allPlayers = ratingManager.getSortedRatedPlayers();
     for (const auto& p : allPlayers) {
         if (p.first == playerId) {
-            playerName->setText(QString::fromStdString(p.second.name));
-            playerClub->setText("Club: " + QString::fromStdString(p.second.clubName));
-            playerPosition->setText("Position: " + QString::fromStdString(p.second.position) + 
-                                   " (" + QString::fromStdString(p.second.subPosition) + ")");
-            playerMarketValue->setText("Market Value: €" + QString::number(p.second.marketValue / 1000000.0, 'f', 1) + "M");
-            
-            viewHistoryButton->setEnabled(true);
-            addToTeamButton->setEnabled(true);
-            selectForCompareButton->setEnabled(true);
-            updateComparisonButtons();
-            
-            QString imageUrl = QString::fromStdString(p.second.imageUrl);
-            if (imageUrl.contains(",")) {
-                imageUrl = imageUrl.split(",").first().trimmed();
-            }
-            
-            if (imageUrl.startsWith("http")) {
-                fetchPlayerDetailImage(imageUrl);
-            } else {
-                loadLocalPlayerDetailImage(imageUrl);
-            }
-            
-            animatePlayerDetails();
+            updatePlayerDetails(p.second);
             break;
         }
     }
 }
 
+void PlayerListView::updatePlayerDetails() {
+    handleTableSelectionChanged();
+}
+
+void PlayerListView::updatePlayerDetails(const Player& player) {
+    playerName->setText(QString::fromStdString(player.name));
+    playerClub->setText("Club: " + QString::fromStdString(player.clubName));
+    playerPosition->setText("Position: " + QString::fromStdString(player.position) + 
+                            " (" + QString::fromStdString(player.subPosition) + ")");
+    
+    double marketValueInMillions = player.marketValue / 1000000.0;
+    playerMarketValue->setText("Market Value: €" + QString::number(marketValueInMillions, 'f', 1) + "M");
+    
+    viewHistoryButton->setEnabled(true);
+    addToTeamButton->setEnabled(true);
+    selectForCompareButton->setEnabled(true);
+    
+    handlePlayerImageLoading(player);
+    updateComparisonButtons();
+    animatePlayerDetails();
+}
+
+void PlayerListView::handlePlayerImageLoading(const Player& player) {
+    QString imageUrl = QString::fromStdString(player.imageUrl);
+    if (imageUrl.contains(",")) {
+        imageUrl = imageUrl.split(",").first().trimmed();
+    }
+    
+    if (imageUrl.startsWith("http")) {
+        fetchPlayerDetailImage(imageUrl);
+    } else {
+        loadLocalPlayerDetailImage(imageUrl);
+    }
+}
+
 void PlayerListView::fetchPlayerDetailImage(const QString& imageUrl) {
     QNetworkReply* reply = networkManager->get(QNetworkRequest(QUrl(imageUrl)));
+    
     connect(reply, &QNetworkReply::finished, this, [=]() {
         if (reply->error() == QNetworkReply::NoError) {
             QPixmap pixmap;
@@ -521,24 +562,32 @@ void PlayerListView::showPlayerComparison() {
     dialog.exec();
 }
 
-void PlayerListView::updateComparisonButtons() {
+void PlayerListView::handleComparisonState() {
     if (comparisonPlayerId <= 0) {
         selectForCompareButton->setVisible(true);
         selectForCompareButton->setEnabled(currentPlayerId > 0);
         compareWithSelectedButton->setVisible(false);
         clearComparisonButton->setVisible(false);
-    } else if (comparisonPlayerId == currentPlayerId) {
+        return;
+    }
+    
+    if (comparisonPlayerId == currentPlayerId) {
         selectForCompareButton->setVisible(false);
         compareWithSelectedButton->setVisible(false);
         clearComparisonButton->setVisible(true);
         clearComparisonButton->setEnabled(true);
-    } else {
-        selectForCompareButton->setVisible(false);
-        compareWithSelectedButton->setVisible(true);
-        compareWithSelectedButton->setEnabled(true);
-        clearComparisonButton->setVisible(true);
-        clearComparisonButton->setEnabled(true);
+        return;
     }
+    
+    selectForCompareButton->setVisible(false);
+    compareWithSelectedButton->setVisible(true);
+    compareWithSelectedButton->setEnabled(true);
+    clearComparisonButton->setVisible(true);
+    clearComparisonButton->setEnabled(true);
+}
+
+void PlayerListView::updateComparisonButtons() {
+    handleComparisonState();
 }
 
 void PlayerListView::addPlayerToTeams() {

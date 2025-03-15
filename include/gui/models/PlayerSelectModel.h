@@ -46,6 +46,19 @@ class PlayerSelectModel : public QAbstractTableModel {
         void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
 
     private:
+        void applyFilters();
+        QVariant getDisplayData(const QModelIndex &index) const;
+        QVariant getDecorativeData(const QModelIndex &index) const;
+        QVariant getAlignmentData(const QModelIndex &index) const;
+        QVariant getTooltipData(const QModelIndex &index) const;
+        QVariant getFontData(const QModelIndex &index) const;
+        
+        QVariant getHeaderDisplayData(int section) const;
+        QVariant getHeaderTooltipData(int section) const;
+        QVariant getHeaderAlignmentData(int section) const;
+        
+        void updatePlayerVisibility(int playerId);
+        
         std::vector<std::pair<int, Player>> allPlayers;
         std::vector<std::pair<int, Player>> filteredPlayers;
         std::set<int> selectedPlayerIds;

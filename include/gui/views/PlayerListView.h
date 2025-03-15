@@ -53,6 +53,7 @@ class PlayerListView : public QWidget {
         void configureTableView();
         QScrollArea* setupPlayerDetailsSection();
         QWidget* setupPaginationSection();
+        QWidget* createPageInfoContainer(QWidget* parent);
         void setupInputSection();
         QHBoxLayout* createInputLayout();
         void createPlayerInfoWidgets();
@@ -72,6 +73,16 @@ class PlayerListView : public QWidget {
         int processAddPlayerToTeams(const std::vector<int>& teamIds, const Player& player);
         int removePlayerFromTeams(const std::vector<int>& teamIds);
         void showResultMessage(int addedCount, int removedCount);
+        void handleTableSelectionChanged();
+        void clearPlayerDetails();
+        void findAndUpdatePlayerDetails(int playerId);
+        void handleComparisonState();
+        void handlePlayerImageLoading(const Player& player);
+        void setupPlayerDetailsContent();
+        void createPlayerName(QVBoxLayout* layout);
+        void addPlayerInfoToLayout(QVBoxLayout* layout);
+        void addPlayerButtonsToLayout(QVBoxLayout* layout);
+        void updatePlayerDetails(const Player& player);
 
         int currentPage = 0;
         int totalPages = 1;
