@@ -318,47 +318,75 @@ std::string Database::join(const std::vector<std::string>& values, const std::st
 
 void Database::loadCSVIntoTable(const std::string& tableName, const std::string& csvPath) {
     std::ifstream file(csvPath);
-
     if (!file.is_open()) {
         std::cerr << "Failed to open CSV file: " << csvPath << std::endl;
         return;
     }
 
-    std::string line;
-    std::stringstream sqlBatch;
-    sqlBatch << "BEGIN TRANSACTION;\n";
-
-    getline(file, line);
-    std::vector<std::string> columns = getSanitizedValues(file, line);
-
+    std::string headerLine;
+    getline(file, headerLine);
+    std::vector<std::string> columns = getSanitizedValues(file, headerLine);
     if (columns.empty()) {
         std::cerr << "Error: Could not extract columns from CSV file: " << csvPath << std::endl;
         return;
     }
 
+    std::string query = buildInsertQuery(tableName, columns, file);
+    executeCSVImportQuery(query, csvPath, tableName);
+}
+
+std::string Database::buildInsertQuery(const std::string& tableName, 
+                                      const std::vector<std::string>& columns, 
+                                      std::ifstream& file) {
+    std::stringstream sqlBatch;
+    sqlBatch << "BEGIN TRANSACTION;\n";
+
     std::string columnNames = "(" + join(columns, ", ") + ")";
     sqlBatch << "INSERT OR REPLACE INTO " + tableName + " " + columnNames + " VALUES ";
 
     bool firstRow = true;
+    appendCSVRowsToQuery(file, sqlBatch, firstRow);
+    
+    sqlBatch << ";\nCOMMIT;\n";
+    return sqlBatch.str();
+}
+
+void Database::appendCSVRowsToQuery(std::ifstream& file, 
+                                   std::stringstream& sqlBatch,
+                                   bool& firstRow) {
+    std::string line;
     while (getline(file, line)) {
         std::vector<std::string> values = getSanitizedValues(file, line);
+        if (values.empty()) {
+            continue;
+        }
 
         if (!firstRow) {
             sqlBatch << ",";
         }
-        sqlBatch << "(";
-        for (size_t i = 0; i < values.size(); i++) {
-            sqlBatch << values[i];
-            if (i < values.size() - 1) sqlBatch << ",";
-        }
-        sqlBatch << ")";
+        
+        appendRowValuesToQuery(values, sqlBatch);
         firstRow = false;
     }
+}
 
-    sqlBatch << ";\nCOMMIT;\n";
+void Database::appendRowValuesToQuery(const std::vector<std::string>& values, 
+                                     std::stringstream& sqlBatch) {
+    sqlBatch << "(";
+    for (size_t i = 0; i < values.size(); i++) {
+        sqlBatch << values[i];
+        if (i < values.size() - 1) {
+            sqlBatch << ",";
+        }
+    }
+    sqlBatch << ")";
+}
 
+void Database::executeCSVImportQuery(const std::string& query, 
+                                    const std::string& csvPath,
+                                    const std::string& tableName) {
     char *errMsg;
-    if (sqlite3_exec(db, sqlBatch.str().c_str(), 0, 0, &errMsg) != SQLITE_OK) {
+    if (sqlite3_exec(db, query.c_str(), 0, 0, &errMsg) != SQLITE_OK) {
         std::cerr << "SQL error: " << errMsg << std::endl;
         sqlite3_free(errMsg);
     } else {

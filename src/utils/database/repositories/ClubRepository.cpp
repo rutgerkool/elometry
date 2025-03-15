@@ -12,13 +12,7 @@ std::vector<Club> ClubRepository::fetchClubs(const int& clubId) {
     
     int currentSeasonYear = getCurrentSeasonYear(); 
 
-    std::string query = R"(
-        SELECT 
-            club_id,
-            name
-        FROM clubs
-        WHERE last_season = ?
-    )";
+    std::string query = "SELECT club_id, name FROM clubs WHERE last_season = ?";
 
     if (clubId != -1) { 
         query += " AND club_id = ?";

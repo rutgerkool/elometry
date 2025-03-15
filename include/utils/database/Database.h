@@ -55,6 +55,11 @@ class Database {
         bool tableExists(const std::string& tableName);
         bool tableHasData(const std::string& tableName);
         bool metadataHasEntry(const std::string& key);
+
+        std::string buildInsertQuery(const std::string& tableName, const std::vector<std::string>& columns, std::ifstream& file);
+        void appendCSVRowsToQuery(std::ifstream& file, std::stringstream& sqlBatch, bool& firstRow);
+        void appendRowValuesToQuery(const std::vector<std::string>& values, std::stringstream& sqlBatch);
+        void executeCSVImportQuery(const std::string& query, const std::string& csvPath, const std::string& tableName);
         
         static size_t WriteDataCallback(void* ptr, size_t size, size_t nmemb, FILE* stream);
 };
