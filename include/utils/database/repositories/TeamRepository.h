@@ -5,6 +5,7 @@
 #include "models/PlayerRating.h"
 #include "gui/models/LineupTypes.h"
 #include <vector>
+#include <string>
 
 struct Team {
     int teamId;
@@ -38,9 +39,18 @@ class TeamRepository {
         void removePlayerFromAllLineups(int teamId, int playerId);
 
     private:
-        sqlite3 * db;
+        sqlite3* db;
         std::string positionTypeToString(PositionType positionType);
         PositionType stringToPositionType(const std::string& positionType);
+        
+        bool executeStatement(const std::string& query, const std::vector<std::pair<int, int>>& intBindings = {}, 
+                             const std::vector<std::pair<int, std::string>>& textBindings = {});
+        bool executeStatement(sqlite3_stmt* stmt, const std::vector<std::pair<int, int>>& intBindings = {}, 
+                             const std::vector<std::pair<int, std::string>>& textBindings = {});
+        bool prepareStatement(const std::string& query, sqlite3_stmt** stmt);
+        bool deactivateTeamLineups(int teamId);
+        bool fillLineupPlayerPositions(Lineup& lineup);
+        bool saveLineupPlayers(const Lineup& lineup);
 };
 
 #endif

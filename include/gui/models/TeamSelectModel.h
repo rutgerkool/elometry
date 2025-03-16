@@ -30,6 +30,14 @@ class TeamSelectModel : public QAbstractListModel {
         std::set<int> getInitialSelectedTeamIds() const;
 
     private:
+        void notifyTeamDataChanged(int teamId);
+        void initializeSelectedTeams(const std::vector<Team>& teams, int playerId);
+        void applyFilter();
+        QVariant getDisplayData(const Team& team) const;
+        QVariant getDecorationData(const Team& team, int row, bool selected, int role) const;
+        QVariant getTeamFontData(const Team& team) const;
+        QString getTeamTooltip(const Team& team) const;
+        
         std::vector<Team> allTeams;
         std::vector<Team> filteredTeams;
         std::set<int> selectedTeamIds;

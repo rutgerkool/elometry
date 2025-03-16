@@ -9,7 +9,11 @@ TeamSelectModel::TeamSelectModel(const std::vector<Team>& teams, int playerId, Q
     , filteredTeams(teams)
     , playerId(playerId)
 {
-    for (const auto& team : allTeams) {
+    initializeSelectedTeams(teams, playerId);
+}
+
+void TeamSelectModel::initializeSelectedTeams(const std::vector<Team>& teams, int playerId) {
+    for (const auto& team : teams) {
         for (const auto& player : team.players) {
             if (player.playerId == playerId) {
                 initialSelectedTeamIds.insert(team.teamId);
@@ -26,59 +30,75 @@ int TeamSelectModel::rowCount(const QModelIndex &parent) const {
 }
 
 QVariant TeamSelectModel::data(const QModelIndex &index, int role) const {
-    if (!index.isValid() || index.row() >= filteredTeams.size()) return QVariant();
+    if (!index.isValid() || index.row() >= filteredTeams.size()) 
+        return QVariant();
 
     const auto& team = filteredTeams[index.row()];
     bool selected = isTeamSelected(team.teamId);
-    bool initiallySelected = initialSelectedTeamIds.find(team.teamId) != initialSelectedTeamIds.end();
 
-    if (role == Qt::DisplayRole) {
-        return QString::fromStdString(team.teamName);
+    switch (role) {
+        case Qt::DisplayRole:
+            return getDisplayData(team);
+        case Qt::CheckStateRole:
+            return selected ? Qt::Checked : Qt::Unchecked;
+        case Qt::BackgroundRole:
+        case Qt::ForegroundRole:
+            return getDecorationData(team, index.row(), selected, role);
+        case Qt::UserRole:
+            return team.teamId;
+        case Qt::ToolTipRole:
+            return getTeamTooltip(team);
+        case Qt::FontRole:
+            return getTeamFontData(team);
+        default:
+            return QVariant();
     }
-    else if (role == Qt::CheckStateRole) {
-        return selected ? Qt::Checked : Qt::Unchecked;
-    }
-    else if (role == Qt::BackgroundRole) {
+}
+
+QVariant TeamSelectModel::getDisplayData(const Team& team) const {
+    return QString::fromStdString(team.teamName);
+}
+
+QVariant TeamSelectModel::getDecorationData(const Team& team, int row, bool selected, int role) const {
+    if (role == Qt::BackgroundRole) {
         if (selected) {
             return QColor(45, 65, 90);
         }
-        return (index.row() % 2) ? QColor(45, 45, 45) : QColor(53, 53, 53);
+        return (row % 2) ? QColor(45, 45, 45) : QColor(53, 53, 53);
+    } else {
+        return selected ? QColor(220, 220, 220) : QColor(210, 210, 210);
     }
-    else if (role == Qt::ForegroundRole) {
-        if (selected) {
-            return QColor(220, 220, 220);
-        }
-        return QColor(210, 210, 210);
-    }
-    else if (role == Qt::UserRole) {
-        return team.teamId;
-    }
-    else if (role == Qt::ToolTipRole) {
-        QString tooltip = QString::fromStdString(team.teamName);
-        if (initiallySelected) {
-            tooltip += " (Player already in this team)";
-        }
-        return tooltip;
-    }
-    else if (role == Qt::FontRole) {
-        if (initiallySelected) {
-            QFont font;
-            font.setItalic(true);
-            return font;
-        }
-    }
+}
 
+QVariant TeamSelectModel::getTeamFontData(const Team& team) const {
+    bool initiallySelected = initialSelectedTeamIds.find(team.teamId) != initialSelectedTeamIds.end();
+    
+    if (initiallySelected) {
+        QFont font;
+        font.setItalic(true);
+        return font;
+    }
+    
     return QVariant();
 }
 
-bool TeamSelectModel::setData(const QModelIndex &index, const QVariant &value, int role) {
-    if (!index.isValid() || role != Qt::CheckStateRole) 
-        return false;
+QString TeamSelectModel::getTeamTooltip(const Team& team) const {
+    QString tooltip = QString::fromStdString(team.teamName);
+    bool initiallySelected = initialSelectedTeamIds.find(team.teamId) != initialSelectedTeamIds.end();
     
-    if (index.row() >= filteredTeams.size())
+    if (initiallySelected) {
+        tooltip += " (Player already in this team)";
+    }
+    
+    return tooltip;
+}
+
+bool TeamSelectModel::setData(const QModelIndex &index, const QVariant &value, int role) {
+    if (!index.isValid() || role != Qt::CheckStateRole || index.row() >= filteredTeams.size()) 
         return false;
     
     int teamId = filteredTeams[index.row()].teamId;
+    
     if (value == Qt::Checked) {
         selectedTeamIds.insert(teamId);
     } else {
@@ -98,36 +118,38 @@ Qt::ItemFlags TeamSelectModel::flags(const QModelIndex &index) const {
 void TeamSelectModel::setFilter(const QString& filter) {
     beginResetModel();
     currentFilter = filter;
-    
-    filteredTeams = allTeams;
-    
-    if (!filter.isEmpty()) {
-        filteredTeams.erase(
-            std::remove_if(filteredTeams.begin(), filteredTeams.end(),
-                [&filter](const auto& team) {
-                    return !QString::fromStdString(team.teamName)
-                        .contains(filter, Qt::CaseInsensitive);
-                }
-            ),
-            filteredTeams.end()
-        );
-    }
-    
+    applyFilter();
     endResetModel();
 }
 
+void TeamSelectModel::applyFilter() {
+    filteredTeams = allTeams;
+    
+    if (currentFilter.isEmpty())
+        return;
+    
+    filteredTeams.erase(
+        std::remove_if(filteredTeams.begin(), filteredTeams.end(),
+            [this](const auto& team) {
+                return !QString::fromStdString(team.teamName)
+                    .contains(currentFilter, Qt::CaseInsensitive);
+            }
+        ),
+        filteredTeams.end()
+    );
+}
+
 void TeamSelectModel::toggleTeamSelection(const QModelIndex &index) {
-    if (!index.isValid() || index.row() >= filteredTeams.size()) return;
+    if (!index.isValid() || index.row() >= filteredTeams.size()) 
+        return;
     
     int teamId = filteredTeams[index.row()].teamId;
     
     if (isTeamSelected(teamId)) {
-        selectedTeamIds.erase(teamId);
+        deselectTeam(teamId);
     } else {
-        selectedTeamIds.insert(teamId);
+        selectTeam(teamId);
     }
-    
-    emit dataChanged(index, index);
 }
 
 bool TeamSelectModel::isTeamSelected(int teamId) const {
@@ -136,18 +158,15 @@ bool TeamSelectModel::isTeamSelected(int teamId) const {
 
 void TeamSelectModel::selectTeam(int teamId) {
     selectedTeamIds.insert(teamId);
-    
-    for (size_t i = 0; i < filteredTeams.size(); ++i) {
-        if (filteredTeams[i].teamId == teamId) {
-            emit dataChanged(index(static_cast<int>(i), 0), index(static_cast<int>(i), 0));
-            break;
-        }
-    }
+    notifyTeamDataChanged(teamId);
 }
 
 void TeamSelectModel::deselectTeam(int teamId) {
     selectedTeamIds.erase(teamId);
-    
+    notifyTeamDataChanged(teamId);
+}
+
+void TeamSelectModel::notifyTeamDataChanged(int teamId) {
     for (size_t i = 0; i < filteredTeams.size(); ++i) {
         if (filteredTeams[i].teamId == teamId) {
             emit dataChanged(index(static_cast<int>(i), 0), index(static_cast<int>(i), 0));
@@ -158,9 +177,12 @@ void TeamSelectModel::deselectTeam(int teamId) {
 
 std::vector<int> TeamSelectModel::getSelectedTeamIds() const {
     std::vector<int> teamIds;
+    teamIds.reserve(selectedTeamIds.size());
+    
     for (int id : selectedTeamIds) {
         teamIds.push_back(id);
     }
+    
     return teamIds;
 }
 
