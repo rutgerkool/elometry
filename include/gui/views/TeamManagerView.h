@@ -44,7 +44,7 @@ private slots:
     void loadSelectedTeam();
     void autoFillTeam();
     void updateTeamInfo();
-    void loadTeamById();
+    void showClubSelectionDialog();
     void updateBudget(int newBudget);
     void removeSelectedPlayer();
     void navigateBack();
@@ -70,11 +70,38 @@ protected:
 
 private:
     void setupUi();
+    void setupMainLayout(QVBoxLayout* mainLayout, QWidget* threeColumnContainer);
+    void setupTopButtonLayout(QHBoxLayout* topButtonLayout);
+    void setupViewToggleButtons(QHBoxLayout* viewToggleLayout);
+    void setupThreeColumnContainer(QWidget* threeColumnContainer);
+    void setupLeftContainerWidget(QHBoxLayout* layout);
+    void setupCenterContainerWidget(QHBoxLayout* layout);
+    void setupRightContainerWidget(QHBoxLayout* layout);
+    
     QWidget* setupLeftPanel();
+    void setupLeftPanelHeader(QVBoxLayout* layout);
+    void setupLeftPanelTeamList(QVBoxLayout* layout);
+    void setupLeftPanelButtons(QVBoxLayout* layout);
+    
     QWidget* setupCenterPanel();
-    QScrollArea* setupRightPanel();
+    void setupCenterPanelHeader(QVBoxLayout* layout);
+    void setupCenterPanelTeamTable(QVBoxLayout* layout);
+    void setupCenterPanelBudget(QVBoxLayout* layout);
+    void setupCenterPanelButtons(QVBoxLayout* layout);
+    
     QWidget* setupLineupPanel();
+    
+    QScrollArea* setupRightPanel();
+    void initializePlayerDetailsScrollArea();
+    void setupPlayerDetailsWidget();
+    void setupPlayerDetailsHeader(QVBoxLayout* layout);
+    void setupPlayerDetailsContent(QVBoxLayout* layout);
+    
     void createPlayerInfoLabels();
+    void createPlayerImageLabel();
+    void createPlayerTextLabels();
+    QLabel* createInfoLabel(const QString& objectName);
+    
     void createPlayerActionButtons();
     QHBoxLayout* setupImageLayout();
     void updatePanelSizes();
@@ -92,14 +119,46 @@ private:
     void enableTeamControls();
     void disableTeamControls();
     QStandardItemModel* createPlayerModel();
+    QStandardItemModel* initializePlayerModel();
+    void populatePlayerModel(QStandardItemModel* playerModel);
+    void configureCurrentTeamPlayers(QStandardItemModel* playerModel);
     Player* findPlayerById(int playerId);
     int getSelectedPlayerId();
+    void updateLineupView();
+    void updateLineupAfterPlayerRemoval();
+    void updatePlayerInfoLabels(Player* player);
+    void updatePlayerImage(Player* player);
+    void enablePlayerDetailButtons();
     
+    void createAndSaveNewTeam(const QString& name);
+    void loadTeamFromClub(int clubId);
+    void loadAvailableClubs();
+    void loadTeamById(int teamId);
+    bool validateTeamSelection();
+    void processTeamNameUpdate(const QString& newName);
+    void refreshTeamListAndSelection(int teamId);
+    void deleteTeamAndUpdateUI(int teamId);
+    void updateTeamWithSelectedPlayers(const std::vector<Player>& selectedPlayers);
+    
+    bool isValidPlayerSelection(const QModelIndex& index);
+    void disableComparisonButtons();
+    void updateComparisonButtonsState(int playerId);
+    void showNormalSelectionState(int playerId);
+    void showSamePlayerSelectionState();
+    void showComparisonReadyState();
+    void clearPlayerDetails();
+    void disablePlayerDetailButtons();
+    void resetComparisonState();
+    void fadeOutPlayerDetails();
+    
+    void processPlayerImage(int playerId, QStandardItem* imageItem, const QString& imageUrl);
     void loadPlayerImage(int playerId, const QString& imageUrl);
+    void loadNetworkImage(int playerId, const QString& imageUrl);
     void handleImageResponse(QNetworkReply* reply, int playerId);
     void loadLocalImage(int playerId, const QString& imageUrl);
     void updatePlayerImageInModel(int playerId);
     void fetchPlayerDetailImage(const QString& imageUrl);
+    void handlePlayerDetailImageResponse(QNetworkReply* reply);
     void loadLocalPlayerDetailImage(const QString& imageUrl);
 
     TeamManager& teamManager;
