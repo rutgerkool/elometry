@@ -1,4 +1,4 @@
-#include "gui/components/LineupPitchView.h"
+#include "gui/views/LineupPitchView.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QStyleOption>

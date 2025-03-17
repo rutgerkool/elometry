@@ -1,4 +1,4 @@
-#include "gui/components/TeamSelectDialog.h"
+#include "gui/components/dialogs/TeamSelectDialog.h"
 #include "gui/models/TeamSelectModel.h"
 #include <QtWidgets/QMessageBox>
 #include <algorithm>

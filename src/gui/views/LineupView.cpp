@@ -1,5 +1,5 @@
-#include "gui/components/LineupView.h"
-#include "gui/components/DraggableListWidget.h"
+#include "gui/views/LineupView.h"
+#include "gui/components/widgets/DraggableListWidget.h"
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QGroupBox>
 #include <QTimer>

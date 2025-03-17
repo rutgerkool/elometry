@@ -1,4 +1,4 @@
-#include "gui/components/PlayerComparisonDialog.h"
+#include "gui/components/dialogs/PlayerComparisonDialog.h"
 #include <QHeaderView>
 #include <QDateTime>
 #include <QLabel>

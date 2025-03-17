@@ -1,4 +1,4 @@
-#include "gui/components/PlayerSelectDialog.h"
+#include "gui/components/dialogs/PlayerSelectDialog.h"
 #include <QtWidgets/QMessageBox>
 #include <QtGui/QStandardItem>
 #include <QtGui/QIcon>

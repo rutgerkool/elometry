@@ -23,9 +23,9 @@
 #include <set>
 #include <map>
 #include "services/TeamManager.h"
-#include "gui/components/LineupPitchView.h"
-#include "gui/components/LineupCreationDialog.h"
-#include "gui/components/DraggableListWidget.h"
+#include "gui/views/LineupPitchView.h"
+#include "gui/components/dialogs/LineupCreationDialog.h"
+#include "gui/components/widgets/DraggableListWidget.h"
 
 class LineupView : public QWidget {
     Q_OBJECT

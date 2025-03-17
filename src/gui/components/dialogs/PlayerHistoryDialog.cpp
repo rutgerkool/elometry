@@ -1,4 +1,4 @@
-#include "gui/components/PlayerHistoryDialog.h"
+#include "gui/components/dialogs/PlayerHistoryDialog.h"
 #include <QHeaderView>
 #include <QDateTime>
 #include <QEasingCurve>

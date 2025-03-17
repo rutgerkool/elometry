@@ -19,8 +19,8 @@
 #include <QtWidgets/QApplication>
 #include <QEnterEvent>
 #include "services/TeamManager.h"
-#include "gui/components/LineupPitchView.h"
-#include "gui/components/LineupCreationDialog.h"
+#include "gui/views/LineupPitchView.h"
+#include "gui/components/dialogs/LineupCreationDialog.h"
 
 class DraggableListWidget : public QListWidget {
     Q_OBJECT

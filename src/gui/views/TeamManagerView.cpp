@@ -1,10 +1,10 @@
 #include "gui/views/TeamManagerView.h"
 #include "gui/models/PlayerListModel.h"
 #include "gui/models/TeamListModel.h"
-#include "gui/components/ClubSelectDialog.h"
-#include "gui/components/PlayerHistoryDialog.h"
-#include "gui/components/PlayerComparisonDialog.h"
-#include "gui/components/PlayerSelectDialog.h"
+#include "gui/components/dialogs/ClubSelectDialog.h"
+#include "gui/components/dialogs/PlayerHistoryDialog.h"
+#include "gui/components/dialogs/PlayerComparisonDialog.h"
+#include "gui/components/dialogs/PlayerSelectDialog.h"
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>

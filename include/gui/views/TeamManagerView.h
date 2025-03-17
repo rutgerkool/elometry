@@ -28,8 +28,8 @@
 #include "utils/database/repositories/ClubRepository.h"
 #include "services/TeamManager.h"
 #include "gui/models/TeamListModel.h"
-#include "gui/components/LineupView.h"
-#include "gui/components/LineupCreationDialog.h"
+#include "gui/views/LineupView.h"
+#include "gui/components/dialogs/LineupCreationDialog.h"
 
 class TeamManagerView : public QWidget {
     Q_OBJECT

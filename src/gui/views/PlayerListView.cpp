@@ -1,8 +1,8 @@
 #include "gui/views/PlayerListView.h"
 #include "gui/models/PlayerListModel.h"
-#include "gui/components/PlayerHistoryDialog.h"
-#include "gui/components/PlayerComparisonDialog.h"
-#include "gui/components/TeamSelectDialog.h"
+#include "gui/components/dialogs/PlayerHistoryDialog.h"
+#include "gui/components/dialogs/PlayerComparisonDialog.h"
+#include "gui/components/dialogs/TeamSelectDialog.h"
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QHBoxLayout>

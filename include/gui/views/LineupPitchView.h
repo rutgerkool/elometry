@@ -10,7 +10,7 @@
 #include <QtGui/QMouseEvent>
 #include <QtCore/QMimeData>
 #include "services/TeamManager.h"
-#include "gui/components/PlayerPositionWidget.h"
+#include "gui/components/widgets/PlayerPositionWidget.h"
 
 class LineupPitchView : public QWidget {
     Q_OBJECT

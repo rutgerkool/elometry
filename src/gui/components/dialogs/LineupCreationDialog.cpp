@@ -1,4 +1,4 @@
-#include "gui/components/LineupCreationDialog.h"
+#include "gui/components/dialogs/LineupCreationDialog.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
