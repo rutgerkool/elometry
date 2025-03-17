@@ -31,6 +31,7 @@ std::vector<std::pair<int, Player>> RatingManager::selectOptimalTeamByPositions(
 ) {
     std::vector<std::pair<int, Player>> sortedRatedPlayers = ratingSystem.getSortedRatedPlayers();
     ILPSelector selector(sortedRatedPlayers, requiredPositions, budget);
+    
     return selector.selectTeam();
 }
 

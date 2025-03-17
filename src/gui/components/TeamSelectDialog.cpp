@@ -29,17 +29,19 @@ void TeamSelectDialog::setupUi() {
     
     mainLayout->addWidget(titleLabel);
     mainLayout->addWidget(selectionInfoLabel);
-    mainLayout->addLayout([this]() {
-        QHBoxLayout* searchLayout = new QHBoxLayout();
-        searchLayout->setSpacing(8);
-        searchLayout->addWidget(searchInput, 1);
-        searchLayout->addWidget(clearButton);
-        return searchLayout;
-    }());
+    mainLayout->addLayout(createSearchLayout());
     mainLayout->addWidget(instructionLabel);
     mainLayout->addWidget(teamsList, 1);
     mainLayout->addWidget(noTeamsLabel);
     mainLayout->addWidget(buttonBox);
+}
+
+QHBoxLayout* TeamSelectDialog::createSearchLayout() {
+    QHBoxLayout* searchLayout = new QHBoxLayout();
+    searchLayout->setSpacing(8);
+    searchLayout->addWidget(searchInput, 1);
+    searchLayout->addWidget(clearButton);
+    return searchLayout;
 }
 
 void TeamSelectDialog::setupTitleAndLabels() {
@@ -89,21 +91,29 @@ void TeamSelectDialog::setupConnections() {
     connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     
-    connect(teamsList, &QListView::clicked, [this](const QModelIndex &index) {
-        toggleSelection(index);
-    });
+    connect(teamsList, &QListView::clicked, this, &TeamSelectDialog::toggleSelection);
 }
 
 void TeamSelectDialog::updateTeamList() {
     std::vector<Team> allTeams = teamManager.getAllTeams();
     
     if (allTeams.empty()) {
-        teamsList->hide();
-        noTeamsLabel->show();
-        buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
+        handleEmptyTeamList();
         return;
     }
     
+    handleNonEmptyTeamList(allTeams);
+    updateInitialTeamIds();
+    updateSelectionInfo();
+}
+
+void TeamSelectDialog::handleEmptyTeamList() {
+    teamsList->hide();
+    noTeamsLabel->show();
+    buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
+}
+
+void TeamSelectDialog::handleNonEmptyTeamList(const std::vector<Team>& allTeams) {
     noTeamsLabel->hide();
     teamsList->show();
     buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
@@ -116,18 +126,23 @@ void TeamSelectDialog::updateTeamList() {
         delete oldModel;
     }
     
-    connect(teamsModel, &QAbstractItemModel::dataChanged, this, &TeamSelectDialog::updateSelectionInfo);
-    
+    connect(teamsModel, &QAbstractItemModel::dataChanged, 
+            this, &TeamSelectDialog::updateSelectionInfo);
+}
+
+void TeamSelectDialog::updateInitialTeamIds() {
     initialTeamIds.clear();
-    for (int id : teamsModel->getInitialSelectedTeamIds()) {
-        initialTeamIds.insert(id);
+    if (teamsModel) {
+        for (int id : teamsModel->getInitialSelectedTeamIds()) {
+            initialTeamIds.insert(id);
+        }
     }
-    updateSelectionInfo();
 }
 
 void TeamSelectDialog::searchTeams(const QString& text) {
-    if (!teamsModel) return;
-    teamsModel->setFilter(text);
+    if (teamsModel) {
+        teamsModel->setFilter(text);
+    }
 }
 
 void TeamSelectDialog::clearFilter() {
@@ -138,7 +153,9 @@ void TeamSelectDialog::clearFilter() {
 }
 
 void TeamSelectDialog::toggleSelection(const QModelIndex &index) {
-    if (!index.isValid() || !teamsModel) return;
+    if (!index.isValid() || !teamsModel) {
+        return;
+    }
     
     QVariant checkState = index.data(Qt::CheckStateRole);
     teamsModel->setData(index, 
@@ -149,11 +166,13 @@ void TeamSelectDialog::toggleSelection(const QModelIndex &index) {
 }
 
 void TeamSelectDialog::updateSelectionInfo() {
-    if (!teamsModel) return;
+    if (!teamsModel) {
+        return;
+    }
     
     int count = teamsModel->getSelectedCount();
-    int initialCount = initialTeamIds.count();
     int newCount = 0;
+    int removedCount = 0;
     
     for (int id : teamsModel->getSelectedTeamIds()) {
         if (!initialTeamIds.contains(id)) {
@@ -161,33 +180,45 @@ void TeamSelectDialog::updateSelectionInfo() {
         }
     }
     
-    int removedCount = 0;
     for (int id : initialTeamIds) {
         if (!teamsModel->isTeamSelected(id)) {
             removedCount++;
         }
     }
     
-    QString selectionText = QString("Selected: %1 team%2").arg(count).arg(count == 1 ? "" : "s");
-    
-    if (newCount > 0 || removedCount > 0) {
-        selectionText += " (";
-        if (newCount > 0) {
-            selectionText += QString("%1 to add").arg(newCount);
-            if (removedCount > 0) {
-                selectionText += ", ";
-            }
-        }
-        if (removedCount > 0) {
-            selectionText += QString("%1 to remove").arg(removedCount);
-        }
-        selectionText += ")";
-    }
-    
+    QString selectionText = buildSelectionInfoText(count, newCount, removedCount);
     selectionInfoLabel->setText(selectionText);
 }
 
+QString TeamSelectDialog::buildSelectionInfoText(int count, int newCount, int removedCount) {
+    QString selectionText = QString("Selected: %1 team%2")
+        .arg(count)
+        .arg(count == 1 ? "" : "s");
+    
+    if (newCount <= 0 && removedCount <= 0) {
+        return selectionText;
+    }
+    
+    selectionText += " (";
+    
+    if (newCount > 0) {
+        selectionText += QString("%1 to add").arg(newCount);
+        if (removedCount > 0) {
+            selectionText += ", ";
+        }
+    }
+    
+    if (removedCount > 0) {
+        selectionText += QString("%1 to remove").arg(removedCount);
+    }
+    
+    selectionText += ")";
+    return selectionText;
+}
+
 std::vector<int> TeamSelectDialog::getSelectedTeamIds() const {
-    if (!teamsModel) return std::vector<int>();
+    if (!teamsModel) {
+        return std::vector<int>();
+    }
     return teamsModel->getSelectedTeamIds();
 }

@@ -28,6 +28,7 @@ class TeamSelectDialog : public QDialog {
         void clearFilter();
         void toggleSelection(const QModelIndex &index);
         void updateSelectionInfo();
+        QString buildSelectionInfoText(int count, int newCount, int removedCount);
 
     private:
         void setupUi();
@@ -37,6 +38,10 @@ class TeamSelectDialog : public QDialog {
         void setupButtons();
         void setupConnections();
         void updateTeamList();
+        void handleEmptyTeamList();
+        void handleNonEmptyTeamList(const std::vector<Team>& allTeams);
+        void updateInitialTeamIds();
+        QHBoxLayout* createSearchLayout();
 
         TeamManager& teamManager;
         TeamSelectModel* teamsModel;

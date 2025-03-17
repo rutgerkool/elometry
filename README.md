@@ -178,6 +178,5 @@ To allow for automated updates, Kaggle API credentials must be submitted in the 
 
 ## **Performance Optimizations**
 - Batch SQL operations
-- Indexed queries
 - Parallel ELO calculations
 - Integer Linear Programming optimization

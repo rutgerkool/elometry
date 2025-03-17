@@ -16,8 +16,7 @@ KaggleAPIClient::KaggleAPIClient(const std::string& username, const std::string&
     }
 }
 
-KaggleAPIClient::~KaggleAPIClient() {
-}
+KaggleAPIClient::~KaggleAPIClient() {}
 
 bool KaggleAPIClient::validateCredentials(bool requireAuth) const {
     if (requireAuth && (username.empty() || key.empty())) {
@@ -104,6 +103,7 @@ size_t KaggleAPIClient::WriteDataCallback(void* ptr, size_t size, size_t nmemb, 
 
 CURL* KaggleAPIClient::initCurl(const std::string& url, bool requireAuth) {
     CURL* curl = curl_easy_init();
+
     if (!curl) {
         std::cerr << "Failed to initialize curl" << std::endl;
         return nullptr;
@@ -152,14 +152,6 @@ bool KaggleAPIClient::executeRequest(CURL* curl, long& http_code) {
     return true;
 }
 
-std::string KaggleAPIClient::processApiResponse(bool success, const std::string& responseBuffer) {
-    if (!success) {
-        return "";
-    }
-    
-    return responseBuffer;
-}
-
 std::string KaggleAPIClient::makeApiRequest(const std::string& endpoint, bool requireAuth) {
     if (!validateCredentials(requireAuth)) {
         return "";
@@ -169,6 +161,7 @@ std::string KaggleAPIClient::makeApiRequest(const std::string& endpoint, bool re
     
     curl_global_init(CURL_GLOBAL_ALL);
     CURL* curl = initCurl(endpoint, requireAuth);
+
     if (!curl) {
         curl_global_cleanup();
         return "";
@@ -183,7 +176,11 @@ std::string KaggleAPIClient::makeApiRequest(const std::string& endpoint, bool re
     cleanupCurl(curl, headers);
     curl_global_cleanup();
     
-    return processApiResponse(success, responseBuffer);
+    if (!success) {
+        return "";
+    }
+    
+    return responseBuffer;
 }
 
 std::string KaggleAPIClient::extractDateFromJson(const std::string& jsonResponse) {
@@ -214,6 +211,7 @@ time_t KaggleAPIClient::convertIsoDateToTimestamp(const std::string& dateString)
     
     std::string isoDate = dateString;
     size_t dotPos = isoDate.find('.');
+
     if (dotPos != std::string::npos) {
         isoDate = isoDate.substr(0, dotPos);
     }
@@ -275,12 +273,14 @@ bool KaggleAPIClient::initializeDownload(
     
     curl_global_init(CURL_GLOBAL_ALL);
     *curl = initCurl(apiUrl, true);
+
     if (!*curl) {
         curl_global_cleanup();
         return false;
     }
     
     *fp = fopen(outputPath.c_str(), "wb");
+
     if (!*fp) {
         std::cerr << "Failed to create file for writing: " << outputPath << std::endl;
         cleanupCurl(*curl, nullptr);

@@ -175,39 +175,6 @@ bool PlayerRating::sortPlayersByRating(const std::pair<int, Player>& a, const st
     return a.second.rating > b.second.rating;
 }
 
-void PlayerRating::saveRatingsToFile() {
-    auto now = std::chrono::system_clock::now();
-    std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
-    std::stringstream filename;
-    filename << "player_ratings_" << std::put_time(std::localtime(&nowTime), "%Y%m%d_%H%M%S") << ".csv";
-
-    std::ofstream outFile(filename.str());
-
-    if (!outFile.is_open()) {
-        std::cerr << "Failed to open file for saving ratings." << std::endl;
-        return;
-    }
-
-    outFile << "PlayerId,Name,Rating,SubPosition,Position,MarketValue,HighestMarketValue\n";
-
-    std::vector<std::pair<int, Player>> sortedRatings(ratedPlayers.begin(), ratedPlayers.end());
-    std::sort(sortedRatings.begin(), sortedRatings.end(), sortPlayersByRating);
-
-    for (const auto& [playerId, rating] : sortedRatings) {
-        outFile 
-            << playerId << "," 
-            << ratedPlayers[playerId].name << "," 
-            << ratedPlayers[playerId].rating << "," 
-            << ratedPlayers[playerId].subPosition << ","
-            << ratedPlayers[playerId].position << ","
-            << ratedPlayers[playerId].marketValue << ","
-            << ratedPlayers[playerId].highestMarketValue << "\n";
-    }
-
-    outFile.close();
-    std::cout << "Player ratings saved to " << filename.str() << std::endl;
-}
-
 std::vector<std::pair<int, Player>> PlayerRating::getSortedRatedPlayers() {
     std::vector<std::pair<int, Player>> sortedRatedPlayers(ratedPlayers.begin(), ratedPlayers.end());
     std::sort(sortedRatedPlayers.begin(), sortedRatedPlayers.end(), sortPlayersByRating);

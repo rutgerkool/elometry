@@ -99,7 +99,6 @@ private:
     void setupPlayerDetailsHeader(QVBoxLayout* layout);
     void setupPlayerDetailsContent(QVBoxLayout* layout);
     
-    void createPlayerInfoLabels();
     void createPlayerImageLabel();
     void createPlayerTextLabels();
     QLabel* createInfoLabel(const QString& objectName);
@@ -130,7 +129,6 @@ private:
     int getSelectedPlayerId();
     void updatePlayerInfoLabels(Player* player);
     void updatePlayerImage(Player* player);
-    void enablePlayerDetailButtons();
     
     void createAndSaveNewTeam(const QString& name);
     void loadTeamFromClub(int clubId);
@@ -141,8 +139,6 @@ private:
     void refreshTeamListAndSelection(int teamId);
     void deleteTeamAndUpdateUI(int teamId);
     void updateTeamWithSelectedPlayers(const std::vector<Player>& selectedPlayers);
-    void updateLineupView();
-    void updateLineupAfterPlayerRemoval();
     
     void processPlayerImage(int playerId, QStandardItem* imageItem, const QString& imageUrl);
     void loadPlayerImage(int playerId, const QString& imageUrl);

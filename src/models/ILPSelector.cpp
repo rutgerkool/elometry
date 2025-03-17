@@ -90,15 +90,18 @@ void ILPSelector::addPositionConstraints(glp_prob* lp, const std::vector<Variabl
 
 void ILPSelector::setupObjectiveFunction(glp_prob* lp, const std::vector<Variable>& vars) {
     double maxRating = 0;
+
     for (const auto& var : vars) {
         maxRating = std::max(maxRating, var.rating);
     }
     
     for (const auto& var : vars) {
         double coefficient = var.rating;
+
         if (var.cost <= 0) {
             coefficient -= maxRating * 2;
         }
+
         glp_set_obj_coef(lp, var.varIdx, coefficient);
     }
 }
@@ -133,6 +136,7 @@ std::vector<std::pair<int, Player>> ILPSelector::selectTeam() {
         int err = glp_intopt(lp, &parm);
         
         std::vector<std::pair<int, Player>> result;
+        
         if (err == 0) {
             double obj_val = glp_mip_obj_val(lp);
             

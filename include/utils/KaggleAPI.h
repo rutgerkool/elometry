@@ -29,7 +29,6 @@ class KaggleAPIClient {
         std::string makeApiRequest(const std::string& endpoint, bool requireAuth = true);
         bool setupApiRequest(CURL* curl, struct curl_slist** headers, std::string& responseBuffer, bool requireAuth);
         bool executeRequest(CURL* curl, long& http_code);
-        std::string processApiResponse(bool success, const std::string& responseBuffer);
         std::string extractDateFromJson(const std::string& jsonResponse);
         time_t convertIsoDateToTimestamp(const std::string& dateString);
         std::string base64Encode(const std::string& input);
