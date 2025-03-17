@@ -24,9 +24,17 @@ It is developed in C++ with CMake as the build system.
 ### Team Management from Existing Clubs
 - Create and manage custom teams based on real data
 - Budget-constrained team building based on adapted ELO ratings
+- Track average team rating changes while selecting new players.
 - Access detailed player rating history from team manager
 
 ![Team Management Demo](img/team-manager-view-existing.gif)
+
+### Lineup Management using Predefined Formations
+- Create and edit lineup formation based on team selection.
+- Track average lineup rating changes while editing formations.
+- Analyze rating history from players in the lineup. 
+
+![Team Management Demo](img/lineup-manager.gif)
 
 ## **Project Structure**
 ```
