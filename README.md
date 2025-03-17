@@ -2,7 +2,47 @@
 
 This project introduces Elometry, an application that analyzes football player data from the **Football Data from Transfermarkt dataset**, which includes over 60,000 games, 30,000+ players, 400,000+ player market valuations, and more. The project calculates adapted ELO ratings based on an algorithm [introduced by Wolff et al. in 2020](https://www.researchgate.net/publication/346383793_A_football_player_rating_system) and provides optimal team selection based on these ratings using Integer Linear Programming (ILP).
 
-It is developed in C++ with CMake as the build system. 
+It is developed in C++ with CMake as the build system.
+
+## **Theory and Approach**
+
+### **Player Rating System**
+
+The core of Elometry is the player rating system, which adapts the traditional ELO rating formula to assess football player performances. The adjusted formula is:
+
+$R' = R + K \times \frac{M}{90} \times \left(1 + \frac{GD}{5}\right) \times (A - E)$
+
+Where:
+- $R'$ is the updated player rating
+- $R$ is the current player rating
+- $K$ is the rating adjustment factor
+- $M$ is the minutes played (normalized to a 90-minute match)
+- $GD$ is the goal difference impact factor
+- $A$ is the actual result (win = 1, draw = 0.5, loss = 0)
+- $E$ is the expected outcome based on the opponent's rating
+
+This formula accounts for football-specific factors like playing time, match outcome, and goal difference.
+
+### **Team Optimization with Integer Linear Programming**
+
+The team selection problem is formulated as an optimization challenge with the objective function:
+
+$\max \sum_{i=1}^{n} r_i x_i$
+
+Subject to the constraints:
+
+$\sum_{i=1}^{n} c_i x_i \leq B \quad \text{(Budget Constraint)}$
+
+$\sum_{i \in P_j} x_i = 1, \quad \forall j \quad \text{(Positional Constraints)}$
+
+Where:
+- $r_i$ is the rating of player $i$
+- $x_i$ is a binary selection variable (1 if selected, 0 otherwise)
+- $c_i$ is the cost of player $i$
+- $B$ is the available budget
+- $P_j$ is the set of players for position $j$
+
+This mathematical approach ensures the best possible team composition within budget constraints while maximizing overall team performance.
 
 ## **Features**
 
@@ -24,15 +64,15 @@ It is developed in C++ with CMake as the build system.
 ### Team Management from Existing Clubs
 - Create and manage custom teams based on real data
 - Budget-constrained team building based on adapted ELO ratings
-- Track average team rating changes while selecting new players.
+- Track average team rating changes while selecting new players
 - Access detailed player rating history from team manager
 
 ![Team Management Demo](img/team-manager-view-existing.gif)
 
 ### Lineup Management using Predefined Formations
-- Create and edit lineup formation based on team selection.
-- Track average lineup rating changes while editing formations.
-- Analyze rating history from players in the lineup. 
+- Create and edit lineup formation based on team selection
+- Track average lineup rating changes while editing formations
+- Analyze rating history from players in the lineup
 
 ![Team Management Demo](img/lineup-manager.gif)
 
@@ -50,6 +90,8 @@ elometry/
 ├── src/                      # Source code
 │   ├── gui/                  # User interface implementation
 │   │   ├── components/
+│   │   │   ├── dialogs/
+│   │   │   └── widgets/
 │   │   ├── models/
 │   │   ├── resources/
 │   │   ├── styles/
@@ -177,6 +219,8 @@ To allow for automated updates, Kaggle API credentials must be submitted in the 
 *Note: Generate API key from [Kaggle Account Settings](https://www.kaggle.com/)*
 
 ## **Performance Optimizations**
-- Batch SQL operations
-- Parallel ELO calculations
-- Integer Linear Programming optimization
+- **Database Optimization**: Batch operations to minimize query overhead
+- **Parallel Processing**: OpenMP distributes player rating calculations across CPU cores
+- **Smart ILP Constraints**: Team selection constraints are minimized to only essential positional and budget requirements
+- **Pre-filtering**: Players with abnormally low ratings or unrealistic performance-to-cost ratios are filtered before ILP execution
+- **Lazy Loading**: The Qt GUI ensures only visible data is loaded in memory
