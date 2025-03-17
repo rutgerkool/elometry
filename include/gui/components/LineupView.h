@@ -11,6 +11,7 @@
 #include <QtWidgets/QScrollArea>
 #include <QtWidgets/QListWidget>
 #include <QtWidgets/QListWidgetItem>
+#include <QtWidgets/QGroupBox>
 #include <QtGui/QStandardItemModel>
 #include <QtCore/QMap>
 #include <QtNetwork/QNetworkAccessManager>
@@ -18,7 +19,9 @@
 #include <QtNetwork/QNetworkReply>
 #include <QtWidgets/QApplication>
 #include <QEnterEvent>
+#include <QtWidgets/QStackedWidget>
 #include <set>
+#include <map>
 #include "services/TeamManager.h"
 #include "gui/components/LineupPitchView.h"
 #include "gui/components/LineupCreationDialog.h"
@@ -41,6 +44,9 @@ class LineupView : public QWidget {
         void saveCurrentLineup(bool forceSave = false);
         void handleDragDropPlayer(int playerId, const QString& fromPosition, const QString& toPosition);
         void updatePlayerLists();
+
+    protected:
+        virtual void resizeEvent(QResizeEvent* event) override;
 
     private:
         void setupUi();
@@ -85,6 +91,78 @@ class LineupView : public QWidget {
         QListWidgetItem* createPlayerItem(const Player& player);
         Player* findPlayerById(int playerId);
         QPixmap getPlayerImage(int playerId, const QString& position);
+        QWidget* createPlaceholderWidget(QWidget* parent);
+        
+        void setupLineupRatingDisplay();
+        void updateLineupRatingDisplay();
+        double calculateInitialLineupRating();
+        void handleDeleteLineupAction();
+        void setupListWidget(QListWidget* listWidget);
+        void setupNewLineupButton();
+        void connectListWidgetItems(QListWidget* listWidget);
+        QString getPlayerImageUrl(const Player* player);
+        bool isPlayerInTeam(int playerId, const std::set<int>& teamPlayerIds);
+        void updateRatingLabel(double averageRating, double ratingDiff);
+        void createAndSetupNewLineup(int formationId, const QString& lineupName);
+        
+        void setupPlaceholderLabels(QVBoxLayout* layout, QWidget* parent);
+        void updatePitchViewSize();
+        void updateListWidgetsSize();
+        void setupLineupControls(QGridLayout* controlsLayout);
+        void setupStackedWidget();
+        QGroupBox* createBenchGroup();
+        QGroupBox* createReservesGroup();
+        void setupInstructionsLabel();
+        void processDropEventData(QDropEvent* dropEvent, QObject* watched, const QString& mimeText);
+        void handleDropPositions(QDropEvent* dropEvent, int playerId, const QString& fromPosition, const QString& toPosition);
+        bool confirmLineupDeletion();
+        void setupPitchViewConnections();
+        void setupListWidgetConnections();
+        void addLineupToComboBox(const Lineup& lineup);
+        QString createLineupDisplayName(int lineupId, const QString& lineupName, const QString& formationName);
+        void highlightActiveLineup();
+        void resetTeamView();
+        void loadTeamData();
+        void loadActiveTeamLineup();
+        void setActiveLineup(const Lineup& activeLineup);
+        std::set<int> getTeamPlayerIds();
+        void enableLineupCreation();
+        void disableTeamControls();
+        void loadPlayerImageFromUrl(const Player& player);
+        void processActiveLineup(const Lineup& activeLineup);
+        void loadLineupById(int lineupId);
+        void loadStartingPlayers();
+        QListWidget* getListWidgetByPosition(const QString& position);
+        void removePlayerFromSourceList(int playerId, QListWidget* sourceList);
+        void collectAllPlayerPositions();
+        void addPlayerToPositions(int playerId, PositionType posType, const QString& fieldPos, int order);
+        void collectPlayersFromList(QListWidget* listWidget, PositionType posType);
+        QSet<int> getProcessedPlayerIds();
+        void processPlayerDragDrop(int playerId, const QString& fromPosition, const QString& toPosition);
+        int findExistingPlayerAtPosition(const QString& position);
+        void scheduleSave();
+        void addPlayerToList(int playerId, QListWidget* targetList);
+        bool isFromField(const QString& position);
+        void movePlayerFromFieldToList(int playerId, const QString& fromPosition, QListWidget* targetList);
+        bool isListPosition(const QString& position);
+        void removePlayerFromListPosition(int playerId, const QString& position);
+        QPixmap loadPlayerImageFromSource(int playerId, const QString& position);
+        void moveExistingPlayerToField(int existingPlayerId, Player* existingPlayer, const QString& position);
+        QPixmap getExistingPlayerImage(int playerId);
+        void moveExistingPlayerToList(Player* player, const QString& targetPosition);
+        void clearPlayerLists();
+        void addPlayerToListAndTrack(int playerId, QListWidget* list, QSet<int>& usedPlayerIds);
+        QString createPlayerTooltip(const Player& player);
+        void connectImageLoadingReply(QNetworkReply* reply, int playerId, const QString& position);
+        void processLoadedImage(QNetworkReply* reply, int playerId, const QString& position);
+        void cleanupReply(QNetworkReply* reply);
+        void setupRatingLayout(QVBoxLayout* ratingLayout);
+        void resetRatingDisplay();
+        double calculateCurrentLineupRating();
+        void setupInitialRatingIfNeeded(const std::pair<int, int>& ratingKey, double averageRating);
+        QString formatPositiveRatingChange(double averageRating, double ratingDiff);
+        QString formatNegativeRatingChange(double averageRating, double ratingDiff);
+        QString formatUnchangedRating(double averageRating);
 
         TeamManager& teamManager;
         Team* currentTeam;
@@ -96,7 +174,6 @@ class LineupView : public QWidget {
         QPushButton* newLineupButton;
         QPushButton* deleteLineupButton;
         
-        QLabel* lineupNotSelectedLabel;
         QWidget* lineupContentWidget;
         
         LineupPitchView* pitchView;
@@ -105,6 +182,15 @@ class LineupView : public QWidget {
         
         QScrollArea* lineupScrollArea;
         QLabel* instructionsLabel;
+        
+        QLabel* lineupRatingLabel;
+        QWidget* lineupRatingWidget;
+        double initialLineupRating;
+        bool hasInitialLineupRating;
+
+        std::map<std::pair<int, int>, double> initialLineupRatings;
+        
+        QStackedWidget* lineupStackedWidget;
 };
 
 #endif

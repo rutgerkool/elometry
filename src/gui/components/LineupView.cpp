@@ -10,7 +10,12 @@ LineupView::LineupView(TeamManager& tm, Team* currentTeam, QWidget *parent)
     , teamManager(tm)
     , currentTeam(currentTeam)
     , playerImageCache()
+    , lineupRatingLabel(nullptr)
+    , lineupRatingWidget(nullptr)
+    , initialLineupRating(0.0)
+    , hasInitialLineupRating(false)
 {
+    setupLineupRatingDisplay();
     setupUi();
     setupConnections();
     
@@ -29,14 +34,8 @@ void LineupView::setupUi() {
     mainLayout->addLayout(viewButtonsLayout);
 
     setupControlsLayout(mainLayout);
-    
-    lineupNotSelectedLabel = new QLabel("No lineup selected. Create a new lineup or select an existing one.", this);
-    lineupNotSelectedLabel->setAlignment(Qt::AlignCenter);
-    lineupNotSelectedLabel->setStyleSheet("font-size: 16px; color: #888;");
-    
     setupLineupContent();
     
-    mainLayout->addWidget(lineupNotSelectedLabel);
     mainLayout->addWidget(lineupScrollArea, 1);
     
     updateLineupVisibility(false);
@@ -45,35 +44,99 @@ void LineupView::setupUi() {
     reservesList->viewport()->installEventFilter(this);
 }
 
+QWidget* LineupView::createPlaceholderWidget(QWidget* parent) {
+    QWidget* placeholderWidget = new QWidget(parent);
+    QVBoxLayout* placeholderLayout = new QVBoxLayout(placeholderWidget);
+    
+    setupPlaceholderLabels(placeholderLayout, parent);
+    
+    placeholderLayout->addStretch(1);
+    placeholderLayout->setSpacing(10);
+    
+    return placeholderWidget;
+}
+
+void LineupView::setupPlaceholderLabels(QVBoxLayout* layout, QWidget* parent) {
+    QLabel* noLineupLabel = new QLabel("No lineup selected", parent);
+    noLineupLabel->setAlignment(Qt::AlignCenter);
+    noLineupLabel->setStyleSheet("font-size: 18px; font-weight: bold; color: #666;");
+    
+    QLabel* instructionLabel = new QLabel("Create a new lineup or select an existing one", parent);
+    instructionLabel->setAlignment(Qt::AlignCenter);
+    instructionLabel->setStyleSheet("font-size: 14px; color: #888;");
+    
+    QFrame* line = new QFrame(parent);
+    line->setFrameShape(QFrame::HLine);
+    line->setFrameShadow(QFrame::Sunken);
+    line->setStyleSheet("background-color: #444; max-width: 250px;");
+    
+    layout->addStretch(1);
+    layout->addWidget(noLineupLabel);
+    layout->addWidget(line, 0, Qt::AlignCenter);
+    layout->addWidget(instructionLabel);
+}
+
+void LineupView::resizeEvent(QResizeEvent* event) {
+    QWidget::resizeEvent(event);
+    
+    updatePitchViewSize();
+    updateListWidgetsSize();
+}
+
+void LineupView::updatePitchViewSize() {
+    if (pitchView) {
+        int containerWidth = lineupScrollArea->width() - 40;
+        pitchView->setMinimumWidth(containerWidth * 0.65);
+    }
+}
+
+void LineupView::updateListWidgetsSize() {
+    if (benchList && reservesList) {
+        int listWidth = lineupScrollArea->width() * 0.25;
+        benchList->setMinimumWidth(listWidth);
+        reservesList->setMinimumWidth(listWidth);
+    }
+}
+
 void LineupView::setupControlsLayout(QVBoxLayout* mainLayout) {
     QGridLayout* controlsLayout = new QGridLayout();
     controlsLayout->setContentsMargins(10, 0, 10, 10);
     controlsLayout->setHorizontalSpacing(15);
     controlsLayout->setVerticalSpacing(10);
     
+    setupLineupControls(controlsLayout);
+    
+    QHBoxLayout* topLayout = new QHBoxLayout();
+    topLayout->addLayout(controlsLayout);
+    topLayout->addStretch(1);
+    topLayout->addWidget(lineupRatingWidget, 0, Qt::AlignRight | Qt::AlignTop);
+    
+    mainLayout->addLayout(topLayout);
+}
+
+void LineupView::setupLineupControls(QGridLayout* controlsLayout) {
     QLabel* existingLineupsLabel = new QLabel("Lineups:", this);
     existingLineupsComboBox = new QComboBox(this);
     existingLineupsComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     existingLineupsComboBox->setMinimumWidth(150);
     
+    setupNewLineupButton();
+    
+    QHBoxLayout* dropdownAndButtonsLayout = new QHBoxLayout();
+    dropdownAndButtonsLayout->setSpacing(10);
+    dropdownAndButtonsLayout->addWidget(existingLineupsComboBox, 1);
+    dropdownAndButtonsLayout->addSpacing(15);
+    dropdownAndButtonsLayout->addWidget(newLineupButton);
+    dropdownAndButtonsLayout->addWidget(deleteLineupButton);
+    
+    controlsLayout->addWidget(existingLineupsLabel, 0, 0);
+    controlsLayout->addLayout(dropdownAndButtonsLayout, 0, 1);
+}
+
+void LineupView::setupNewLineupButton() {
     newLineupButton = new QPushButton("Create Lineup", this);
     newLineupButton->setEnabled(currentTeam != nullptr);
     deleteLineupButton = new QPushButton("Delete Lineup", this);
-    
-    QHBoxLayout* buttonsLayout = new QHBoxLayout();
-    buttonsLayout->setSpacing(10);
-    buttonsLayout->addWidget(newLineupButton);
-    buttonsLayout->addWidget(deleteLineupButton);
-    buttonsLayout->addStretch();
-    
-    controlsLayout->addWidget(existingLineupsLabel, 0, 0);
-    controlsLayout->addWidget(existingLineupsComboBox, 0, 1);
-    controlsLayout->addLayout(buttonsLayout, 1, 0, 1, 2);
-    
-    controlsLayout->setColumnStretch(0, 0);
-    controlsLayout->setColumnStretch(1, 1);
-    
-    mainLayout->addLayout(controlsLayout);
 }
 
 void LineupView::setupLineupContent() {
@@ -87,47 +150,62 @@ void LineupView::setupLineupContent() {
     setupBenchAndReservesGroups(playersListLayout);
     setupPitchLayout(contentLayout, playersListLayout);
 
+    setupStackedWidget();
+}
+
+void LineupView::setupStackedWidget() {
+    QWidget* placeholderWidget = createPlaceholderWidget(this);
+    
+    lineupStackedWidget = new QStackedWidget(this);
+    lineupStackedWidget->addWidget(placeholderWidget);
+    lineupStackedWidget->addWidget(lineupContentWidget);
+    
     lineupScrollArea = new QScrollArea(this);
     lineupScrollArea->setWidgetResizable(true);
-    lineupScrollArea->setWidget(lineupContentWidget);
+    lineupScrollArea->setWidget(lineupStackedWidget);
     lineupScrollArea->setFrameShape(QFrame::NoFrame);
 }
 
 void LineupView::setupBenchAndReservesGroups(QVBoxLayout* playersListLayout) {
-    QGroupBox* benchGroup = new QGroupBox("Bench", this);
-    QVBoxLayout* benchLayout = new QVBoxLayout(benchGroup);
-    benchList = new DraggableListWidget("BENCH", this);
-    benchList->setDragEnabled(true);
-    benchList->setAcceptDrops(true);
-    benchList->setDropIndicatorShown(true);
-    benchList->setSelectionMode(QAbstractItemView::SingleSelection);
-    benchList->setDragDropMode(QAbstractItemView::DragDrop);
-    benchList->setFixedHeight(150);
-    benchList->setMinimumWidth(200);
-    benchLayout->addWidget(benchList);
-    
-    QGroupBox* reservesGroup = new QGroupBox("Reserves", this);
-    QVBoxLayout* reservesLayout = new QVBoxLayout(reservesGroup);
-    reservesList = new DraggableListWidget("RESERVE", this);
-    reservesList->setDragEnabled(true);
-    reservesList->setAcceptDrops(true);
-    reservesList->setDropIndicatorShown(true);
-    reservesList->setSelectionMode(QAbstractItemView::SingleSelection);
-    reservesList->setDragDropMode(QAbstractItemView::DragDrop);
-    reservesList->setMinimumWidth(200);
-    reservesLayout->addWidget(reservesList);
+    QGroupBox* benchGroup = createBenchGroup();
+    QGroupBox* reservesGroup = createReservesGroup();
     
     playersListLayout->addWidget(benchGroup);
     playersListLayout->addWidget(reservesGroup, 1);
 }
 
+QGroupBox* LineupView::createBenchGroup() {
+    QGroupBox* benchGroup = new QGroupBox("Bench", this);
+    QVBoxLayout* benchLayout = new QVBoxLayout(benchGroup);
+    benchList = new DraggableListWidget("BENCH", this);
+    setupListWidget(benchList);
+    benchList->setFixedHeight(150);
+    benchLayout->addWidget(benchList);
+    
+    return benchGroup;
+}
+
+QGroupBox* LineupView::createReservesGroup() {
+    QGroupBox* reservesGroup = new QGroupBox("Reserves", this);
+    QVBoxLayout* reservesLayout = new QVBoxLayout(reservesGroup);
+    reservesList = new DraggableListWidget("RESERVE", this);
+    setupListWidget(reservesList);
+    reservesLayout->addWidget(reservesList);
+    
+    return reservesGroup;
+}
+
+void LineupView::setupListWidget(QListWidget* listWidget) {
+    listWidget->setDragEnabled(true);
+    listWidget->setAcceptDrops(true);
+    listWidget->setDropIndicatorShown(true);
+    listWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    listWidget->setDragDropMode(QAbstractItemView::DragDrop);
+    listWidget->setMinimumWidth(200);
+}
+
 void LineupView::setupPitchLayout(QHBoxLayout* contentLayout, QVBoxLayout* playersListLayout) {
-    instructionsLabel = new QLabel(this);
-    instructionsLabel->setText("Drag players to positions on the field or bench. Click on players to view their stats.");
-    instructionsLabel->setStyleSheet("color: #666; font-style: italic;");
-    instructionsLabel->setAlignment(Qt::AlignCenter);
-    instructionsLabel->setWordWrap(true);
-    instructionsLabel->setMaximumHeight(40);
+    setupInstructionsLabel();
     
     QVBoxLayout* pitchLayout = new QVBoxLayout();
     pitchView = new LineupPitchView(this);
@@ -141,6 +219,15 @@ void LineupView::setupPitchLayout(QHBoxLayout* contentLayout, QVBoxLayout* playe
     contentLayout->addLayout(pitchLayout, 5);
 }
 
+void LineupView::setupInstructionsLabel() {
+    instructionsLabel = new QLabel(this);
+    instructionsLabel->setText("Drag players to positions on the field or bench. Click on players to view their stats.");
+    instructionsLabel->setStyleSheet("color: #666; font-style: italic;");
+    instructionsLabel->setAlignment(Qt::AlignCenter);
+    instructionsLabel->setWordWrap(true);
+    instructionsLabel->setMaximumHeight(40);
+}
+
 void LineupView::processDropEvent(QDropEvent* dropEvent, QObject* watched) {
     if (!dropEvent->mimeData()->hasText()) {
         return;
@@ -151,6 +238,10 @@ void LineupView::processDropEvent(QDropEvent* dropEvent, QObject* watched) {
         return;
     }
     
+    processDropEventData(dropEvent, watched, mimeText);
+}
+
+void LineupView::processDropEventData(QDropEvent* dropEvent, QObject* watched, const QString& mimeText) {
     QStringList parts = mimeText.split("|");
     int playerId = parts[0].toInt();
     QString fromPosition = parts[1];
@@ -160,6 +251,10 @@ void LineupView::processDropEvent(QDropEvent* dropEvent, QObject* watched) {
         return;
     }
     
+    handleDropPositions(dropEvent, playerId, fromPosition, toPosition);
+}
+
+void LineupView::handleDropPositions(QDropEvent* dropEvent, int playerId, const QString& fromPosition, const QString& toPosition) {
     if (fromPosition != "BENCH" && fromPosition != "RESERVE") {
         handleFieldToListDropInEvent(playerId, fromPosition, toPosition);
         dropEvent->acceptProposedAction();
@@ -209,33 +304,54 @@ void LineupView::setupConnections() {
     connect(newLineupButton, &QPushButton::clicked, 
             this, &LineupView::createNewLineup);
             
-    connect(deleteLineupButton, &QPushButton::clicked, [this]() {
-        if (currentLineup.lineupId <= 0 || !currentTeam) {
-            return;
-        }
-        
-        QMessageBox::StandardButton reply = QMessageBox::question(
-            this, "Delete Lineup", "Are you sure you want to delete this lineup?",
-            QMessageBox::Yes | QMessageBox::No
-        );
-        
-        if (reply == QMessageBox::Yes) {
-            teamManager.deleteLineup(currentLineup.lineupId);
-            loadLineups();
-            updateLineupVisibility(false);
-        }
-    });
+    connect(deleteLineupButton, &QPushButton::clicked, 
+            this, &LineupView::handleDeleteLineupAction);
     
     setupAdditionalConnections();
 }
 
+void LineupView::handleDeleteLineupAction() {
+    if (currentLineup.lineupId <= 0 || !currentTeam) {
+        return;
+    }
+    
+    if (confirmLineupDeletion()) {
+        lineupRatingLabel->setText("--");
+        lineupRatingLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: white; text-align: right;");
+        teamManager.deleteLineup(currentLineup.lineupId);
+        loadLineups();
+        updateLineupVisibility(false);
+    }
+}
+
+bool LineupView::confirmLineupDeletion() {
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        this, "Delete Lineup", "Are you sure you want to delete this lineup?",
+        QMessageBox::Yes | QMessageBox::No
+    );
+    
+    return reply == QMessageBox::Yes;
+}
+
 void LineupView::setupAdditionalConnections() {
+    setupPitchViewConnections();
+    setupListWidgetConnections();
+    
+    connectListWidgetItems(benchList);
+    connectListWidgetItems(reservesList);
+    
+    connectDraggableListWidgets();
+}
+
+void LineupView::setupPitchViewConnections() {
     connect(pitchView, &LineupPitchView::playerDragDropped,
             this, &LineupView::handleDragDropPlayer);
             
     connect(pitchView, &LineupPitchView::playerClicked,
             this, &LineupView::playerClicked);
-            
+}
+
+void LineupView::setupListWidgetConnections() {
     connect(benchList, &QListWidget::itemChanged, [this]() {
         updatePlayerLists();
     });
@@ -243,36 +359,28 @@ void LineupView::setupAdditionalConnections() {
     connect(reservesList, &QListWidget::itemChanged, [this]() {
         updatePlayerLists();
     });
-    
-    connect(benchList, &QListWidget::itemClicked, [this](QListWidgetItem* item) {
-        if (item) {
-            int playerId = item->data(Qt::UserRole).toInt();
-            benchList->clearSelection();
-            emit playerClicked(playerId);
-        }
-    });
+}
 
-    connect(reservesList, &QListWidget::itemClicked, [this](QListWidgetItem* item) {
+void LineupView::connectListWidgetItems(QListWidget* listWidget) {
+    connect(listWidget, &QListWidget::itemClicked, [this, listWidget](QListWidgetItem* item) {
         if (item) {
             int playerId = item->data(Qt::UserRole).toInt();
-            reservesList->clearSelection();
+            listWidget->clearSelection();
             emit playerClicked(playerId);
         }
     });
-    
-    connectDraggableListWidgets();
 }
 
 void LineupView::connectDraggableListWidgets() {
-    connect(dynamic_cast<DraggableListWidget*>(benchList), &DraggableListWidget::fieldPlayerDropped,
-        [this](int playerId, const QString& fromPosition, const QString& toListType) {
-            handleDragDropPlayer(playerId, fromPosition, toListType);
-        });
-
-    connect(dynamic_cast<DraggableListWidget*>(reservesList), &DraggableListWidget::fieldPlayerDropped,
-        [this](int playerId, const QString& fromPosition, const QString& toListType) {
-            handleDragDropPlayer(playerId, fromPosition, toListType);
-        });
+    auto connectDraggableList = [this](DraggableListWidget* listWidget) {
+        connect(listWidget, &DraggableListWidget::fieldPlayerDropped,
+            [this](int playerId, const QString& fromPosition, const QString& toListType) {
+                handleDragDropPlayer(playerId, fromPosition, toListType);
+            });
+    };
+    
+    connectDraggableList(dynamic_cast<DraggableListWidget*>(benchList));
+    connectDraggableList(dynamic_cast<DraggableListWidget*>(reservesList));
 }
 
 void LineupView::loadLineups() {
@@ -290,71 +398,156 @@ void LineupView::loadLineups() {
 
 void LineupView::populateLineupComboBox(const std::vector<Lineup>& lineups) {
     for (const auto& lineup : lineups) {
-        QString formationName = QString::fromStdString(lineup.formationName);
-        QString lineupName = QString::fromStdString(lineup.name);
-        
-        QString displayName;
-        if (!lineupName.isEmpty()) {
-            displayName = lineupName + " (" + formationName + ")";
-        } else {
-            displayName = QString("Lineup %1 (%2)").arg(lineup.lineupId).arg(formationName);
-        }
-        
-        existingLineupsComboBox->addItem(displayName, lineup.lineupId);
-        
-        if (lineup.isActive) {
-            int idx = existingLineupsComboBox->count() - 1;
-            QFont font = existingLineupsComboBox->itemData(idx, Qt::FontRole).value<QFont>();
-            font.setBold(true);
-            existingLineupsComboBox->setItemData(idx, font, Qt::FontRole);
-            existingLineupsComboBox->setCurrentIndex(idx);
-        }
+        addLineupToComboBox(lineup);
     }
+}
+
+void LineupView::addLineupToComboBox(const Lineup& lineup) {
+    QString formationName = QString::fromStdString(lineup.formationName);
+    QString lineupName = QString::fromStdString(lineup.name);
+    
+    QString displayName = createLineupDisplayName(lineup.lineupId, lineupName, formationName);
+    
+    existingLineupsComboBox->addItem(displayName, lineup.lineupId);
+    
+    if (lineup.isActive) {
+        highlightActiveLineup();
+    }
+}
+
+QString LineupView::createLineupDisplayName(int lineupId, const QString& lineupName, const QString& formationName) {
+    if (!lineupName.isEmpty()) {
+        return lineupName + " (" + formationName + ")";
+    } else {
+        return QString("Lineup %1 (%2)").arg(lineupId).arg(formationName);
+    }
+}
+
+void LineupView::highlightActiveLineup() {
+    int idx = existingLineupsComboBox->count() - 1;
+    QFont font = existingLineupsComboBox->itemData(idx, Qt::FontRole).value<QFont>();
+    font.setBold(true);
+    existingLineupsComboBox->setItemData(idx, font, Qt::FontRole);
+    existingLineupsComboBox->setCurrentIndex(idx);
 }
 
 void LineupView::setTeam(Team* team) {
     currentTeam = team;
     currentLineup = Lineup();
     
-    playerImageCache.clear();
-    pitchView->clearPositions();
+    resetTeamView();
     
     if (currentTeam) {
-        loadTeamPlayerImages();
-        loadLineups();
-        loadActiveLineup();
+        loadTeamData();
     } else {
-        updateLineupVisibility(false);
+        disableTeamControls();
     }
+    
+    updateLineupRatingDisplay();
+}
+
+void LineupView::resetTeamView() {
+    playerImageCache.clear();
+    pitchView->clearPositions();
+}
+
+void LineupView::loadTeamData() {
+    loadTeamPlayerImages();
+    loadLineups();
+    loadActiveTeamLineup();
+}
+
+void LineupView::loadActiveTeamLineup() {
+    Lineup activeLineup = teamManager.getActiveLineup(currentTeam->teamId);
+    if (activeLineup.lineupId > 0) {
+        setActiveLineup(activeLineup);
+    } else {
+        enableLineupCreation();
+    }
+}
+
+void LineupView::setActiveLineup(const Lineup& activeLineup) {
+    currentLineup = activeLineup;
+    pitchView->setFormation(QString::fromStdString(currentLineup.formationName));
+    
+    std::set<int> teamPlayerIds = getTeamPlayerIds();
+    
+    populateFieldPositions(teamPlayerIds);
+    populatePlayerLists();
+    updateLineupVisibility(true);
+}
+
+std::set<int> LineupView::getTeamPlayerIds() {
+    std::set<int> teamPlayerIds;
+    for (const auto& player : currentTeam->players) {
+        teamPlayerIds.insert(player.playerId);
+    }
+    return teamPlayerIds;
+}
+
+void LineupView::enableLineupCreation() {
+    updateLineupVisibility(false);
+    existingLineupsComboBox->setEnabled(true);
+    newLineupButton->setEnabled(true);
+}
+
+void LineupView::disableTeamControls() {
+    updateLineupVisibility(false);
+    existingLineupsComboBox->setEnabled(false);
+    newLineupButton->setEnabled(false);
 }
 
 void LineupView::loadTeamPlayerImages() {
+    if (!currentTeam) {
+        return;
+    }
+    
     for (const auto& player : currentTeam->players) {
-        QString imageUrl = QString::fromStdString(player.imageUrl);
-        if (imageUrl.contains(",")) {
-            imageUrl = imageUrl.split(",").first().trimmed();
-        }
-        
-        if (!imageUrl.isEmpty() && !imageUrl.startsWith("http")) {
-            QPixmap playerImage;
-            if (playerImage.load(imageUrl)) {
-                QPixmap scaledImage = playerImage.scaled(70, 70, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-                playerImageCache[player.playerId] = scaledImage;
-            }
+        loadPlayerImageFromUrl(player);
+    }
+}
+
+void LineupView::loadPlayerImageFromUrl(const Player& player) {
+    QString imageUrl = getPlayerImageUrl(&player);
+    
+    if (!imageUrl.isEmpty() && !imageUrl.startsWith("http")) {
+        QPixmap playerImage;
+        if (playerImage.load(imageUrl)) {
+            QPixmap scaledImage = playerImage.scaled(70, 70, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            playerImageCache[player.playerId] = scaledImage;
         }
     }
 }
 
+QString LineupView::getPlayerImageUrl(const Player* player) {
+    if (!player) {
+        return QString();
+    }
+    
+    QString imageUrl = QString::fromStdString(player->imageUrl);
+    if (imageUrl.contains(",")) {
+        imageUrl = imageUrl.split(",").first().trimmed();
+    }
+    
+    return imageUrl;
+}
+
 void LineupView::loadActiveLineup() {
+    if (!currentTeam) {
+        updateLineupVisibility(false);
+        return;
+    }
+    
     Lineup activeLineup = teamManager.getActiveLineup(currentTeam->teamId);
+    processActiveLineup(activeLineup);
+}
+
+void LineupView::processActiveLineup(const Lineup& activeLineup) {
     if (activeLineup.lineupId > 0) {
         currentLineup = activeLineup;
         pitchView->setFormation(QString::fromStdString(currentLineup.formationName));
         
-        std::set<int> teamPlayerIds;
-        for (const auto& player : currentTeam->players) {
-            teamPlayerIds.insert(player.playerId);
-        }
+        std::set<int> teamPlayerIds = getTeamPlayerIds();
         
         populateFieldPositions(teamPlayerIds);
         populatePlayerLists();
@@ -364,10 +557,14 @@ void LineupView::loadActiveLineup() {
     }
 }
 
+bool LineupView::isPlayerInTeam(int playerId, const std::set<int>& teamPlayerIds) {
+    return teamPlayerIds.find(playerId) != teamPlayerIds.end();
+}
+
 void LineupView::populateFieldPositions(const std::set<int>& teamPlayerIds) {
     for (const auto& playerPos : currentLineup.playerPositions) {
         if (playerPos.positionType == PositionType::STARTING) {
-            if (teamPlayerIds.find(playerPos.playerId) == teamPlayerIds.end()) {
+            if (!isPlayerInTeam(playerPos.playerId, teamPlayerIds)) {
                 continue;
             }
             
@@ -384,10 +581,7 @@ void LineupView::setPlayerInPitchView(int playerId, const QString& position) {
     if (playerImageCache.contains(playerId)) {
         playerImage = playerImageCache[playerId];
     } else {
-        QString imageUrl = QString::fromStdString(player->imageUrl);
-        if (imageUrl.contains(",")) {
-            imageUrl = imageUrl.split(",").first().trimmed();
-        }
+        QString imageUrl = getPlayerImageUrl(player);
         
         if (!imageUrl.isEmpty()) {
             if (imageUrl.startsWith("http")) {
@@ -421,16 +615,42 @@ void LineupView::createNewLineup() {
             return;
         }
         
-        Lineup newLineup = teamManager.createLineup(currentTeam->teamId, formationId, lineupName.toStdString());
-        currentLineup = newLineup;
-        
-        pitchView->setFormation(QString::fromStdString(currentLineup.formationName));
-        populatePlayerLists();
-        loadLineups();
-        
-        selectNewLineupInComboBox(newLineup.lineupId);
-        updateLineupVisibility(true);
+        createAndSetupNewLineup(formationId, lineupName);
     }
+}
+
+void LineupView::createAndSetupNewLineup(int formationId, const QString& lineupName) {
+    Lineup newLineup = teamManager.createLineup(currentTeam->teamId, formationId, lineupName.toStdString());
+    currentLineup = newLineup;
+    
+    double initialRating = calculateInitialLineupRating();
+    
+    std::pair<int, int> ratingKey = {currentTeam->teamId, currentLineup.lineupId};
+    initialLineupRatings[ratingKey] = initialRating;
+    
+    pitchView->setFormation(QString::fromStdString(currentLineup.formationName));
+    populatePlayerLists();
+    loadLineups();
+    
+    selectNewLineupInComboBox(newLineup.lineupId);
+    updateLineupVisibility(true);
+}
+
+double LineupView::calculateInitialLineupRating() {
+    double totalRating = 0.0;
+    int playerCount = 0;
+    
+    for (const auto& playerPos : currentLineup.playerPositions) {
+        if (playerPos.positionType == PositionType::STARTING) {
+            Player* player = findPlayerById(playerPos.playerId);
+            if (player) {
+                totalRating += player->rating;
+                playerCount++;
+            }
+        }
+    }
+    
+    return playerCount > 0 ? (totalRating / playerCount) : 0.0;
 }
 
 void LineupView::selectNewLineupInComboBox(int lineupId) {
@@ -455,6 +675,10 @@ void LineupView::loadSelectedLineup(int index) {
         return;
     }
     
+    loadLineupById(lineupId);
+}
+
+void LineupView::loadLineupById(int lineupId) {
     std::vector<Lineup> lineups = teamManager.getTeamLineups(currentTeam->teamId);
     for (const auto& lineup : lineups) {
         if (lineup.lineupId == lineupId) {
@@ -468,31 +692,44 @@ void LineupView::clearAndReloadLineup(const Lineup& lineup) {
     currentLineup = lineup;
     pitchView->setFormation(QString::fromStdString(currentLineup.formationName));
     
+    loadStartingPlayers();
+    
+    populatePlayerLists();
+    updateLineupVisibility(true);
+    updateLineupRatingDisplay();
+}
+
+void LineupView::loadStartingPlayers() {
     for (const auto& playerPos : currentLineup.playerPositions) {
         if (playerPos.positionType == PositionType::STARTING) {
             setPlayerInPitchView(playerPos.playerId, QString::fromStdString(playerPos.fieldPosition));
         }
     }
-    
-    populatePlayerLists();
-    updateLineupVisibility(true);
 }
 
 void LineupView::movePlayerBetweenLists(int playerId, const QString& fromPosition, const QString& toPosition) {
-    QListWidget* sourceList = (fromPosition == "RESERVE") ? reservesList : benchList;
-    QListWidget* destList = (toPosition == "BENCH") ? benchList : reservesList;
+    QListWidget* sourceList = getListWidgetByPosition(fromPosition);
+    QListWidget* destList = getListWidgetByPosition(toPosition);
     
     Player* player = findPlayerById(playerId);
     if (player) {
         QListWidgetItem* newItem = createPlayerItem(*player);
         destList->addItem(newItem);
         
-        for (int i = 0; i < sourceList->count(); ++i) {
-            QListWidgetItem* item = sourceList->item(i);
-            if (item->data(Qt::UserRole).toInt() == playerId) {
-                delete sourceList->takeItem(i);
-                break;
-            }
+        removePlayerFromSourceList(playerId, sourceList);
+    }
+}
+
+QListWidget* LineupView::getListWidgetByPosition(const QString& position) {
+    return (position == "RESERVE") ? reservesList : benchList;
+}
+
+void LineupView::removePlayerFromSourceList(int playerId, QListWidget* sourceList) {
+    for (int i = 0; i < sourceList->count(); ++i) {
+        QListWidgetItem* item = sourceList->item(i);
+        if (item->data(Qt::UserRole).toInt() == playerId) {
+            delete sourceList->takeItem(i);
+            break;
         }
     }
 }
@@ -503,15 +740,20 @@ void LineupView::saveCurrentLineup(bool forceSave) {
         return;
     }
     
+    collectAllPlayerPositions();
+    
+    currentLineup.isActive = true;
+    teamManager.saveLineup(currentLineup);
+    loadLineups();
+    updateLineupRatingDisplay();
+}
+
+void LineupView::collectAllPlayerPositions() {
     currentLineup.playerPositions.clear();
     collectPlayerPositionsFromPitch();
     collectPlayerPositionsFromBench();
     collectPlayerPositionsFromReserves();
     addRemainingPlayersToReserves();
-    
-    currentLineup.isActive = true;
-    teamManager.saveLineup(currentLineup);
-    loadLineups();
 }
 
 void LineupView::collectPlayerPositionsFromPitch() {
@@ -520,71 +762,63 @@ void LineupView::collectPlayerPositionsFromPitch() {
     
     for (auto it = pitchPlayers.begin(); it != pitchPlayers.end(); ++it) {
         if (it.value() > 0) {
-            PlayerPosition pos;
-            pos.playerId = it.value();
-            pos.positionType = PositionType::STARTING;
-            pos.fieldPosition = it.key().toStdString();
-            pos.order = 0;
-            currentLineup.playerPositions.push_back(pos);
-            processedPlayers.insert(pos.playerId);
+            addPlayerToPositions(it.value(), PositionType::STARTING, it.key(), 0);
+            processedPlayers.insert(it.value());
         }
     }
+}
+
+void LineupView::addPlayerToPositions(int playerId, PositionType posType, const QString& fieldPos, int order) {
+    PlayerPosition pos;
+    pos.playerId = playerId;
+    pos.positionType = posType;
+    pos.fieldPosition = fieldPos.toStdString();
+    pos.order = order;
+    currentLineup.playerPositions.push_back(pos);
 }
 
 void LineupView::collectPlayerPositionsFromBench() {
-    QSet<int> processedPlayers;
-    
-    for (int i = 0; i < benchList->count(); ++i) {
-        QListWidgetItem* item = benchList->item(i);
-        int playerId = item->data(Qt::UserRole).toInt();
-        
-        if (!processedPlayers.contains(playerId)) {
-            PlayerPosition pos;
-            pos.playerId = playerId;
-            pos.positionType = PositionType::BENCH;
-            pos.fieldPosition = "";
-            pos.order = i;
-            currentLineup.playerPositions.push_back(pos);
-            processedPlayers.insert(playerId);
-        }
-    }
+    collectPlayersFromList(benchList, PositionType::BENCH);
 }
 
 void LineupView::collectPlayerPositionsFromReserves() {
+    collectPlayersFromList(reservesList, PositionType::RESERVE);
+}
+
+void LineupView::collectPlayersFromList(QListWidget* listWidget, PositionType posType) {
     QSet<int> processedPlayers;
     
-    for (int i = 0; i < reservesList->count(); ++i) {
-        QListWidgetItem* item = reservesList->item(i);
+    for (int i = 0; i < listWidget->count(); ++i) {
+        QListWidgetItem* item = listWidget->item(i);
         int playerId = item->data(Qt::UserRole).toInt();
         
         if (!processedPlayers.contains(playerId)) {
-            PlayerPosition pos;
-            pos.playerId = playerId;
-            pos.positionType = PositionType::RESERVE;
-            pos.fieldPosition = "";
-            pos.order = i;
-            currentLineup.playerPositions.push_back(pos);
+            addPlayerToPositions(playerId, posType, "", i);
             processedPlayers.insert(playerId);
         }
     }
 }
 
 void LineupView::addRemainingPlayersToReserves() {
+    if (!currentTeam) {
+        return;
+    }
+    
+    QSet<int> processedPlayers = getProcessedPlayerIds();
+    
+    for (const auto& player : currentTeam->players) {
+        if (!processedPlayers.contains(player.playerId)) {
+            addPlayerToPositions(player.playerId, PositionType::RESERVE, "", 0);
+        }
+    }
+}
+
+QSet<int> LineupView::getProcessedPlayerIds() {
     QSet<int> processedPlayers;
     for (const auto& pos : currentLineup.playerPositions) {
         processedPlayers.insert(pos.playerId);
     }
-    
-    for (const auto& player : currentTeam->players) {
-        if (!processedPlayers.contains(player.playerId)) {
-            PlayerPosition pos;
-            pos.playerId = player.playerId;
-            pos.positionType = PositionType::RESERVE;
-            pos.fieldPosition = "";
-            pos.order = 0;
-            currentLineup.playerPositions.push_back(pos);
-        }
-    }
+    return processedPlayers;
 }
 
 void LineupView::handleDragDropPlayer(int playerId, const QString& fromPosition, const QString& toPosition) {
@@ -595,6 +829,13 @@ void LineupView::handleDragDropPlayer(int playerId, const QString& fromPosition,
         return;
     }
     
+    processPlayerDragDrop(playerId, fromPosition, toPosition);
+    
+    saveCurrentLineup(true);
+    updateLineupRatingDisplay();
+}
+
+void LineupView::processPlayerDragDrop(int playerId, const QString& fromPosition, const QString& toPosition) {
     bool isFromField = (fromPosition != "BENCH" && fromPosition != "RESERVE");
     bool isToList = (toPosition == "BENCH" || toPosition == "RESERVE");
     
@@ -603,11 +844,7 @@ void LineupView::handleDragDropPlayer(int playerId, const QString& fromPosition,
         return;
     }
     
-    int existingPlayerId = -1;
-    QMap<QString, int> currentPositions = pitchView->getPlayersPositions();
-    if (currentPositions.contains(toPosition)) {
-        existingPlayerId = currentPositions[toPosition];
-    }
+    int existingPlayerId = findExistingPlayerAtPosition(toPosition);
     
     if (toPosition == "BENCH" || toPosition == "RESERVE") {
         handleListToListDrop(playerId, fromPosition, toPosition);
@@ -615,8 +852,15 @@ void LineupView::handleDragDropPlayer(int playerId, const QString& fromPosition,
     else {
         handleListToFieldDrop(playerId, fromPosition, toPosition, existingPlayerId);
     }
-    
-    saveCurrentLineup(true);
+}
+
+int LineupView::findExistingPlayerAtPosition(const QString& position) {
+    int existingPlayerId = -1;
+    QMap<QString, int> currentPositions = pitchView->getPlayersPositions();
+    if (currentPositions.contains(position)) {
+        existingPlayerId = currentPositions[position];
+    }
+    return existingPlayerId;
 }
 
 void LineupView::handleFieldToListDrop(int playerId, const QString& fromPosition, const QString& toPosition) {
@@ -625,19 +869,31 @@ void LineupView::handleFieldToListDrop(int playerId, const QString& fromPosition
     QListWidget* targetList = (toPosition == "BENCH") ? benchList : reservesList;
     
     if (!isPlayerInListAlready(playerId, targetList)) {
-        Player* player = findPlayerById(playerId);
-        if (player) {
-            QListWidgetItem* item = createPlayerItem(*player);
-            targetList->addItem(item);
-        }
+        addPlayerToList(playerId, targetList);
     }
     
+    scheduleSave();
+}
+
+void LineupView::scheduleSave() {
     QTimer::singleShot(100, this, [this]() {
         saveCurrentLineup(true);
     });
 }
 
+void LineupView::addPlayerToList(int playerId, QListWidget* targetList) {
+    Player* player = findPlayerById(playerId);
+    if (player) {
+        QListWidgetItem* item = createPlayerItem(*player);
+        targetList->addItem(item);
+    }
+}
+
 bool LineupView::isPlayerInListAlready(int playerId, QListWidget* targetList) {
+    if (!targetList) {
+        return false;
+    }
+    
     for (int i = 0; i < targetList->count(); i++) {
         if (targetList->item(i)->data(Qt::UserRole).toInt() == playerId) {
             return true;
@@ -647,31 +903,34 @@ bool LineupView::isPlayerInListAlready(int playerId, QListWidget* targetList) {
 }
 
 void LineupView::handleListToListDrop(int playerId, const QString& fromPosition, const QString& toPosition) {
+    if (fromPosition == toPosition) {
+        return;
+    }
+    
     QListWidget* targetList = (toPosition == "BENCH") ? benchList : reservesList;
     
-    if (fromPosition != "BENCH" && fromPosition != "RESERVE") {
-        pitchView->clearPosition(fromPosition);
-        
-        Player* player = findPlayerById(playerId);
-        if (player) {
-            QListWidgetItem* item = createPlayerItem(*player);
-            targetList->addItem(item);
-        }
+    if (isFromField(fromPosition)) {
+        movePlayerFromFieldToList(playerId, fromPosition, targetList);
     }
-    else if (fromPosition != toPosition) {
-        QListWidget* sourceList = (fromPosition == "BENCH") ? benchList : reservesList;
-        
-        removePlayerFromList(playerId, sourceList);
-        
-        Player* player = findPlayerById(playerId);
-        if (player) {
-            QListWidgetItem* item = createPlayerItem(*player);
-            targetList->addItem(item);
-        }
+    else {
+        movePlayerBetweenLists(playerId, fromPosition, toPosition);
     }
 }
 
+bool LineupView::isFromField(const QString& position) {
+    return position != "BENCH" && position != "RESERVE";
+}
+
+void LineupView::movePlayerFromFieldToList(int playerId, const QString& fromPosition, QListWidget* targetList) {
+    pitchView->clearPosition(fromPosition);
+    addPlayerToList(playerId, targetList);
+}
+
 void LineupView::removePlayerFromList(int playerId, QListWidget* sourceList) {
+    if (!sourceList) {
+        return;
+    }
+    
     for (int i = 0; i < sourceList->count(); ++i) {
         QListWidgetItem* item = sourceList->item(i);
         if (item->data(Qt::UserRole).toInt() == playerId) {
@@ -698,25 +957,34 @@ void LineupView::handleListToFieldDrop(int playerId, const QString& fromPosition
         toPosition
     );
     
-    if (fromPosition == "RESERVE" || fromPosition == "BENCH") {
-        QListWidget* sourceList = (fromPosition == "RESERVE") ? reservesList : benchList;
-        removePlayerFromList(playerId, sourceList);
+    if (isListPosition(fromPosition)) {
+        removePlayerFromListPosition(playerId, fromPosition);
     }
 }
 
+bool LineupView::isListPosition(const QString& position) {
+    return position == "RESERVE" || position == "BENCH";
+}
+
+void LineupView::removePlayerFromListPosition(int playerId, const QString& position) {
+    QListWidget* sourceList = (position == "RESERVE") ? reservesList : benchList;
+    removePlayerFromList(playerId, sourceList);
+}
+
 QPixmap LineupView::getPlayerImage(int playerId, const QString& position) {
-    QPixmap playerImage;
     if (playerImageCache.contains(playerId)) {
         return playerImageCache[playerId];
     }
     
+    return loadPlayerImageFromSource(playerId, position);
+}
+
+QPixmap LineupView::loadPlayerImageFromSource(int playerId, const QString& position) {
+    QPixmap playerImage;
     Player* player = findPlayerById(playerId);
     if (!player) return playerImage;
     
-    QString imageUrl = QString::fromStdString(player->imageUrl);
-    if (imageUrl.contains(",")) {
-        imageUrl = imageUrl.split(",").first().trimmed();
-    }
+    QString imageUrl = getPlayerImageUrl(player);
     
     if (!imageUrl.isEmpty()) {
         if (imageUrl.startsWith("http")) {
@@ -732,30 +1000,41 @@ QPixmap LineupView::getPlayerImage(int playerId, const QString& position) {
 
 void LineupView::handleExistingPlayerMove(int existingPlayerId, const QString& fromPosition) {
     Player* existingPlayer = findPlayerById(existingPlayerId);
+    if (!existingPlayer) {
+        return;
+    }
     
-    if (fromPosition != "RESERVE" && fromPosition != "BENCH") {
-        if (existingPlayer) {
-            QPixmap existingPlayerImage;
-            if (playerImageCache.contains(existingPlayerId)) {
-                existingPlayerImage = playerImageCache[existingPlayerId];
-            }
-            
-            pitchView->setPlayerAtPosition(
-                existingPlayerId, 
-                QString::fromStdString(existingPlayer->name),
-                existingPlayerImage,
-                fromPosition
-            );
-        }
+    if (!isListPosition(fromPosition)) {
+        moveExistingPlayerToField(existingPlayerId, existingPlayer, fromPosition);
     } 
     else {
-        QListWidget* targetList = (fromPosition == "RESERVE") ? reservesList : benchList;
-        
-        if (existingPlayer) {
-            QListWidgetItem* item = createPlayerItem(*existingPlayer);
-            targetList->addItem(item);
-        }
+        moveExistingPlayerToList(existingPlayer, fromPosition);
     }
+}
+
+void LineupView::moveExistingPlayerToField(int existingPlayerId, Player* existingPlayer, const QString& position) {
+    QPixmap existingPlayerImage = getExistingPlayerImage(existingPlayerId);
+    
+    pitchView->setPlayerAtPosition(
+        existingPlayerId, 
+        QString::fromStdString(existingPlayer->name),
+        existingPlayerImage,
+        position
+    );
+}
+
+QPixmap LineupView::getExistingPlayerImage(int playerId) {
+    QPixmap existingPlayerImage;
+    if (playerImageCache.contains(playerId)) {
+        existingPlayerImage = playerImageCache[playerId];
+    }
+    return existingPlayerImage;
+}
+
+void LineupView::moveExistingPlayerToList(Player* player, const QString& targetPosition) {
+    QListWidget* targetList = (targetPosition == "RESERVE") ? reservesList : benchList;
+    QListWidgetItem* item = createPlayerItem(*player);
+    targetList->addItem(item);
 }
 
 void LineupView::updatePlayerLists() {
@@ -767,13 +1046,9 @@ void LineupView::populatePlayerLists() {
         return;
     }
 
-    benchList->clear();
-    reservesList->clear();
+    clearPlayerLists();
     
-    std::set<int> teamPlayerIds;
-    for (const auto& player : currentTeam->players) {
-        teamPlayerIds.insert(player.playerId);
-    }
+    std::set<int> teamPlayerIds = getTeamPlayerIds();
     
     QSet<int> usedPlayerIds;
     collectStartingPlayers(teamPlayerIds, usedPlayerIds);
@@ -783,10 +1058,15 @@ void LineupView::populatePlayerLists() {
     addRemainingPlayersToReserveList(usedPlayerIds);
 }
 
+void LineupView::clearPlayerLists() {
+    benchList->clear();
+    reservesList->clear();
+}
+
 void LineupView::collectStartingPlayers(const std::set<int>& teamPlayerIds, QSet<int>& usedPlayerIds) {
     for (const auto& playerPos : currentLineup.playerPositions) {
         if (playerPos.positionType == PositionType::STARTING) {
-            if (teamPlayerIds.find(playerPos.playerId) != teamPlayerIds.end()) {
+            if (isPlayerInTeam(playerPos.playerId, teamPlayerIds)) {
                 usedPlayerIds.insert(playerPos.playerId);
             }
         }
@@ -795,39 +1075,46 @@ void LineupView::collectStartingPlayers(const std::set<int>& teamPlayerIds, QSet
 
 void LineupView::collectBenchPlayers(const std::set<int>& teamPlayerIds, QSet<int>& usedPlayerIds) {
     for (const auto& playerPos : currentLineup.playerPositions) {
-        if (playerPos.positionType == PositionType::BENCH) {
-            if (teamPlayerIds.find(playerPos.playerId) == teamPlayerIds.end()) {
-                continue;
-            }
-            
-            Player* player = findPlayerById(playerPos.playerId);
-            if (player) {
-                QListWidgetItem* item = createPlayerItem(*player);
-                benchList->addItem(item);
-                usedPlayerIds.insert(playerPos.playerId);
-            }
+        if (playerPos.positionType != PositionType::BENCH) {
+            continue;
         }
+        
+        if (!isPlayerInTeam(playerPos.playerId, teamPlayerIds)) {
+            continue;
+        }
+        
+        addPlayerToListAndTrack(playerPos.playerId, benchList, usedPlayerIds);
+    }
+}
+
+void LineupView::addPlayerToListAndTrack(int playerId, QListWidget* list, QSet<int>& usedPlayerIds) {
+    Player* player = findPlayerById(playerId);
+    if (player) {
+        QListWidgetItem* item = createPlayerItem(*player);
+        list->addItem(item);
+        usedPlayerIds.insert(playerId);
     }
 }
 
 void LineupView::collectReservePlayers(const std::set<int>& teamPlayerIds, QSet<int>& usedPlayerIds) {
     for (const auto& playerPos : currentLineup.playerPositions) {
-        if (playerPos.positionType == PositionType::RESERVE) {
-            if (teamPlayerIds.find(playerPos.playerId) == teamPlayerIds.end()) {
-                continue;
-            }
-            
-            Player* player = findPlayerById(playerPos.playerId);
-            if (player) {
-                QListWidgetItem* item = createPlayerItem(*player);
-                reservesList->addItem(item);
-                usedPlayerIds.insert(playerPos.playerId);
-            }
+        if (playerPos.positionType != PositionType::RESERVE) {
+            continue;
         }
+        
+        if (!isPlayerInTeam(playerPos.playerId, teamPlayerIds)) {
+            continue;
+        }
+        
+        addPlayerToListAndTrack(playerPos.playerId, reservesList, usedPlayerIds);
     }
 }
 
 void LineupView::addRemainingPlayersToReserveList(const QSet<int>& usedPlayerIds) {
+    if (!currentTeam) {
+        return;
+    }
+    
     for (const auto& player : currentTeam->players) {
         if (!usedPlayerIds.contains(player.playerId)) {
             QListWidgetItem* item = createPlayerItem(player);
@@ -837,8 +1124,7 @@ void LineupView::addRemainingPlayersToReserveList(const QSet<int>& usedPlayerIds
 }
 
 void LineupView::updateLineupVisibility(bool visible) {
-    lineupNotSelectedLabel->setVisible(!visible);
-    lineupScrollArea->setVisible(visible);
+    lineupStackedWidget->setCurrentIndex(visible ? 1 : 0);
     deleteLineupButton->setEnabled(visible);
     instructionsLabel->setVisible(visible);
 }
@@ -849,13 +1135,17 @@ QListWidgetItem* LineupView::createPlayerItem(const Player& player) {
     item->setData(Qt::UserRole, player.playerId);
     item->setFlags(item->flags() | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled);
     
-    item->setToolTip(QString("%1 - %2")
-                     .arg(QString::fromStdString(player.position))
-                     .arg(QString::fromStdString(player.subPosition)));
+    item->setToolTip(createPlayerTooltip(player));
     
     item->setSelected(false);
     
     return item;
+}
+
+QString LineupView::createPlayerTooltip(const Player& player) {
+    return QString("%1 - %2")
+                 .arg(QString::fromStdString(player.position))
+                 .arg(QString::fromStdString(player.subPosition));
 }
 
 Player* LineupView::findPlayerById(int playerId) {
@@ -878,6 +1168,10 @@ void LineupView::loadPlayerImage(int playerId, const QString& imageUrl, const QS
     QNetworkRequest request(url);
     QNetworkReply* reply = networkManager->get(request);
     
+    connectImageLoadingReply(reply, playerId, position);
+}
+
+void LineupView::connectImageLoadingReply(QNetworkReply* reply, int playerId, const QString& position) {
     connect(reply, &QNetworkReply::finished, this, [this, reply, playerId, position]() {
         this->handleImageLoaded(reply, playerId, position);
     });
@@ -885,22 +1179,143 @@ void LineupView::loadPlayerImage(int playerId, const QString& imageUrl, const QS
 
 void LineupView::handleImageLoaded(QNetworkReply* reply, int playerId, const QString& position) {
     if (reply->error() == QNetworkReply::NoError) {
-        QPixmap pixmap;
-        pixmap.loadFromData(reply->readAll());
-        
-        playerImageCache[playerId] = pixmap;
-        
-        Player* player = findPlayerById(playerId);
-        if (player) {
-            pitchView->setPlayerAtPosition(
-                playerId, 
-                QString::fromStdString(player->name),
-                pixmap,
-                position
-            );
+        processLoadedImage(reply, playerId, position);
+    }
+    
+    cleanupReply(reply);
+}
+
+void LineupView::processLoadedImage(QNetworkReply* reply, int playerId, const QString& position) {
+    QPixmap pixmap;
+    pixmap.loadFromData(reply->readAll());
+    
+    playerImageCache[playerId] = pixmap;
+    
+    Player* player = findPlayerById(playerId);
+    if (player) {
+        pitchView->setPlayerAtPosition(
+            playerId, 
+            QString::fromStdString(player->name),
+            pixmap,
+            position
+        );
+    }
+}
+
+void LineupView::cleanupReply(QNetworkReply* reply) {
+    reply->deleteLater();
+    sender()->deleteLater();
+}
+
+void LineupView::setupLineupRatingDisplay() {
+    lineupRatingWidget = new QWidget(this);
+    lineupRatingWidget->setFixedWidth(200);
+    
+    QVBoxLayout* ratingLayout = new QVBoxLayout(lineupRatingWidget);
+    setupRatingLayout(ratingLayout);
+    
+    hasInitialLineupRating = false;
+    lineupRatingWidget->setVisible(true);
+}
+
+void LineupView::setupRatingLayout(QVBoxLayout* ratingLayout) {
+    ratingLayout->setContentsMargins(0, 0, 0, 0);
+    ratingLayout->setAlignment(Qt::AlignRight | Qt::AlignTop);
+    ratingLayout->setSpacing(2);
+    
+    QLabel* lineupRatingTitle = new QLabel("Lineup Rating", lineupRatingWidget);
+    lineupRatingTitle->setStyleSheet("font-size: 12px; color: #aaaaaa;");
+    lineupRatingTitle->setAlignment(Qt::AlignRight);
+    
+    lineupRatingLabel = new QLabel("--", lineupRatingWidget);
+    lineupRatingLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: white;");
+    lineupRatingLabel->setAlignment(Qt::AlignRight);
+    
+    ratingLayout->addWidget(lineupRatingTitle);
+    ratingLayout->addWidget(lineupRatingLabel);
+}
+
+void LineupView::updateLineupRatingDisplay() {
+    if (!currentTeam || currentLineup.lineupId <= 0) {
+        resetRatingDisplay();
+        return;
+    }
+    
+    double averageRating = calculateCurrentLineupRating();
+    
+    if (averageRating <= 0) {
+        resetRatingDisplay();
+        return;
+    }
+    
+    std::pair<int, int> ratingKey = {currentTeam->teamId, currentLineup.lineupId};
+    setupInitialRatingIfNeeded(ratingKey, averageRating);
+    
+    double ratingDiff = averageRating - initialLineupRatings[ratingKey];
+    updateRatingLabel(averageRating, ratingDiff);
+}
+
+void LineupView::resetRatingDisplay() {
+    if (lineupRatingLabel) {
+        lineupRatingLabel->setText("--");
+        lineupRatingLabel->setStyleSheet("font-size: 14px; font-weight: bold; color: white; text-align: right;");
+    }
+}
+
+double LineupView::calculateCurrentLineupRating() {
+    double totalRating = 0.0;
+    int playerCount = 0;
+    
+    for (const auto& playerPos : currentLineup.playerPositions) {
+        if (playerPos.positionType == PositionType::STARTING) {
+            Player* player = findPlayerById(playerPos.playerId);
+            if (player) {
+                totalRating += player->rating;
+                playerCount++;
+            }
         }
     }
     
-    reply->deleteLater();
-    sender()->deleteLater();
+    return playerCount > 0 ? (totalRating / playerCount) : 0.0;
+}
+
+void LineupView::setupInitialRatingIfNeeded(const std::pair<int, int>& ratingKey, double averageRating) {
+    if (initialLineupRatings.find(ratingKey) == initialLineupRatings.end()) {
+        initialLineupRatings[ratingKey] = averageRating;
+    }
+}
+
+void LineupView::updateRatingLabel(double averageRating, double ratingDiff) {
+    QString displayText;
+    QString styleSheet;
+    
+    if (ratingDiff > 0.01) {
+        displayText = formatPositiveRatingChange(averageRating, ratingDiff);
+        styleSheet = "font-size: 14px; font-weight: bold; color: #4CAF50; text-align: right;";
+    } else if (ratingDiff < -0.01) {
+        displayText = formatNegativeRatingChange(averageRating, ratingDiff);
+        styleSheet = "font-size: 14px; font-weight: bold; color: #F44336; text-align: right;";
+    } else {
+        displayText = formatUnchangedRating(averageRating);
+        styleSheet = "font-size: 14px; font-weight: bold; color: white; text-align: right;";
+    }
+    
+    lineupRatingLabel->setText(displayText);
+    lineupRatingLabel->setStyleSheet(styleSheet);
+}
+
+QString LineupView::formatPositiveRatingChange(double averageRating, double ratingDiff) {
+    return QString("%1 <span style='font-size: 12px; color: #4CAF50;'>+%2</span>")
+                .arg(averageRating, 0, 'f', 1)
+                .arg(ratingDiff, 0, 'f', 1);
+}
+
+QString LineupView::formatNegativeRatingChange(double averageRating, double ratingDiff) {
+    return QString("%1 <span style='font-size: 12px; color: #F44336;'>%2</span>")
+                .arg(averageRating, 0, 'f', 1)
+                .arg(ratingDiff, 0, 'f', 1);
+}
+
+QString LineupView::formatUnchangedRating(double averageRating) {
+    return QString("%1").arg(averageRating, 0, 'f', 1);
 }

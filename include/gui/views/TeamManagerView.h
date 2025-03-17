@@ -20,6 +20,7 @@
 #include <QtNetwork/QNetworkRequest>
 #include <QtWidgets/QListView>
 #include <QMap>
+#include <unordered_map>
 #include <QPropertyAnimation>
 #include <QSequentialAnimationGroup>
 #include <QParallelAnimationGroup>
@@ -70,6 +71,7 @@ protected:
 
 private:
     void setupUi();
+    void setupTeamRatingDisplay();
     void setupMainLayout(QVBoxLayout* mainLayout, QWidget* threeColumnContainer);
     void setupTopButtonLayout(QHBoxLayout* topButtonLayout);
     void setupViewToggleButtons(QHBoxLayout* viewToggleLayout);
@@ -118,14 +120,14 @@ private:
     
     void enableTeamControls();
     void disableTeamControls();
+    
     QStandardItemModel* createPlayerModel();
     QStandardItemModel* initializePlayerModel();
     void populatePlayerModel(QStandardItemModel* playerModel);
     void configureCurrentTeamPlayers(QStandardItemModel* playerModel);
+    
     Player* findPlayerById(int playerId);
     int getSelectedPlayerId();
-    void updateLineupView();
-    void updateLineupAfterPlayerRemoval();
     void updatePlayerInfoLabels(Player* player);
     void updatePlayerImage(Player* player);
     void enablePlayerDetailButtons();
@@ -139,6 +141,18 @@ private:
     void refreshTeamListAndSelection(int teamId);
     void deleteTeamAndUpdateUI(int teamId);
     void updateTeamWithSelectedPlayers(const std::vector<Player>& selectedPlayers);
+    void updateLineupView();
+    void updateLineupAfterPlayerRemoval();
+    
+    void processPlayerImage(int playerId, QStandardItem* imageItem, const QString& imageUrl);
+    void loadPlayerImage(int playerId, const QString& imageUrl);
+    void loadNetworkImage(int playerId, const QString& imageUrl);
+    void handleImageResponse(QNetworkReply* reply, int playerId);
+    void loadLocalImage(int playerId, const QString& imageUrl);
+    void updatePlayerImageInModel(int playerId);
+    void fetchPlayerDetailImage(const QString& imageUrl);
+    void handlePlayerDetailImageResponse(QNetworkReply* reply);
+    void loadLocalPlayerDetailImage(const QString& imageUrl);
     
     bool isValidPlayerSelection(const QModelIndex& index);
     void disableComparisonButtons();
@@ -151,15 +165,8 @@ private:
     void resetComparisonState();
     void fadeOutPlayerDetails();
     
-    void processPlayerImage(int playerId, QStandardItem* imageItem, const QString& imageUrl);
-    void loadPlayerImage(int playerId, const QString& imageUrl);
-    void loadNetworkImage(int playerId, const QString& imageUrl);
-    void handleImageResponse(QNetworkReply* reply, int playerId);
-    void loadLocalImage(int playerId, const QString& imageUrl);
-    void updatePlayerImageInModel(int playerId);
-    void fetchPlayerDetailImage(const QString& imageUrl);
-    void handlePlayerDetailImageResponse(QNetworkReply* reply);
-    void loadLocalPlayerDetailImage(const QString& imageUrl);
+    void updateTeamRatingDisplay();
+    void updateTeamRatingLabel(double averageRating, double ratingDiff);
 
     TeamManager& teamManager;
     Team* currentTeam;
@@ -170,6 +177,15 @@ private:
 
     QListView* teamList;
     QTableView* currentTeamPlayers;
+    QScrollArea* playerDetailsScrollArea;
+    QWidget* playerDetailsWidget;
+    QWidget* leftWidget;
+    QWidget* lineupContainer;
+    QStackedWidget* mainViewStack;
+    QStackedWidget* centerStackedWidget;
+    QWidget* lineupWidget;
+    LineupView* lineupView;
+
     QPushButton* newTeamButton;
     QPushButton* loadTeamByIdButton;
     QPushButton* autoFillButton;
@@ -177,10 +193,16 @@ private:
     QPushButton* backButton;
     QPushButton* deleteTeamButton;
     QPushButton* editTeamNameButton;
+    QPushButton* addPlayersButton;
+    QPushButton* viewHistoryButton;
+    QPushButton* selectForCompareButton;
+    QPushButton* compareWithSelectedButton;
+    QPushButton* clearComparisonButton;
+    QPushButton* viewPlayersButton;
+    QPushButton* viewLineupButton;
+
     QLineEdit* teamNameInput;
     QSpinBox* budgetInput;
-    QPushButton* addPlayersButton;
-    QScrollArea* playerDetailsScrollArea;
 
     QLabel* playerImage;
     QLabel* playerName;
@@ -188,34 +210,22 @@ private:
     QLabel* playerPosition;
     QLabel* playerMarketValue;
     QLabel* playerRating;
-    QPushButton* viewHistoryButton;
-    QPushButton* selectForCompareButton;
-    QPushButton* compareWithSelectedButton;
-    QPushButton* clearComparisonButton;
-
-    QWidget* leftWidget;
-    QWidget* playerDetailsWidget;
-    QWidget* lineupContainer;
-    QStackedWidget* mainViewStack;
+    QLabel* teamRatingLabel;
+    QWidget* teamRatingWidget;
 
     std::vector<std::pair<int, std::string>> availableClubs;
+    std::unordered_map<int, double> teamInitialRatings;
+    double initialTeamRating;
+    bool hasInitialRating;
 
     QGraphicsOpacityEffect* teamListOpacityEffect;
     QPropertyAnimation* teamListOpacityAnimation;
-    
     QGraphicsOpacityEffect* teamPlayersOpacityEffect;
     QPropertyAnimation* teamPlayersOpacityAnimation;
-    
     QGraphicsOpacityEffect* playerDetailsOpacityEffect;
     QPropertyAnimation* playerDetailsOpacityAnimation;
     QPropertyAnimation* playerDetailsSlideAnimation;
     QParallelAnimationGroup* playerDetailsAnimGroup;
-
-    QPushButton* viewPlayersButton;
-    QPushButton* viewLineupButton;
-    LineupView* lineupView;
-    QStackedWidget* centerStackedWidget;
-    QWidget* lineupWidget;
 };
 
 #endif

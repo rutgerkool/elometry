@@ -28,9 +28,6 @@ void SettingsView::setupUi() {
     mainLayout->setContentsMargins(40, 40, 40, 40);
     mainLayout->setAlignment(Qt::AlignCenter);
     
-    backButton = new QPushButton("Back", this);
-    mainLayout->addWidget(backButton, 0, Qt::AlignLeft);
-    
     formWidget = new QWidget(this);
     formWidget->setMinimumWidth(500);
     formWidget->setMaximumWidth(600);
@@ -86,9 +83,11 @@ void SettingsView::createFormFields(QFormLayout* formLayout) {
 
 void SettingsView::createFormButtons(QFormLayout* formLayout) {
     QHBoxLayout* buttonLayout = new QHBoxLayout();
+    backButton = new QPushButton("Back", this);
     saveButton = new QPushButton("Save Settings", formWidget);
     saveButton->setStyleSheet("padding: 10px 20px;");
     buttonLayout->addStretch();
+    buttonLayout->addWidget(backButton);
     buttonLayout->addWidget(saveButton);
     formLayout->addRow(buttonLayout);
 }
