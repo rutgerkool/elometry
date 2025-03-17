@@ -35,23 +35,17 @@ PlayerHistoryDialog::~PlayerHistoryDialog() {}
 
 void PlayerHistoryDialog::loadPlayerData() {
     auto allPlayers = ratingManager.getSortedRatedPlayers();
-    bool playerFound = false;
     
     for (const auto& p : allPlayers) {
         if (p.second.playerId == playerId) {
             player = p.second;
-            playerFound = true;
-            break;
+            playerHistory = ratingManager.getPlayerRatingHistory(playerId, 10);
+            ratingProgression = ratingManager.getRecentRatingProgression(playerId, 10);
+            return;
         }
     }
     
-    if (!playerFound) {
-        close();
-        return;
-    }
-    
-    playerHistory = ratingManager.getPlayerRatingHistory(playerId, 10);
-    ratingProgression = ratingManager.getRecentRatingProgression(playerId, 10);
+    close();
 }
 
 void PlayerHistoryDialog::initializeUI() {
@@ -108,6 +102,8 @@ void PlayerHistoryDialog::setupTableView() {
     historyTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     historyTable->setAlternatingRowColors(true);
     historyTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    historyTable->setTextElideMode(Qt::ElideRight);
+    historyTable->verticalHeader()->setVisible(false);
     
     mainLayout->addWidget(historyTable);
 }
@@ -139,21 +135,11 @@ void PlayerHistoryDialog::setupAnimations() {
 }
 
 void PlayerHistoryDialog::centerDialog(QWidget* parent) {
-    if (parent) {
-        QWidget* parentWidget = qobject_cast<QWidget*>(parent);
-        if (parentWidget) {
-            QScreen* screen = parentWidget->screen();
-            if (screen) {
-                QRect screenGeometry = screen->availableGeometry();
-                move(screenGeometry.center() - rect().center());
-            }
-        }
-    } else {
-        QScreen* screen = QGuiApplication::primaryScreen();
-        if (screen) {
-            QRect screenGeometry = screen->availableGeometry();
-            move(screenGeometry.center() - rect().center());
-        }
+    QScreen* screen = parent ? qobject_cast<QWidget*>(parent)->screen() : QGuiApplication::primaryScreen();
+    
+    if (screen) {
+        QRect screenGeometry = screen->availableGeometry();
+        move(screenGeometry.center() - rect().center());
     }
 }
 
@@ -169,27 +155,39 @@ void PlayerHistoryDialog::createTable() {
     tableModel->setHorizontalHeaderLabels(headers);
 }
 
+QStandardItem* PlayerHistoryDialog::createRatingItem(double rating) {
+    QStandardItem* item = new QStandardItem(QString::number(rating, 'f', 2));
+    item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    return item;
+}
+
+QStandardItem* PlayerHistoryDialog::createChangeItem(double previousRating, double newRating) {
+    double ratingChange = newRating - previousRating;
+    QStandardItem* item = new QStandardItem((ratingChange >= 0 ? "+" : "") + 
+                                             QString::number(ratingChange, 'f', 2));
+    item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    
+    if (ratingChange > 0) {
+        item->setForeground(QBrush(QColor(0, 150, 0)));
+    } else if (ratingChange < 0) {
+        item->setForeground(QBrush(QColor(200, 0, 0)));
+    }
+    
+    return item;
+}
+
 void PlayerHistoryDialog::populateTable() {
     for (const auto& change : playerHistory) {
         QList<QStandardItem*> row;
         
         row.append(new QStandardItem(QString::fromStdString(change.date)));
-        row.append(new QStandardItem(QString::fromStdString(change.opponent)));
         
-        QStandardItem* ratingItem = new QStandardItem(QString::number(change.newRating, 'f', 2));
-        ratingItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        row.append(ratingItem);
+        QStandardItem* opponentItem = new QStandardItem(QString::fromStdString(change.opponent));
+        opponentItem->setToolTip(QString::fromStdString(change.opponent));
+        row.append(opponentItem);
         
-        double ratingChange = change.newRating - change.previousRating;
-        QStandardItem* changeItem = new QStandardItem((ratingChange >= 0 ? "+" : "") + 
-                                                       QString::number(ratingChange, 'f', 2));
-        changeItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        if (ratingChange > 0) {
-            changeItem->setForeground(QBrush(QColor(0, 150, 0)));
-        } else if (ratingChange < 0) {
-            changeItem->setForeground(QBrush(QColor(200, 0, 0)));
-        }
-        row.append(changeItem);
+        row.append(createRatingItem(change.newRating));
+        row.append(createChangeItem(change.previousRating, change.newRating));
         
         row.append(new QStandardItem(QString::number(change.minutesPlayed)));
         row.append(new QStandardItem(QString::number(change.goals)));
@@ -199,9 +197,20 @@ void PlayerHistoryDialog::populateTable() {
     }
     
     historyTable->setModel(tableModel);
-    historyTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    historyTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
-    historyTable->verticalHeader()->setVisible(false);
+    setupTableColumns();
+}
+
+void PlayerHistoryDialog::setupTableColumns() {
+    for (int i = 0; i < tableModel->columnCount(); i++) {
+        if (i == 1) {
+            historyTable->horizontalHeader()->setSectionResizeMode(i, QHeaderView::Fixed);
+            historyTable->setColumnWidth(i, 350);
+        } else if (i == 2) {
+            historyTable->horizontalHeader()->setSectionResizeMode(i, QHeaderView::Stretch);
+        } else {
+            historyTable->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
+        }
+    }
 }
 
 void PlayerHistoryDialog::setupHistoryTable() {
@@ -223,8 +232,7 @@ void PlayerHistoryDialog::configureChartAppearance() {
     chart->legend()->setFont(QFont("Segoe UI", 10));
 }
 
-void PlayerHistoryDialog::createChartSeries(QLineSeries* series, QScatterSeries* pointSeries)
-{
+void PlayerHistoryDialog::createChartSeries(QLineSeries* series, QScatterSeries* pointSeries) {
     series->setName("Rating");
     series->setColor(QColor(0x0c, 0x7b, 0xb3));
     series->setPen(QPen(QColor(0x0c, 0x7b, 0xb3), 3));
@@ -234,6 +242,19 @@ void PlayerHistoryDialog::createChartSeries(QLineSeries* series, QScatterSeries*
     pointSeries->setColor(QColor(0x2e, 0xa0, 0x43));
     pointSeries->setBorderColor(Qt::white);
     pointSeries->setMarkerShape(QScatterSeries::MarkerShapeCircle);
+}
+
+void PlayerHistoryDialog::applyChartAxisStyling(QAbstractAxis* axis, const QString& title) {
+    axis->setTitleText(title);
+    axis->setLabelsColor(Qt::white);
+    axis->setTitleBrush(QBrush(Qt::white));
+    axis->setGridLineColor(QColor(0x3d, 0x3d, 0x3d));
+    axis->setLinePenColor(QColor(0x3d, 0x3d, 0x3d));
+}
+
+double PlayerHistoryDialog::calculatePadding(double minRating, double maxRating) {
+    double padding = (maxRating - minRating) * 0.1;
+    return (padding < 10) ? 10 : padding;
 }
 
 void PlayerHistoryDialog::setupChartAxes(
@@ -246,26 +267,16 @@ void PlayerHistoryDialog::setupChartAxes(
 ) {
     axisX->setTickCount(ratingProgression.size() > 5 ? 5 : ratingProgression.size());
     axisX->setFormat("MMM dd");
-    axisX->setTitleText("Date");
-    axisX->setLabelsColor(Qt::white);
-    axisX->setTitleBrush(QBrush(Qt::white));
-    axisX->setGridLineColor(QColor(0x3d, 0x3d, 0x3d));
-    axisX->setLinePenColor(QColor(0x3d, 0x3d, 0x3d));
+    applyChartAxisStyling(axisX, "Date");
     
-    double padding = (maxRating - minRating) * 0.1;
-    if (padding < 10) padding = 10;
-    
+    double padding = calculatePadding(minRating, maxRating);
     minRating = std::max(0.0, minRating - padding);
     maxRating = maxRating + padding;
     
     axisY->setRange(minRating, maxRating);
     axisY->setLabelFormat("%.1f");
     axisY->setTickCount(5);
-    axisY->setTitleText("Rating");
-    axisY->setLabelsColor(Qt::white);
-    axisY->setTitleBrush(QBrush(Qt::white));
-    axisY->setGridLineColor(QColor(0x3d, 0x3d, 0x3d));
-    axisY->setLinePenColor(QColor(0x3d, 0x3d, 0x3d));
+    applyChartAxisStyling(axisY, "Rating");
     
     chart->addSeries(series);
     chart->addSeries(pointSeries);
@@ -278,6 +289,59 @@ void PlayerHistoryDialog::setupChartAxes(
     pointSeries->attachAxis(axisY);
 }
 
+void PlayerHistoryDialog::addPointToSeries(
+    QLineSeries* series, 
+    QScatterSeries* pointSeries, 
+    const RatingChange& change, 
+    int gameId, 
+    double value, 
+    double& minRating, 
+    double& maxRating, 
+    bool& firstPoint
+) {
+    if (change.gameId != gameId) return;
+    
+    QDateTime date = QDateTime::fromString(QString::fromStdString(change.date), Qt::ISODate);
+    if (!date.isValid()) return;
+    
+    qreal x = date.toMSecsSinceEpoch();
+    qreal y = value;
+    
+    if (firstPoint) {
+        minRating = maxRating = y;
+        firstPoint = false;
+    } else {
+        minRating = std::min(minRating, y);
+        maxRating = std::max(maxRating, y);
+    }
+    
+    *series << QPointF(x, y);
+    *pointSeries << QPointF(x, y);
+}
+
+void PlayerHistoryDialog::createAndPopulateChartSeries(
+    QLineSeries* series, 
+    QScatterSeries* pointSeries, 
+    double& minRating, 
+    double& maxRating
+) {
+    bool firstPoint = true;
+    
+    for (size_t i = 0; i < ratingProgression.size(); i++) {
+        if (i >= playerHistory.size()) continue;
+        
+        int gameId = ratingProgression[i].first;
+        double value = ratingProgression[i].second;
+        
+        for (const auto& change : playerHistory) {
+            addPointToSeries(series, pointSeries, change, gameId, value, 
+                            minRating, maxRating, firstPoint);
+            
+            if (change.gameId == gameId) break;
+        }
+    }
+}
+
 void PlayerHistoryDialog::setupHistoryChart() {
     configureChartAppearance();
     
@@ -286,38 +350,13 @@ void PlayerHistoryDialog::setupHistoryChart() {
     
     createChartSeries(series, pointSeries);
     
-    QDateTimeAxis* axisX = new QDateTimeAxis();
-    QValueAxis* axisY = new QValueAxis();
-    
     double minRating = 0;
     double maxRating = 0;
-    bool firstPoint = true;
     
-    for (int i = 0; i < ratingProgression.size(); i++) {
-        if (i < playerHistory.size()) {
-            for (const auto& change : playerHistory) {
-                if (change.gameId == ratingProgression[i].first) {
-                    QDateTime date = QDateTime::fromString(QString::fromStdString(change.date), Qt::ISODate);
-                    if (date.isValid()) {
-                        qreal x = date.toMSecsSinceEpoch();
-                        qreal y = ratingProgression[i].second;
-                        
-                        if (firstPoint) {
-                            minRating = maxRating = y;
-                            firstPoint = false;
-                        } else {
-                            minRating = std::min(minRating, y);
-                            maxRating = std::max(maxRating, y);
-                        }
-                        
-                        *series << QPointF(x, y);
-                        *pointSeries << QPointF(x, y);
-                    }
-                    break;
-                }
-            }
-        }
-    }
+    createAndPopulateChartSeries(series, pointSeries, minRating, maxRating);
+    
+    QDateTimeAxis* axisX = new QDateTimeAxis();
+    QValueAxis* axisY = new QValueAxis();
     
     setupChartAxes(series, pointSeries, minRating, maxRating, axisX, axisY);
 }

@@ -46,6 +46,13 @@ class PlayerHistoryDialog : public QDialog {
         void configureChartAppearance();
         void createChartSeries(QLineSeries* series, QScatterSeries* pointSeries);
         void setupChartAxes(QLineSeries* series, QScatterSeries* pointSeries, double minRating, double maxRating, QDateTimeAxis* axisX, QValueAxis* axisY);
+        double calculatePadding(double minRating, double maxRating);
+        QStandardItem* createRatingItem(double rating);
+        QStandardItem* createChangeItem(double previousRating, double newRating);
+        void setupTableColumns();
+        void applyChartAxisStyling(QAbstractAxis* axis, const QString& title);
+        void createAndPopulateChartSeries(QLineSeries* series, QScatterSeries* pointSeries, double& minRating, double& maxRating);
+        void addPointToSeries(QLineSeries* series, QScatterSeries* pointSeries, const RatingChange& change, int gameId, double value, double& minRating, double& maxRating, bool& firstPoint);
 
         RatingManager& ratingManager;
         int playerId;
