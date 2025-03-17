@@ -161,7 +161,7 @@ void PlayerRating::processMatchesParallel(const std::vector<Game>& games, const 
     sortGamesByDate(games, sortedGames);
 
     #pragma omp parallel for ordered
-    for (int i = 0; i < sortedGames.size(); ++i) {
+    for (size_t i = 0; i < sortedGames.size(); ++i) {
         int gameId = sortedGames[i].gameId;
 
         if (gameAppearances.find(gameId) != gameAppearances.end()) {

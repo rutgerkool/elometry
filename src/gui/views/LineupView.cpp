@@ -693,7 +693,7 @@ void LineupView::removePlayerFromSourceList(int playerId, QListWidget* sourceLis
     }
 }
 
-void LineupView::saveCurrentLineup(bool forceSave) {
+void LineupView::saveCurrentLineup() {
     if (currentLineup.lineupId <= 0 || !currentTeam) {
         QMessageBox::warning(this, "Error", "No lineup selected");
         return;
@@ -781,7 +781,7 @@ void LineupView::handleDragDropPlayer(int playerId, const QString& fromPosition,
     
     processPlayerDragDrop(playerId, fromPosition, toPosition);
     
-    saveCurrentLineup(true);
+    saveCurrentLineup();
     updateLineupRatingDisplay();
 }
 
@@ -825,7 +825,7 @@ void LineupView::handleFieldToListDrop(int playerId, const QString& fromPosition
     }
     
     QTimer::singleShot(100, this, [this]() {
-        saveCurrentLineup(true);
+        saveCurrentLineup();
     });
 }
 
@@ -976,7 +976,7 @@ void LineupView::moveExistingPlayerToList(Player* player, const QString& targetP
 }
 
 void LineupView::updatePlayerLists() {
-    saveCurrentLineup(true);
+    saveCurrentLineup();
 }
 
 void LineupView::populatePlayerLists() {

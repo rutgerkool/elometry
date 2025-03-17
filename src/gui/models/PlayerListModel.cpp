@@ -26,7 +26,7 @@ QVariant PlayerListModel::data(const QModelIndex &index, int role) const {
     
     int actualRow = index.row() + startIndex;
     
-    if (actualRow < 0 || actualRow >= filteredPlayers.size()) {
+    if (actualRow < 0 || static_cast<size_t>(actualRow) >= filteredPlayers.size()) {
         return QVariant();
     }
 

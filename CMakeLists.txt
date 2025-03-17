@@ -11,6 +11,17 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CXX_STANDARD_20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(WARNING_FLAGS "-Wall -Wextra -Wpedantic -Werror=return-type")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${WARNING_FLAGS}")
+    
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fsanitize=undefined")
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fsanitize=address -fsanitize=undefined")
+elseif(MSVC)
+    set(WARNING_FLAGS "/W4")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${WARNING_FLAGS}")
+endif()
+
 include_directories(include)
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/static)

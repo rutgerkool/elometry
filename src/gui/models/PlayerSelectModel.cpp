@@ -99,7 +99,8 @@ QVariant PlayerSelectModel::data(const QModelIndex &index, int role) const {
     if (!index.isValid()) return QVariant();
     
     int actualRow = index.row() + startIndex;
-    if (actualRow < 0 || actualRow >= filteredPlayers.size()) return QVariant();
+
+    if (actualRow < 0 || static_cast<size_t>(actualRow) >= filteredPlayers.size()) return QVariant();
 
     int playerId = filteredPlayers[actualRow].first;
     bool selected = isPlayerSelected(playerId);
@@ -181,7 +182,7 @@ bool PlayerSelectModel::setData(const QModelIndex &index, const QVariant &value,
     if (!index.isValid() || index.column() != 0 || role != Qt::CheckStateRole) 
         return false;
     
-    int actualRow = index.row() + startIndex;
+    size_t actualRow = index.row() + startIndex;
     if (actualRow >= filteredPlayers.size())
         return false;
     
@@ -267,7 +268,7 @@ void PlayerSelectModel::togglePlayerSelection(const QModelIndex &index) {
     if (!index.isValid()) return;
     
     int actualRow = index.row() + startIndex;
-    if (actualRow >= filteredPlayers.size()) return;
+    if (static_cast<size_t>(actualRow) >= filteredPlayers.size()) return;
     
     int playerId = filteredPlayers[actualRow].first;
     

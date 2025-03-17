@@ -41,7 +41,7 @@ class LineupView : public QWidget {
     private slots:
         void createNewLineup();
         void loadSelectedLineup(int index);
-        void saveCurrentLineup(bool forceSave = false);
+        void saveCurrentLineup();
         void handleDragDropPlayer(int playerId, const QString& fromPosition, const QString& toPosition);
         void updatePlayerLists();
 

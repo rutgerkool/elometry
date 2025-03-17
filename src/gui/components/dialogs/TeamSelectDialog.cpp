@@ -158,9 +158,10 @@ void TeamSelectDialog::toggleSelection(const QModelIndex &index) {
     }
     
     QVariant checkState = index.data(Qt::CheckStateRole);
-    teamsModel->setData(index, 
-                       checkState.toInt() == Qt::Checked ? Qt::Unchecked : Qt::Checked, 
-                       Qt::CheckStateRole);
+    teamsModel->setData(
+        index, 
+        checkState.toInt() == Qt::Checked ? Qt::Unchecked : Qt::Checked
+    );
     
     teamsList->setCurrentIndex(index);
 }

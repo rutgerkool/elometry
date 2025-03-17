@@ -447,8 +447,6 @@ void Database::updateDatasetIfNeeded(std::function<void(const std::string&, int)
 
     progressCallback("Comparing dataset versions", 30);
     
-    time_t localUpdatedTime = getLastUpdateTimestamp();
-    
     compareAndUpdateDataset(kaggleUpdatedTime, progressCallback);
 }
 

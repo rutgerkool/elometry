@@ -33,7 +33,7 @@ Qt::ItemFlags TeamListModel::flags(const QModelIndex &index) const {
 }
 
 bool TeamListModel::setData(const QModelIndex &index, const QVariant &value, int role) {
-    if (!index.isValid() || index.row() >= teams.size() || role != Qt::EditRole) {
+    if (!index.isValid() || static_cast<size_t>(index.row()) >= teams.size() || role != Qt::EditRole) {
         return false;
     }
     

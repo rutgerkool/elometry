@@ -30,7 +30,7 @@ int TeamSelectModel::rowCount(const QModelIndex &parent) const {
 }
 
 QVariant TeamSelectModel::data(const QModelIndex &index, int role) const {
-    if (!index.isValid() || index.row() >= filteredTeams.size()) 
+    if (!index.isValid() || static_cast<size_t>(index.row()) >= filteredTeams.size())
         return QVariant();
 
     const auto& team = filteredTeams[index.row()];
@@ -43,7 +43,7 @@ QVariant TeamSelectModel::data(const QModelIndex &index, int role) const {
             return selected ? Qt::Checked : Qt::Unchecked;
         case Qt::BackgroundRole:
         case Qt::ForegroundRole:
-            return getDecorationData(team, index.row(), selected, role);
+            return getDecorationData(index.row(), selected, role);
         case Qt::UserRole:
             return team.teamId;
         case Qt::ToolTipRole:
@@ -59,7 +59,7 @@ QVariant TeamSelectModel::getDisplayData(const Team& team) const {
     return QString::fromStdString(team.teamName);
 }
 
-QVariant TeamSelectModel::getDecorationData(const Team& team, int row, bool selected, int role) const {
+QVariant TeamSelectModel::getDecorationData(int row, bool selected, int role) const {
     if (role == Qt::BackgroundRole) {
         if (selected) {
             return QColor(45, 65, 90);
@@ -93,8 +93,8 @@ QString TeamSelectModel::getTeamTooltip(const Team& team) const {
     return tooltip;
 }
 
-bool TeamSelectModel::setData(const QModelIndex &index, const QVariant &value, int role) {
-    if (!index.isValid() || role != Qt::CheckStateRole || index.row() >= filteredTeams.size()) 
+bool TeamSelectModel::setData(const QModelIndex &index, const QVariant &value, int) {
+    if (!index.isValid() || static_cast<size_t>(index.row()) >= filteredTeams.size())
         return false;
     
     int teamId = filteredTeams[index.row()].teamId;
@@ -140,7 +140,7 @@ void TeamSelectModel::applyFilter() {
 }
 
 void TeamSelectModel::toggleTeamSelection(const QModelIndex &index) {
-    if (!index.isValid() || index.row() >= filteredTeams.size()) 
+    if (!index.isValid() || static_cast<size_t>(index.row()) >= filteredTeams.size())
         return;
     
     int teamId = filteredTeams[index.row()].teamId;

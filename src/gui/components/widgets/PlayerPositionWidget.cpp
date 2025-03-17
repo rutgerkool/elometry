@@ -76,7 +76,7 @@ void PlayerPositionWidget::createPlayerWithImage(const QPixmap& playerImage) {
     imageLabel->setAlignment(Qt::AlignCenter);
     contentLayout->addWidget(imageLabel, 0, Qt::AlignCenter);
     
-    setupContentWidget(contentWidget, contentLayout);
+    setupContentWidget(contentLayout);
 }
 
 QPixmap PlayerPositionWidget::createCircularAvatar(const QPixmap& playerImage) {
@@ -110,10 +110,10 @@ void PlayerPositionWidget::createPlayerWithInitials() {
     initialsLabel->setStyleSheet("color: white; font-weight: bold; font-size: 24px; background-color: transparent;");
     contentLayout->addWidget(initialsLabel, 0, Qt::AlignCenter);
     
-    setupContentWidget(contentWidget, contentLayout);
+    setupContentWidget(contentLayout);
 }
 
-void PlayerPositionWidget::setupContentWidget(QWidget* contentWidget, QVBoxLayout* contentLayout) {
+void PlayerPositionWidget::setupContentWidget(QVBoxLayout* contentLayout) {
     QLabel* nameLabel = new QLabel(this);
     QString displayName = truncateNameForDisplay(playerName);
     
@@ -231,7 +231,7 @@ void PlayerPositionWidget::mouseMoveEvent(QMouseEvent* event) {
     
     emit playerDragged(playerId, positionName);
     
-    Qt::DropAction dropAction = drag->exec(Qt::MoveAction);
+    drag->exec(Qt::MoveAction);
 }
 
 QMimeData* PlayerPositionWidget::setupDragMimeData() {

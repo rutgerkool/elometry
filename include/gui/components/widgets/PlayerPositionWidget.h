@@ -42,7 +42,7 @@ class PlayerPositionWidget : public QLabel {
         void createPlayerWithInitials();
         QString truncateNameForDisplay(const QString& name) const;
         QString generateInitials() const;
-        void setupContentWidget(QWidget* contentWidget, QVBoxLayout* contentLayout);
+        void setupContentWidget(QVBoxLayout* contentLayout);
         void configureWithPlayer();
         void configureWithoutPlayer();
         QPixmap createCircularAvatar(const QPixmap& playerImage);

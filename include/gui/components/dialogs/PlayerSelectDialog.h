@@ -54,8 +54,8 @@ class PlayerSelectDialog : public QDialog {
         QHBoxLayout* createSearchLayout();
 
         TeamManager& teamManager;
-        PlayerSelectModel* playersModel;
         Team* currentTeam;
+        PlayerSelectModel* playersModel;
 
         QTableView* playersTable;
         QLineEdit* searchInput;

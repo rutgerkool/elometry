@@ -44,8 +44,8 @@ class TeamSelectDialog : public QDialog {
         QHBoxLayout* createSearchLayout();
 
         TeamManager& teamManager;
-        TeamSelectModel* teamsModel;
         int playerId;
+        TeamSelectModel* teamsModel;
         QSet<int> initialTeamIds;
 
         QListView* teamsList;

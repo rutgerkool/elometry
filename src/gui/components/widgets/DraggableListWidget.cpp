@@ -44,7 +44,6 @@ void DraggableListWidget::dragEnterEvent(QDragEnterEvent* event) {
 
         if (text.contains("|")) {
             QStringList parts = text.split("|");
-            int playerId = parts[0].toInt();
             QString source = parts[1];
             
             if (source != "BENCH" && source != "RESERVE") {

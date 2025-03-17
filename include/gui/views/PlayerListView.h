@@ -88,7 +88,6 @@ class PlayerListView : public QWidget {
         int totalPages = 1;
         const int playersPerPage = 20;
         int currentPlayerId = -1;
-        int comparisonPlayerId = -1;
 
         QPushButton* prevPageButton;
         QPushButton* nextPageButton;
@@ -117,6 +116,8 @@ class PlayerListView : public QWidget {
         PlayerListModel* model;
         QNetworkAccessManager* networkManager;
         QMap<int, QPixmap> playerImageCache;
+
+        int comparisonPlayerId = -1;
 
         QGraphicsOpacityEffect* tableOpacityEffect;
         QPropertyAnimation* tableOpacityAnimation;

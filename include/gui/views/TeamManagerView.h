@@ -165,8 +165,8 @@ private:
     void updateTeamRatingLabel(double averageRating, double ratingDiff);
 
     TeamManager& teamManager;
-    Team* currentTeam;
     TeamListModel* model;
+    Team* currentTeam;
     QNetworkAccessManager* networkManager;
     QMap<int, QPixmap> playerImageCache;
     int comparisonPlayerId = -1;
