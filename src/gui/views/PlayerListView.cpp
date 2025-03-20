@@ -18,6 +18,7 @@
 #include <QEasingCurve>
 #include <QParallelAnimationGroup>
 #include <QTimer>
+#include <QPointer>
 #include <set>
 
 PlayerListView::PlayerListView(RatingManager& rm, TeamManager& tm, QWidget *parent)
@@ -33,6 +34,35 @@ PlayerListView::PlayerListView(RatingManager& rm, TeamManager& tm, QWidget *pare
     setupConnections();
     updatePagination();
     animateTable();
+}
+
+PlayerListView::~PlayerListView() {
+    if (networkManager) {
+        QList<QNetworkReply*> replies = networkManager->findChildren<QNetworkReply*>();
+        for (QNetworkReply* reply : replies) {
+            reply->abort();
+            reply->deleteLater();
+        }
+        
+        delete networkManager;
+        networkManager = nullptr;
+    }
+
+    delete tableOpacityAnimation;
+    tableOpacityAnimation = nullptr;
+    delete tableSlideAnimation;
+    tableSlideAnimation = nullptr;
+    delete tableAnimGroup;
+    tableAnimGroup = nullptr;
+    delete playerDetailsOpacityAnimation;
+    playerDetailsOpacityAnimation = nullptr;
+    delete playerDetailsSlideAnimation;
+    playerDetailsSlideAnimation = nullptr;
+    delete playerDetailsAnimGroup;
+    playerDetailsAnimGroup = nullptr;
+    
+    delete model;
+    model = nullptr;
 }
 
 void PlayerListView::setupUi() {
@@ -143,7 +173,7 @@ void PlayerListView::configureTableView() {
 }
 
 QWidget* PlayerListView::setupPaginationSection() {
-    QWidget* paginationWidget = new QWidget();
+    QWidget* paginationWidget = new QWidget(this);
     paginationWidget->setFixedHeight(50);
     QHBoxLayout* paginationLayout = new QHBoxLayout(paginationWidget);
     paginationLayout->setContentsMargins(0, 0, 0, 0);
@@ -193,7 +223,7 @@ QScrollArea* PlayerListView::setupPlayerDetailsSection() {
     playerDetailsScrollArea->setMinimumWidth(250);
     playerDetailsScrollArea->setMaximumWidth(300);
     
-    playerDetailsWidget = new QWidget();
+    playerDetailsWidget = new QWidget(this);
     playerDetailsWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     
     setupPlayerDetailsContent();
@@ -247,23 +277,23 @@ void PlayerListView::addPlayerButtonsToLayout(QVBoxLayout* layout) {
 }
 
 void PlayerListView::createPlayerInfoWidgets() {
-    playerImage = new QLabel();
+    playerImage = new QLabel(this);
     playerImage->setObjectName("playerImage");
     playerImage->setFixedSize(200, 200);
     playerImage->setAlignment(Qt::AlignCenter);
     playerImage->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-    playerClub = new QLabel("");
+    playerClub = new QLabel("", this);
     playerClub->setObjectName("playerClub");
     playerClub->setWordWrap(true);
     playerClub->setAlignment(Qt::AlignLeft);
     
-    playerPosition = new QLabel("");
+    playerPosition = new QLabel("", this);
     playerPosition->setObjectName("playerPosition");
     playerPosition->setWordWrap(true);
     playerPosition->setAlignment(Qt::AlignLeft);
     
-    playerMarketValue = new QLabel("");
+    playerMarketValue = new QLabel("", this);
     playerMarketValue->setObjectName("playerMarketValue");
     playerMarketValue->setWordWrap(true);
     playerMarketValue->setAlignment(Qt::AlignLeft);
@@ -303,7 +333,7 @@ void PlayerListView::setupTableAnimations() {
     tableView->setGraphicsEffect(tableOpacityEffect);
     tableOpacityEffect->setOpacity(0.0);
     
-    tableOpacityAnimation = new QPropertyAnimation(tableOpacityEffect, "opacity");
+    tableOpacityAnimation = new QPropertyAnimation(tableOpacityEffect, "opacity", this);
     tableOpacityAnimation->setDuration(250);
     tableOpacityAnimation->setStartValue(0.0);
     tableOpacityAnimation->setEndValue(1.0);
@@ -318,13 +348,13 @@ void PlayerListView::setupPlayerDetailsAnimations() {
     playerDetailsWidget->setGraphicsEffect(playerDetailsOpacityEffect);
     playerDetailsOpacityEffect->setOpacity(0.0);
     
-    playerDetailsOpacityAnimation = new QPropertyAnimation(playerDetailsOpacityEffect, "opacity");
+    playerDetailsOpacityAnimation = new QPropertyAnimation(playerDetailsOpacityEffect, "opacity", this);
     playerDetailsOpacityAnimation->setDuration(250);
     playerDetailsOpacityAnimation->setStartValue(0.0);
     playerDetailsOpacityAnimation->setEndValue(1.0);
     playerDetailsOpacityAnimation->setEasingCurve(QEasingCurve::OutCubic);
     
-    playerDetailsSlideAnimation = new QPropertyAnimation(playerDetailsWidget, "pos");
+    playerDetailsSlideAnimation = new QPropertyAnimation(playerDetailsWidget, "pos", this);
     playerDetailsSlideAnimation->setDuration(300);
     playerDetailsSlideAnimation->setEasingCurve(QEasingCurve::OutCubic);
     
@@ -509,16 +539,34 @@ void PlayerListView::handlePlayerImageLoading(const Player& player) {
 void PlayerListView::fetchPlayerDetailImage(const QString& imageUrl) {
     QNetworkReply* reply = networkManager->get(QNetworkRequest(QUrl(imageUrl)));
     
-    connect(reply, &QNetworkReply::finished, this, [=]() {
-        if (reply->error() == QNetworkReply::NoError) {
+    QPointer<QNetworkReply> safeReply(reply);
+    
+    connect(reply, &QNetworkReply::finished, this, [this, safeReply]() {
+        if (!safeReply) {
+            return;
+        }
+        
+        if (safeReply->error() == QNetworkReply::NoError) {
             QPixmap pixmap;
-            pixmap.loadFromData(reply->readAll());
+            pixmap.loadFromData(safeReply->readAll());
             playerImage->setPixmap(pixmap.scaled(200, 200, Qt::KeepAspectRatio));
         } else {
             playerImage->setText("No Image Available");
         }
-        reply->deleteLater();
+        
+        safeReply->deleteLater();
     });
+    
+    QTimer* timer = new QTimer(this);
+    timer->setSingleShot(true);
+    connect(timer, &QTimer::timeout, [safeReply, timer]() {
+        if (safeReply && !safeReply->isFinished()) {
+            safeReply->abort();
+        }
+        
+        timer->deleteLater();
+    });
+    timer->start(10000);
 }
 
 void PlayerListView::loadLocalPlayerDetailImage(const QString& imageUrl) {

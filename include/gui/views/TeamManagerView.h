@@ -36,6 +36,7 @@ class TeamManagerView : public QWidget {
 
 public:
     explicit TeamManagerView(TeamManager& teamManager, QWidget *parent = nullptr);
+    ~TeamManagerView() override;
 
 signals:
     void backToMain();
@@ -79,6 +80,7 @@ private:
     void setupLeftContainerWidget(QHBoxLayout* layout);
     void setupCenterContainerWidget(QHBoxLayout* layout);
     void setupRightContainerWidget(QHBoxLayout* layout);
+    void cleanupLayoutItems();
     
     QWidget* setupLeftPanel();
     void setupLeftPanelHeader(QVBoxLayout* layout);
@@ -214,14 +216,14 @@ private:
     double initialTeamRating;
     bool hasInitialRating;
 
-    QGraphicsOpacityEffect* teamListOpacityEffect;
-    QPropertyAnimation* teamListOpacityAnimation;
-    QGraphicsOpacityEffect* teamPlayersOpacityEffect;
-    QPropertyAnimation* teamPlayersOpacityAnimation;
-    QGraphicsOpacityEffect* playerDetailsOpacityEffect;
-    QPropertyAnimation* playerDetailsOpacityAnimation;
-    QPropertyAnimation* playerDetailsSlideAnimation;
-    QParallelAnimationGroup* playerDetailsAnimGroup;
+    QGraphicsOpacityEffect* teamListOpacityEffect = nullptr;
+    QPropertyAnimation* teamListOpacityAnimation = nullptr;
+    QGraphicsOpacityEffect* teamPlayersOpacityEffect = nullptr;
+    QPropertyAnimation* teamPlayersOpacityAnimation = nullptr;
+    QGraphicsOpacityEffect* playerDetailsOpacityEffect = nullptr;
+    QPropertyAnimation* playerDetailsOpacityAnimation = nullptr;
+    QPropertyAnimation* playerDetailsSlideAnimation = nullptr;
+    QParallelAnimationGroup* playerDetailsAnimGroup = nullptr;
 };
 
 #endif

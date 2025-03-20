@@ -8,7 +8,10 @@ DataLoader::DataLoader(RatingManager& rm, TeamManager& tm, Database& db, QObject
     , ratingManager(rm)
     , teamManager(tm)
     , database(db)
-{
+{}
+
+DataLoader::~DataLoader() {
+    disconnect(this, nullptr, nullptr, nullptr);
 }
 
 void DataLoader::loadData()
@@ -19,11 +22,7 @@ void DataLoader::loadData()
         emit progressUpdate(QString::fromStdString(status), progress);
     };
     
-    if (database.isNewDatabase()) {
-        database.initialize(progressCallback);
-    } else {
-        database.initialize(progressCallback);
-    }
+    database.initialize(progressCallback);
 
     emit progressUpdate("Processing player ratings", 75);
     ratingManager.loadAndProcessRatings();

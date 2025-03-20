@@ -116,10 +116,13 @@ bool Database::metadataHasEntry(const std::string& key) {
 }
 
 Database::~Database() {
-    if (db)
+    if (db) {
         sqlite3_close(db);
+        db = nullptr;
+    }
     
     delete kaggleClient;
+    kaggleClient = nullptr;
 }
 
 bool Database::fileExists(const std::string& dbPath) {

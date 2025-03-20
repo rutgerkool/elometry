@@ -12,6 +12,43 @@ struct Team {
     std::string teamName;
     std::vector<Player> players;
     int64_t budget = 20000000;
+    
+    Team() = default;
+    
+    Team(int id, const std::string& name) 
+        : teamId(id), teamName(name) {}
+    
+    Team(Team&& other) noexcept 
+        : teamId(other.teamId),
+          teamName(std::move(other.teamName)),
+          players(std::move(other.players)),
+          budget(other.budget) {}
+    
+    Team& operator=(Team&& other) noexcept {
+        if (this != &other) {
+            teamId = other.teamId;
+            teamName = std::move(other.teamName);
+            players = std::move(other.players);
+            budget = other.budget;
+        }
+        return *this;
+    }
+    
+    Team(const Team& other) 
+        : teamId(other.teamId),
+          teamName(other.teamName),
+          players(other.players),
+          budget(other.budget) {}
+    
+    Team& operator=(const Team& other) {
+        if (this != &other) {
+            teamId = other.teamId;
+            teamName = other.teamName;
+            players = other.players;
+            budget = other.budget;
+        }
+        return *this;
+    }
 };
 
 class TeamRepository {

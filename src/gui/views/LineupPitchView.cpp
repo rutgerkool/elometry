@@ -42,8 +42,7 @@ QStringList LineupPitchView::getAllPositions() const {
 }
 
 void LineupPitchView::setupPlayerPositionWidget(PlayerPositionWidget* posWidget) {
-    connect(posWidget, &PlayerPositionWidget::playerDragged, 
-            [this](int playerId, const QString& fromPosition) {});
+    connect(posWidget, &PlayerPositionWidget::playerDragged, [this]() {});
             
     connect(posWidget, &PlayerPositionWidget::playerDropped,
     [this](int playerId, const QString& fromPosition, const QString& toPosition) {

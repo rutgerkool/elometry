@@ -10,7 +10,7 @@ std::vector<std::string> TeamManager::getAvailableSubPositions() {
 
 Team& TeamManager::createTeam(const std::string& teamName) {
     int teamId = ++nextTeamId;
-    teams[teamId] = {teamId, teamName, {}};
+    teams[teamId] = Team(teamId, teamName);
     return teams[teamId];
 }
 
@@ -37,8 +37,10 @@ Team& TeamManager::loadTeamFromClub(int clubId) {
 
 std::vector<Team> TeamManager::getAllTeams() {
     std::vector<Team> teamList;
+    teamList.reserve(teams.size());
+    
     for (const auto& pair : teams) {
-        teamList.push_back(pair.second);
+        teamList.emplace_back(pair.second);  
     }
     return teamList;
 }
@@ -195,11 +197,18 @@ void TeamManager::saveTeamPlayers(const Team& team) {
 void TeamManager::loadTeams() {
     teams.clear();
     std::vector<Team> loadedTeams = teamRepo.getAllTeams();
-    for (const auto& team : loadedTeams) {
-        std::vector<Player> selection = playerRepo.fetchPlayers(-1, -1, team.teamId);
-        teams[team.teamId] = team;
-        teams[team.teamId].players = ratingManager.getFilteredRatedPlayers(selection);
-        nextTeamId = std::max(nextTeamId, team.teamId);
+    
+    for (auto& team : loadedTeams) {
+        int teamId = team.teamId;
+        
+        std::vector<Player> selection = playerRepo.fetchPlayers(-1, -1, teamId);
+        
+        auto ratedPlayers = ratingManager.getFilteredRatedPlayers(selection);
+        
+        teams[teamId] = std::move(team);
+        teams[teamId].players = std::move(ratedPlayers);
+        
+        nextTeamId = std::max(nextTeamId, teamId);
     }
 }
 

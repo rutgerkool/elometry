@@ -4,6 +4,7 @@
 #include "services/RatingManager.h"
 #include "services/TeamManager.h"
 #include "utils/database/Database.h"
+#include "gui/components/DataLoader.h"
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QStackedWidget>
 #include <QThread>
@@ -36,7 +37,8 @@ class MainWindow : public QMainWindow {
         void onDataLoadProgress(const QString& status, int progress);
         void animateViewTransition(QWidget* newWidget);
         void centerWindow();
-
+        void onLoadingComplete();
+        
     private:
         RatingManager& ratingManager;
         TeamManager& teamManager;
@@ -51,10 +53,11 @@ class MainWindow : public QMainWindow {
         QStackedWidget* stackedWidget;
         
         QThread* loadingThread;
-        bool appInitialized;
 
         QPropertyAnimation* fadeAnimation;
         QGraphicsOpacityEffect* opacityEffect;
+
+        bool appInitialized;
 
         void setupUi();
         void setupConnections();

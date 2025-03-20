@@ -74,7 +74,7 @@ std::vector<Team> TeamRepository::getAllTeams() {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             int teamId = sqlite3_column_int(stmt, 0);
             std::string teamName = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-            teams.push_back({teamId, teamName, {}});
+            teams.push_back(Team(teamId, teamName));
         }
     }
     sqlite3_finalize(stmt);

@@ -32,6 +32,7 @@ class LineupView : public QWidget {
 
     public:
         explicit LineupView(TeamManager& teamManager, Team* currentTeam, QWidget *parent = nullptr);
+        ~LineupView() override;
         void setTeam(Team* team);
 
     signals:

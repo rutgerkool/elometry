@@ -113,7 +113,7 @@ void PlayerHistoryDialog::setupAnimations() {
     chartView->setGraphicsEffect(chartOpacityEffect);
     chartOpacityEffect->setOpacity(0.0);
     
-    chartAnimation = new QPropertyAnimation(chartOpacityEffect, "opacity");
+    chartAnimation = new QPropertyAnimation(chartOpacityEffect, "opacity", this);
     chartAnimation->setDuration(500);
     chartAnimation->setStartValue(0.0);
     chartAnimation->setEndValue(1.0);
@@ -123,7 +123,7 @@ void PlayerHistoryDialog::setupAnimations() {
     historyTable->setGraphicsEffect(tableOpacityEffect);
     tableOpacityEffect->setOpacity(0.0);
     
-    tableAnimation = new QPropertyAnimation(tableOpacityEffect, "opacity");
+    tableAnimation = new QPropertyAnimation(tableOpacityEffect, "opacity", this);
     tableAnimation->setDuration(500);
     tableAnimation->setStartValue(0.0);
     tableAnimation->setEndValue(1.0);
@@ -345,8 +345,8 @@ void PlayerHistoryDialog::createAndPopulateChartSeries(
 void PlayerHistoryDialog::setupHistoryChart() {
     configureChartAppearance();
     
-    QLineSeries* series = new QLineSeries();
-    QScatterSeries* pointSeries = new QScatterSeries();
+    QLineSeries* series = new QLineSeries(this);
+    QScatterSeries* pointSeries = new QScatterSeries(this);
     
     createChartSeries(series, pointSeries);
     
@@ -355,8 +355,8 @@ void PlayerHistoryDialog::setupHistoryChart() {
     
     createAndPopulateChartSeries(series, pointSeries, minRating, maxRating);
     
-    QDateTimeAxis* axisX = new QDateTimeAxis();
-    QValueAxis* axisY = new QValueAxis();
+    QDateTimeAxis* axisX = new QDateTimeAxis(this);
+    QValueAxis* axisY = new QValueAxis(this);
     
     setupChartAxes(series, pointSeries, minRating, maxRating, axisX, axisY);
 }

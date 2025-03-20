@@ -123,10 +123,10 @@ void PlayerComparisonDialog::createPlayerInfoLayouts() {
     QVBoxLayout* player1Layout = createPlayerLayout(player1, "#0c7bb3", Qt::AlignLeft);
     QVBoxLayout* player2Layout = createPlayerLayout(player2, "#2ea043", Qt::AlignRight);
     
-    QWidget* player1Container = new QWidget();
+    QWidget* player1Container = new QWidget(this);
     player1Container->setLayout(player1Layout);
     
-    QWidget* player2Container = new QWidget();
+    QWidget* player2Container = new QWidget(this);
     player2Container->setLayout(player2Layout);
     
     playerInfoLayout->addWidget(player1Container, 1);

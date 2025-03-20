@@ -26,6 +26,7 @@ class PlayerListView : public QWidget {
 
     public:
         explicit PlayerListView(RatingManager& ratingManager, TeamManager& teamManager, QWidget *parent = nullptr);
+        ~PlayerListView() override;
 
     signals:
         void backToMain(); 
@@ -119,15 +120,15 @@ class PlayerListView : public QWidget {
 
         int comparisonPlayerId = -1;
 
-        QGraphicsOpacityEffect* tableOpacityEffect;
-        QPropertyAnimation* tableOpacityAnimation;
-        QPropertyAnimation* tableSlideAnimation;
-        QParallelAnimationGroup* tableAnimGroup;
+        QGraphicsOpacityEffect* tableOpacityEffect = nullptr;
+        QPropertyAnimation* tableOpacityAnimation = nullptr;
+        QPropertyAnimation* tableSlideAnimation = nullptr;
+        QParallelAnimationGroup* tableAnimGroup = nullptr;
 
-        QGraphicsOpacityEffect* playerDetailsOpacityEffect;
-        QPropertyAnimation* playerDetailsOpacityAnimation;
-        QPropertyAnimation* playerDetailsSlideAnimation;
-        QParallelAnimationGroup* playerDetailsAnimGroup;
+        QGraphicsOpacityEffect* playerDetailsOpacityEffect = nullptr;
+        QPropertyAnimation* playerDetailsOpacityAnimation = nullptr;
+        QPropertyAnimation* playerDetailsSlideAnimation = nullptr;
+        QParallelAnimationGroup* playerDetailsAnimGroup = nullptr;
 };
 
 #endif

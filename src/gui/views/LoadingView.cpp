@@ -12,8 +12,16 @@ LoadingView::LoadingView(QWidget *parent)
     setupAnimations();
 }
 
-void LoadingView::setupUi()
-{
+LoadingView::~LoadingView() {
+    delete progressAnimation;
+    progressAnimation = nullptr;
+    delete statusOpacityAnimation;
+    statusOpacityAnimation = nullptr;
+    delete appNameAnimation;
+    appNameAnimation = nullptr;
+}
+
+void LoadingView::setupUi() {
     createLayout();
     setupAppNameLabel();
     setupProgressBar();
@@ -23,8 +31,7 @@ void LoadingView::setupUi()
     setMinimumSize(500, 350);
 }
 
-void LoadingView::createLayout()
-{
+void LoadingView::createLayout() {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(50, 50, 50, 50);
     mainLayout->setSpacing(30);
@@ -37,8 +44,7 @@ void LoadingView::createLayout()
     mainLayout->addStretch();
 }
 
-void LoadingView::setupAppNameLabel()
-{
+void LoadingView::setupAppNameLabel() {
     QFont headerFont("Segoe UI", 36);
     headerFont.setBold(true);
     appNameLabel->setFont(headerFont);
@@ -46,8 +52,7 @@ void LoadingView::setupAppNameLabel()
     appNameLabel->setAlignment(Qt::AlignCenter);
 }
 
-void LoadingView::setupProgressBar()
-{
+void LoadingView::setupProgressBar() {
     progressBar->setRange(0, 100);
     progressBar->setValue(0);
     progressBar->setMinimumWidth(400);
@@ -56,8 +61,7 @@ void LoadingView::setupProgressBar()
     progressBar->setTextVisible(false);
 }
 
-void LoadingView::setupStatusLabel()
-{
+void LoadingView::setupStatusLabel() {
     statusOpacityEffect = new QGraphicsOpacityEffect(this);
     statusOpacityEffect->setOpacity(1.0);
     
@@ -68,38 +72,35 @@ void LoadingView::setupStatusLabel()
     statusLabel->setStyleSheet("color: #a0a0a0;");
 }
 
-void LoadingView::setupAnimations()
-{
+void LoadingView::setupAnimations() {
     setupProgressAnimation();
     setupStatusAnimation();
     setupAppNameAnimation();
 }
 
-void LoadingView::setupProgressAnimation()
-{
-    progressAnimation = new QPropertyAnimation(progressBar, "value");
+void LoadingView::setupProgressAnimation() {
+    progressAnimation = new QPropertyAnimation(progressBar, "value", this);
     progressAnimation->setDuration(300);
     progressAnimation->setEasingCurve(QEasingCurve::OutQuad);
 }
 
-void LoadingView::setupStatusAnimation()
-{
-    statusOpacityAnimation = new QPropertyAnimation(statusOpacityEffect, "opacity");
+void LoadingView::setupStatusAnimation() {
+    statusOpacityAnimation = new QPropertyAnimation(statusOpacityEffect, "opacity", this);
     statusOpacityAnimation->setDuration(250);
     statusOpacityAnimation->setEasingCurve(QEasingCurve::InOutQuad);
 }
 
-void LoadingView::setupAppNameAnimation()
-{
-    appNameAnimation = new QPropertyAnimation(appNameLabel, "geometry");
+void LoadingView::setupAppNameAnimation() {
+    appNameAnimation = new QPropertyAnimation(appNameLabel, "geometry", this);
     appNameAnimation->setDuration(800);
     appNameAnimation->setEasingCurve(QEasingCurve::OutBack);
 }
 
-void LoadingView::updateStatus(const QString& status)
-{
+void LoadingView::updateStatus(const QString& status) {
     statusOpacityAnimation->setStartValue(1.0);
     statusOpacityAnimation->setEndValue(0.0);
+    
+    disconnect(statusOpacityAnimation, &QPropertyAnimation::finished, this, nullptr);
     
     connect(statusOpacityAnimation, &QPropertyAnimation::finished, this, [=]() {
         statusLabel->setText(status);
@@ -113,8 +114,7 @@ void LoadingView::updateStatus(const QString& status)
     QApplication::processEvents();
 }
 
-void LoadingView::updateProgress(int value)
-{
+void LoadingView::updateProgress(int value) {
     progressAnimation->stop();
     progressAnimation->setStartValue(progressBar->value());
     progressAnimation->setEndValue(value);
@@ -122,8 +122,7 @@ void LoadingView::updateProgress(int value)
     QApplication::processEvents();
 }
 
-void LoadingView::markLoadingComplete()
-{
+void LoadingView::markLoadingComplete() {
     QRect currentGeometry = appNameLabel->geometry();
     appNameAnimation->setStartValue(currentGeometry);
     
@@ -134,5 +133,6 @@ void LoadingView::markLoadingComplete()
     appNameAnimation->start();
     
     updateStatus("Loading complete!");
+    
     QTimer::singleShot(1000, this, &LoadingView::loadingFinished);
 }

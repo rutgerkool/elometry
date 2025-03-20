@@ -106,13 +106,13 @@ void SettingsView::setupFormAnimations() {
     formWidget->setGraphicsEffect(formOpacityEffect);
     formOpacityEffect->setOpacity(0.0);
     
-    formOpacityAnimation = new QPropertyAnimation(formOpacityEffect, "opacity");
+    formOpacityAnimation = new QPropertyAnimation(formOpacityEffect, "opacity", this);
     formOpacityAnimation->setDuration(250);
     formOpacityAnimation->setStartValue(0.0);
     formOpacityAnimation->setEndValue(1.0);
     formOpacityAnimation->setEasingCurve(QEasingCurve::OutCubic);
     
-    formSlideAnimation = new QPropertyAnimation(formWidget, "pos");
+    formSlideAnimation = new QPropertyAnimation(formWidget, "pos", this);
     formSlideAnimation->setDuration(250);
     formSlideAnimation->setEasingCurve(QEasingCurve::OutCubic);
     

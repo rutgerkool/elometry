@@ -14,7 +14,7 @@
 class TeamManager {
     public:
         TeamManager(TeamRepository& teamRepo, RatingManager& ratingManager, PlayerRepository& playerRepo);
-
+        
         std::vector<std::string> getAvailableSubPositions();
         Team& loadTeamFromClub(int clubId);
         Team& loadTeam(int teamId);

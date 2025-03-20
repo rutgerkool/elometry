@@ -56,6 +56,14 @@ bool TeamListModel::setData(const QModelIndex &index, const QVariant &value, int
 
 void TeamListModel::refresh() {
     beginResetModel();
-    teams = teamManager.getAllTeams();
+    teams.clear();
+    
+    auto allTeams = teamManager.getAllTeams();
+    teams.reserve(allTeams.size());
+    
+    for (auto& team : allTeams) {
+        teams.push_back(std::move(team));
+    }
+    
     endResetModel();
 }

@@ -11,7 +11,8 @@ class DataLoader : public QObject {
 
     public:
         explicit DataLoader(RatingManager& rm, TeamManager& tm, Database& db, QObject* parent = nullptr);
-        
+        ~DataLoader() override;
+
     public slots:
         void loadData();
         

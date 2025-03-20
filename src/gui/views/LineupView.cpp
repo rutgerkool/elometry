@@ -24,6 +24,22 @@ LineupView::LineupView(TeamManager& tm, Team* currentTeam, QWidget *parent)
     }
 }
 
+LineupView::~LineupView() {
+    disconnect(this, nullptr, nullptr, nullptr);
+    
+    if (benchList) {
+        disconnect(benchList, nullptr, nullptr, nullptr);
+    }
+    
+    if (reservesList) {
+        disconnect(reservesList, nullptr, nullptr, nullptr);
+    }
+    
+    if (pitchView) {
+        disconnect(pitchView, nullptr, nullptr, nullptr);
+    }
+}
+
 void LineupView::setupUi() {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
@@ -422,6 +438,8 @@ void LineupView::setTeam(Team* team) {
     
     playerImageCache.clear();
     pitchView->clearPositions();
+    benchList->clear();
+    reservesList->clear();
     
     if (currentTeam) {
         loadTeamPlayerImages();

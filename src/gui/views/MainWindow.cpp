@@ -3,7 +3,6 @@
 #include "gui/views/TeamManagerView.h"
 #include "gui/views/SettingsView.h"
 #include "gui/views/LoadingView.h"
-#include "gui/components/DataLoader.h"
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QLabel> 
@@ -19,16 +18,20 @@
 #include <QGuiApplication>
 #include <QCursor>
 
-MainWindow::MainWindow(RatingManager& rm, TeamManager& tm, Database& db, QWidget *parent)
+MainWindow::MainWindow(RatingManager& ratingManager, TeamManager& teamManager, Database& database, QWidget *parent)
     : QMainWindow(parent)
-    , ratingManager(rm)
-    , teamManager(tm)
-    , database(db)
+    , ratingManager(ratingManager)
+    , teamManager(teamManager)
+    , database(database)
     , playerListView(nullptr)
     , teamManagerView(nullptr)
     , settingsView(nullptr)
     , loadingView(nullptr)
+    , mainView(nullptr)
+    , stackedWidget(nullptr)
     , loadingThread(nullptr)
+    , fadeAnimation(nullptr)
+    , opacityEffect(nullptr)
     , appInitialized(false)
 {
     setFixedSize(1024, 848);
@@ -83,14 +86,24 @@ void MainWindow::showEvent(QShowEvent* event) {
 }
 
 MainWindow::~MainWindow() {
-    if (playerListView) delete playerListView;
-    if (teamManagerView) delete teamManagerView;
-    if (settingsView) delete settingsView;
+    if (loadingThread && loadingThread->isRunning()) {
+        loadingThread->requestInterruption();
+        loadingThread->quit();
+        if (!loadingThread->wait(1000)) {
+            loadingThread->terminate();
+            loadingThread->wait();
+        }
+    }
+    
+    disconnect(this, nullptr, nullptr, nullptr);
+
+    delete fadeAnimation;
+    delete opacityEffect;
 }
 
 void MainWindow::setupAnimations() {
     opacityEffect = new QGraphicsOpacityEffect(this);
-    fadeAnimation = new QPropertyAnimation(opacityEffect, "opacity");
+    fadeAnimation = new QPropertyAnimation(opacityEffect, "opacity", this);
     fadeAnimation->setDuration(200);
     fadeAnimation->setStartValue(0.0);
     fadeAnimation->setEndValue(1.0);
@@ -177,33 +190,35 @@ void MainWindow::showSettings() {
 }
 
 void MainWindow::initializeApp() {
-    loadingThread = new QThread();
     DataLoader* dataLoader = new DataLoader(ratingManager, teamManager, database);
+    loadingThread = new QThread(this);
     dataLoader->moveToThread(loadingThread);
-    
     loadingView->updateStatus("Starting");
     loadingView->updateProgress(0);
     
-    connect(loadingThread, &QThread::started, [dataLoader]() {
-        dataLoader->loadData();
-    });
+    connect(loadingThread, &QThread::started, dataLoader, &DataLoader::loadData, 
+            Qt::QueuedConnection);
     
-    connect(dataLoader, &DataLoader::progressUpdate, this, &MainWindow::onDataLoadProgress);
-    connect(dataLoader, &DataLoader::loadingComplete, this, [=]() {
-        setupUi();
-        
-        loadingThread->quit();
-        loadingThread->wait();
-        dataLoader->deleteLater();
-        
-        showMainView();
-    });
+    connect(dataLoader, &DataLoader::loadingComplete, this, &MainWindow::onLoadingComplete, 
+            Qt::QueuedConnection);
     
-    connect(loadingThread, &QThread::finished, loadingThread, &QThread::deleteLater);
+    connect(dataLoader, &DataLoader::progressUpdate, this, &MainWindow::onDataLoadProgress, 
+            Qt::QueuedConnection);
     
     QTimer::singleShot(100, [this]() {
         loadingThread->start();
     });
+}
+
+void MainWindow::onLoadingComplete() {
+    setupUi();
+    
+    if (loadingThread && loadingThread->isRunning()) {
+        loadingThread->quit();
+        loadingThread->wait();
+    }
+    
+    showMainView();
 }
 
 void MainWindow::onDataLoadProgress(const QString& status, int progress) {

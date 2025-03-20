@@ -14,6 +14,7 @@ class LoadingView : public QWidget {
 
     public:
         explicit LoadingView(QWidget *parent = nullptr);
+        ~LoadingView() override;
 
     public slots:
         void updateStatus(const QString& status);
@@ -38,10 +39,10 @@ class LoadingView : public QWidget {
         QLabel* appNameLabel;
         QProgressBar* progressBar;
         
-        QPropertyAnimation* progressAnimation;
-        QPropertyAnimation* statusOpacityAnimation;
-        QGraphicsOpacityEffect* statusOpacityEffect;
-        QPropertyAnimation* appNameAnimation;
+        QPropertyAnimation* progressAnimation = nullptr;
+        QPropertyAnimation* statusOpacityAnimation = nullptr;
+        QGraphicsOpacityEffect* statusOpacityEffect = nullptr;
+        QPropertyAnimation* appNameAnimation = nullptr;
 };
 
 #endif

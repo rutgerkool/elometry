@@ -24,7 +24,7 @@
 TeamManagerView::TeamManagerView(TeamManager& tm, QWidget *parent)
     : QWidget(parent)
     , teamManager(tm)
-    , model(new TeamListModel(teamManager))
+    , model(new TeamListModel(teamManager, this))
     , currentTeam(nullptr)
     , networkManager(new QNetworkAccessManager(this))
     , comparisonPlayerId(-1)
@@ -41,6 +41,25 @@ TeamManagerView::TeamManagerView(TeamManager& tm, QWidget *parent)
     animateTeamView();
 }
 
+TeamManagerView::~TeamManagerView() {
+    disconnect(this, nullptr, nullptr, nullptr);
+
+    delete teamListOpacityAnimation;
+    teamListOpacityAnimation = nullptr;
+    delete teamPlayersOpacityAnimation;
+    teamPlayersOpacityAnimation = nullptr;
+    delete playerDetailsOpacityAnimation; 
+    playerDetailsOpacityAnimation = nullptr;
+    delete playerDetailsSlideAnimation;
+    playerDetailsSlideAnimation = nullptr;
+    
+    if (playerDetailsAnimGroup) {
+        playerDetailsAnimGroup->stop();
+        delete playerDetailsAnimGroup;
+        playerDetailsAnimGroup = nullptr;
+    }
+}
+
 void TeamManagerView::setupUi() {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(40, 40, 40, 40);
@@ -48,19 +67,23 @@ void TeamManagerView::setupUi() {
 
     setupTeamRatingDisplay();
     
-    QHBoxLayout* topButtonLayout = new QHBoxLayout();
-    setupTopButtonLayout(topButtonLayout);
+    QWidget* topBarWidget = new QWidget(this);
+    QHBoxLayout* topBarLayout = new QHBoxLayout(topBarWidget);
+    topBarLayout->setContentsMargins(0, 0, 0, 0);
     
-    QHBoxLayout* viewToggleLayout = new QHBoxLayout();
+    setupTopButtonLayout(topBarLayout);
+    
+    QWidget* viewToggleWidget = new QWidget(this);
+    QHBoxLayout* viewToggleLayout = new QHBoxLayout(viewToggleWidget);
     setupViewToggleButtons(viewToggleLayout);
     
-    QHBoxLayout* topBarLayout = new QHBoxLayout();
-    topBarLayout->addWidget(backButton);
-    topBarLayout->addStretch(1);
-    topBarLayout->addWidget(teamRatingWidget, 0, Qt::AlignRight | Qt::AlignTop);
+    QHBoxLayout* topSectionLayout = new QHBoxLayout();
+    topSectionLayout->addWidget(backButton);
+    topSectionLayout->addStretch(1);
+    topSectionLayout->addWidget(teamRatingWidget);
     
-    mainLayout->addLayout(topBarLayout);
-    mainLayout->addLayout(viewToggleLayout);
+    mainLayout->addLayout(topSectionLayout);
+    mainLayout->addWidget(viewToggleWidget);
 
     QWidget* threeColumnContainer = new QWidget(this);
     setupThreeColumnContainer(threeColumnContainer);
@@ -151,7 +174,7 @@ void TeamManagerView::setupRightContainerWidget(QHBoxLayout* layout) {
 }
 
 QWidget* TeamManagerView::setupLeftPanel() {
-    QWidget* leftWidget = new QWidget();
+    QWidget* leftWidget = new QWidget(this);
     QVBoxLayout* leftLayout = new QVBoxLayout(leftWidget);
     leftLayout->setContentsMargins(10, 10, 10, 10);
     
@@ -176,6 +199,11 @@ void TeamManagerView::setupLeftPanelTeamList(QVBoxLayout* layout) {
     teamList->setModel(model);
     teamList->setEditTriggers(QAbstractItemView::NoEditTriggers);
     layout->addWidget(teamList, 1);
+    
+    if (teamList->selectionModel()) { 
+        connect(teamList->selectionModel(), &QItemSelectionModel::currentChanged, 
+                this, &TeamManagerView::loadSelectedTeam);
+    }
 }
 
 void TeamManagerView::setupLeftPanelButtons(QVBoxLayout* layout) {
@@ -197,7 +225,7 @@ void TeamManagerView::setupLeftPanelButtons(QVBoxLayout* layout) {
 }
 
 QWidget* TeamManagerView::setupCenterPanel() {
-    QWidget* centerWidget = new QWidget();
+    QWidget* centerWidget = new QWidget(this);
     QVBoxLayout* centerLayout = new QVBoxLayout(centerWidget);
     centerLayout->setContentsMargins(10, 10, 10, 10);
     
@@ -265,7 +293,7 @@ void TeamManagerView::setupCenterPanelButtons(QVBoxLayout* layout) {
 }
 
 QWidget* TeamManagerView::setupLineupPanel() {
-    QWidget* lineupPanelWidget = new QWidget();
+    QWidget* lineupPanelWidget = new QWidget(this);
     QVBoxLayout* lineupLayout = new QVBoxLayout(lineupPanelWidget);
     lineupLayout->setContentsMargins(10, 10, 10, 10);
     
@@ -302,7 +330,7 @@ void TeamManagerView::initializePlayerDetailsScrollArea() {
 }
 
 void TeamManagerView::setupPlayerDetailsWidget() {
-    playerDetailsWidget = new QWidget();
+    playerDetailsWidget = new QWidget(this);
     playerDetailsWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     
     QVBoxLayout* rightLayout = new QVBoxLayout(playerDetailsWidget);
@@ -342,7 +370,7 @@ void TeamManagerView::setupPlayerDetailsContent(QVBoxLayout* layout) {
 }
 
 void TeamManagerView::createPlayerImageLabel() {
-    playerImage = new QLabel();
+    playerImage = new QLabel(this);
     playerImage->setObjectName("playerImage");
     playerImage->setFixedSize(175, 175);
     playerImage->setAlignment(Qt::AlignCenter);
@@ -358,7 +386,7 @@ void TeamManagerView::createPlayerTextLabels() {
 }
 
 QLabel* TeamManagerView::createInfoLabel(const QString& objectName) {
-    QLabel* label = new QLabel("");
+    QLabel* label = new QLabel("", this);
 
     label->setObjectName(objectName);
     label->setWordWrap(true);
@@ -408,7 +436,7 @@ void TeamManagerView::setupTeamListAnimations() {
     teamList->setGraphicsEffect(teamListOpacityEffect);
     teamListOpacityEffect->setOpacity(0.0);
     
-    teamListOpacityAnimation = new QPropertyAnimation(teamListOpacityEffect, "opacity");
+    teamListOpacityAnimation = new QPropertyAnimation(teamListOpacityEffect, "opacity", this);
     teamListOpacityAnimation->setDuration(250);
     teamListOpacityAnimation->setStartValue(0.0);
     teamListOpacityAnimation->setEndValue(1.0);
@@ -420,7 +448,7 @@ void TeamManagerView::setupTeamPlayersAnimations() {
     currentTeamPlayers->setGraphicsEffect(teamPlayersOpacityEffect);
     teamPlayersOpacityEffect->setOpacity(0.0);
     
-    teamPlayersOpacityAnimation = new QPropertyAnimation(teamPlayersOpacityEffect, "opacity");
+    teamPlayersOpacityAnimation = new QPropertyAnimation(teamPlayersOpacityEffect, "opacity", this);
     teamPlayersOpacityAnimation->setDuration(250);
     teamPlayersOpacityAnimation->setStartValue(0.0);
     teamPlayersOpacityAnimation->setEndValue(1.0);
@@ -432,13 +460,13 @@ void TeamManagerView::setupPlayerDetailsAnimations() {
     playerDetailsWidget->setGraphicsEffect(playerDetailsOpacityEffect);
     playerDetailsOpacityEffect->setOpacity(0.0);
     
-    playerDetailsOpacityAnimation = new QPropertyAnimation(playerDetailsOpacityEffect, "opacity");
+    playerDetailsOpacityAnimation = new QPropertyAnimation(playerDetailsOpacityEffect, "opacity", this);
     playerDetailsOpacityAnimation->setDuration(250);
     playerDetailsOpacityAnimation->setStartValue(0.0);
     playerDetailsOpacityAnimation->setEndValue(1.0);
     playerDetailsOpacityAnimation->setEasingCurve(QEasingCurve::OutCubic);
     
-    playerDetailsSlideAnimation = new QPropertyAnimation(playerDetailsWidget, "pos");
+    playerDetailsSlideAnimation = new QPropertyAnimation(playerDetailsWidget, "pos", this);
     playerDetailsSlideAnimation->setDuration(300);
     playerDetailsSlideAnimation->setEasingCurve(QEasingCurve::OutCubic);
     
@@ -912,7 +940,14 @@ void TeamManagerView::loadNetworkImage(int playerId, const QString& imageUrl) {
     
     connect(reply, &QNetworkReply::finished, this, [this, reply, playerId]() {
         this->handleImageResponse(reply, playerId);
+        reply->deleteLater();
     });
+    
+    connect(reply, &QNetworkReply::errorOccurred, this, [reply]() {
+        reply->deleteLater();
+    });
+    
+    QTimer::singleShot(10000, reply, &QNetworkReply::abort);
 }
 
 void TeamManagerView::handleImageResponse(QNetworkReply* reply, int playerId) {
@@ -1178,7 +1213,7 @@ void TeamManagerView::resetComparisonState() {
 }
 
 void TeamManagerView::fadeOutPlayerDetails() {
-    QPropertyAnimation* fadeOutAnimation = new QPropertyAnimation(playerDetailsOpacityEffect, "opacity");
+    QPropertyAnimation* fadeOutAnimation = new QPropertyAnimation(playerDetailsOpacityEffect, "opacity", this);
     fadeOutAnimation->setDuration(100);
     fadeOutAnimation->setStartValue(playerDetailsOpacityEffect->opacity());
     fadeOutAnimation->setEndValue(0.0);
@@ -1186,6 +1221,7 @@ void TeamManagerView::fadeOutPlayerDetails() {
     
     connect(fadeOutAnimation, &QPropertyAnimation::finished, 
             fadeOutAnimation, &QPropertyAnimation::deleteLater);
+
     fadeOutAnimation->start();
 }
 
@@ -1240,6 +1276,8 @@ void TeamManagerView::loadSelectedTeam() {
     if (!index.isValid()) return;
 
     hidePlayerDetails();
+    
+    playerImageCache.clear();
     
     hasInitialRating = false;
     
