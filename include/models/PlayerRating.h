@@ -23,6 +23,17 @@ struct RatingChange {
     std::string date;
 };
 
+struct GameCalculations {
+    int gameId;
+    double homeTeamRating;
+    double awayTeamRating;
+    double homeExpected;
+    double awayExpected;
+    double homeActual;
+    const Game* game;
+    std::vector<PlayerAppearance> playerAppearances;
+};
+
 class PlayerRating {
     public:
         PlayerRating(double k = 20.0, double homeAdvantage = 100.0);
@@ -40,11 +51,17 @@ class PlayerRating {
         void calculateTeamRatings(const Game& game, const std::vector<PlayerAppearance>& appearances, double& homeTeamRating, double& awayTeamRating);
         void calculateMatchExpectations(double homeTeamRating, double awayTeamRating, double& homeExpected, double& awayExpected);
         double calculateActualResult(int homeGoals, int awayGoals);
-        void updatePlayerRating(const PlayerAppearance& player, const Game& game,double expected, double actual);
+        void updatePlayerRating(const PlayerAppearance& player, const Game& game, double expected, double actual);
         void createRatingChangeRecord(const PlayerAppearance& player, const Game& game, double previousRating, double newRating, double expected, double actual);
         double calculateMatchImpact(double kFactor, int minutesPlayed, int goalDifference, double actual, double expected);
         void groupAppearancesByGame(const std::vector<PlayerAppearance>& appearances, std::unordered_map<int, std::vector<PlayerAppearance>>& gameAppearances);
         void sortGamesByDate(const std::vector<Game>& games, std::vector<Game>& sortedGames);
+        
+        void prepareGameCalculations(const std::vector<Game>& sortedGames, 
+                                    const std::unordered_map<int, std::vector<PlayerAppearance>>& gameAppearances,
+                                    std::vector<GameCalculations>& calculations);
+        void applyRatingChanges(const std::vector<GameCalculations>& calculations);
+
         std::unordered_map<PlayerId, Player> ratedPlayers;
         std::unordered_map<PlayerId, std::deque<RatingChange>> ratingHistory;
         

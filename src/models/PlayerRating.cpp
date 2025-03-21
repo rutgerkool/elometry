@@ -110,13 +110,10 @@ void PlayerRating::updatePlayerRating(const PlayerAppearance& player, const Game
     
     double newRating = updateRating(previousRating, expected, actual, player.minutesPlayed, std::abs(goalDifference));
     
-    #pragma omp critical
-    {
-        ratedPlayers[player.playerId].rating = newRating;
-        ratedPlayers[player.playerId].minutesPlayed += player.minutesPlayed;
-        
-        createRatingChangeRecord(player, game, previousRating, newRating, expected, actual);
-    }
+    ratedPlayers[player.playerId].rating = newRating;
+    ratedPlayers[player.playerId].minutesPlayed += player.minutesPlayed;
+    
+    createRatingChangeRecord(player, game, previousRating, newRating, expected, actual);
 }
 
 void PlayerRating::processMatch(const Game& game, const std::vector<PlayerAppearance>& appearances) {
@@ -153,20 +150,64 @@ void PlayerRating::sortGamesByDate(const std::vector<Game>& games, std::vector<G
     });
 }
 
+void PlayerRating::prepareGameCalculations(
+    const std::vector<Game>& sortedGames, 
+    const std::unordered_map<int, std::vector<PlayerAppearance>>& gameAppearances,
+    std::vector<GameCalculations>& calculations
+) {
+    calculations.resize(sortedGames.size());
+    
+    #pragma omp parallel for
+    for (size_t i = 0; i < sortedGames.size(); ++i) {
+        const Game& game = sortedGames[i];
+        int gameId = game.gameId;
+        
+        auto it = gameAppearances.find(gameId);
+        if (it == gameAppearances.end()) {
+            calculations[i].gameId = 0;
+            continue;
+        }
+        
+        GameCalculations& calc = calculations[i];
+        calc.gameId = gameId;
+        calc.game = &game;
+        calc.playerAppearances = it->second;
+        
+        calculateTeamRatings(game, calc.playerAppearances, calc.homeTeamRating, calc.awayTeamRating);
+        calculateMatchExpectations(calc.homeTeamRating, calc.awayTeamRating, calc.homeExpected, calc.awayExpected);
+        calc.homeActual = calculateActualResult(game.homeGoals, game.awayGoals);
+    }
+}
+
+void PlayerRating::applyRatingChanges(const std::vector<GameCalculations>& calculations) {
+    for (const auto& calc : calculations) {
+        if (calc.gameId == 0) continue;
+        
+        const Game& game = *calc.game;
+        double awayActual = 1.0 - calc.homeActual;
+        
+        for (const auto& player : calc.playerAppearances) {
+            double expected = player.clubId == game.homeClubId ? calc.homeExpected : calc.awayExpected;
+            double actual = player.clubId == game.homeClubId ? calc.homeActual : awayActual;
+            
+            updatePlayerRating(player, game, expected, actual);
+        }
+    }
+}
+
 void PlayerRating::processMatchesParallel(const std::vector<Game>& games, const std::vector<PlayerAppearance>& appearances) {
     std::unordered_map<int, std::vector<PlayerAppearance>> gameAppearances;
     groupAppearancesByGame(appearances, gameAppearances);
 
     std::vector<Game> sortedGames;
     sortGamesByDate(games, sortedGames);
-
-    #pragma omp parallel for ordered
+    
     for (size_t i = 0; i < sortedGames.size(); ++i) {
         int gameId = sortedGames[i].gameId;
-
-        if (gameAppearances.find(gameId) != gameAppearances.end()) {
-            #pragma omp ordered
-            processMatch(sortedGames[i], gameAppearances[gameId]);
+        
+        auto it = gameAppearances.find(gameId);
+        if (it != gameAppearances.end()) {
+            processMatch(sortedGames[i], it->second);
         }
     }
 }
