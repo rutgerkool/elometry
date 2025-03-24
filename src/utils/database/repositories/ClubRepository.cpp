@@ -6,7 +6,7 @@ ClubRepository::ClubRepository(Database& database) {
     db = database.getConnection();
 }
 
-std::vector<Club> ClubRepository::fetchClubs(const int& clubId) {
+std::vector<Club> ClubRepository::fetchClubs(int clubId) {
     std::vector<Club> clubs;
     sqlite3_stmt *stmt;
     

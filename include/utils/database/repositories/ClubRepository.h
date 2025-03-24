@@ -12,7 +12,7 @@ struct Club {
 class ClubRepository {
     public:
         ClubRepository(Database& database);
-        std::vector<Club> fetchClubs(const int& clubId = -1);
+        std::vector<Club> fetchClubs(int clubId = -1);
 
     private:
         sqlite3 * db;
