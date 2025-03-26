@@ -102,7 +102,7 @@ void LoadingView::updateStatus(const QString& status) {
     
     disconnect(statusOpacityAnimation, &QPropertyAnimation::finished, this, nullptr);
     
-    connect(statusOpacityAnimation, &QPropertyAnimation::finished, this, [=]() {
+    connect(statusOpacityAnimation, &QPropertyAnimation::finished, this, [this, status]() {
         statusLabel->setText(status);
         statusOpacityAnimation->setStartValue(0.0);
         statusOpacityAnimation->setEndValue(1.0);
