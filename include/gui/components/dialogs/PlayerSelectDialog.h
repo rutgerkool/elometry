@@ -3,29 +3,38 @@
 
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QTableView>
-#include <QtWidgets/QLineEdit>
-#include <QtWidgets/QPushButton>
-#include <QtWidgets/QVBoxLayout>
-#include <QtWidgets/QHBoxLayout>
-#include <QtWidgets/QLabel>
-#include <QtWidgets/QComboBox>
-#include <QtWidgets/QCheckBox>
-#include <QtWidgets/QDialogButtonBox>
-#include <QtWidgets/QHeaderView>
-#include <QtWidgets/QStyledItemDelegate>
-#include <QtWidgets/QScrollBar>
-#include <QTimer>
-#include "services/TeamManager.h"
-#include "gui/models/PlayerListModel.h"
 #include "gui/models/PlayerSelectModel.h"
+#include "services/TeamManager.h"
+#include <vector>
+#include <memory>
+#include <optional>
 #include <set>
 
-class PlayerSelectDialog : public QDialog {
+class Team;
+class Player;
+class QLineEdit;
+class QComboBox;
+class QPushButton;
+class QLabel;
+class QDialogButtonBox;
+class QScrollBar;
+class QVBoxLayout;
+class QHBoxLayout;
+class QItemSelection;
+
+class PlayerSelectDialog final : public QDialog {
     Q_OBJECT
 
     public:
-        explicit PlayerSelectDialog(TeamManager& teamManager, Team* currentTeam = nullptr, QWidget *parent = nullptr);
-        std::vector<Player> getSelectedPlayers() const;
+        explicit PlayerSelectDialog(TeamManager& teamManager, Team* currentTeam = nullptr, QWidget* parent = nullptr);
+        ~PlayerSelectDialog() override = default;
+        
+        PlayerSelectDialog(const PlayerSelectDialog&) = delete;
+        PlayerSelectDialog& operator=(const PlayerSelectDialog&) = delete;
+        PlayerSelectDialog(PlayerSelectDialog&&) = delete;
+        PlayerSelectDialog& operator=(PlayerSelectDialog&&) = delete;
+        
+        [[nodiscard]] std::vector<Player> getSelectedPlayers() const;
 
     private slots:
         void searchPlayers();
@@ -50,26 +59,26 @@ class PlayerSelectDialog : public QDialog {
         void updatePlayerList();
         void configureTableColumns();
         void selectCurrentTeamPlayers();
-        void createNewModel();
-        QHBoxLayout* createSearchLayout();
+        void createPlayerSelectModel();
+        [[nodiscard]] QHBoxLayout* createSearchLayout();
 
-        TeamManager& teamManager;
-        Team* currentTeam;
-        PlayerSelectModel* playersModel;
+        TeamManager& m_teamManager;
+        Team* m_currentTeam;
+        std::unique_ptr<PlayerSelectModel> m_playersModel;
 
-        QTableView* playersTable;
-        QLineEdit* searchInput;
-        QComboBox* positionFilter;
-        QPushButton* clearButton;
-        QDialogButtonBox* buttonBox;
-        QLabel* selectionInfoLabel;
-        QLabel* titleLabel;
-        QLabel* instructionLabel;
-        QLabel* loadingIndicator;
+        QTableView* m_playersTable{nullptr};
+        QLineEdit* m_searchInput{nullptr};
+        QComboBox* m_positionFilter{nullptr};
+        QPushButton* m_clearButton{nullptr};
+        QDialogButtonBox* m_buttonBox{nullptr};
+        QLabel* m_selectionInfoLabel{nullptr};
+        QLabel* m_titleLabel{nullptr};
+        QLabel* m_instructionLabel{nullptr};
+        QLabel* m_loadingIndicator{nullptr};
 
-        int currentOffset = 0;
-        const int pageSize = 20;
-        bool isLoading = false;
+        int m_currentOffset{0};
+        static constexpr int m_pageSize{20};
+        bool m_isLoading{false};
 };
 
 #endif

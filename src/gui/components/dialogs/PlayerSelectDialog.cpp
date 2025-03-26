@@ -1,34 +1,41 @@
 #include "gui/components/dialogs/PlayerSelectDialog.h"
-#include <QtWidgets/QMessageBox>
-#include <QtGui/QStandardItem>
-#include <QtGui/QIcon>
-#include <QtGui/QPainter>
+
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QLineEdit>
+#include <QtWidgets/QComboBox>
+#include <QtWidgets/QPushButton>
+#include <QtWidgets/QDialogButtonBox>
+#include <QtWidgets/QVBoxLayout>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QHeaderView>
+#include <QtWidgets/QScrollBar>
 #include <QtWidgets/QApplication>
 #include <QTimer>
-#include <algorithm>
 
-PlayerSelectDialog::PlayerSelectDialog(TeamManager& tm, Team* currentTeam, QWidget *parent)
+#include <algorithm>
+#include <ranges>
+
+PlayerSelectDialog::PlayerSelectDialog(TeamManager& teamManager, Team* currentTeam, QWidget* parent)
     : QDialog(parent)
-    , teamManager(tm)
-    , currentTeam(currentTeam)
-    , playersModel(nullptr)
-    , isLoading(false)
+    , m_teamManager(teamManager)
+    , m_currentTeam(currentTeam)
+    , m_playersModel(nullptr)
 {
     setupUi();
     initializePositionFilter();
     setupConnections();
     updatePlayerList();
     
-    if (currentTeam) {
+    if (m_currentTeam) {
         selectCurrentTeamPlayers();
     }
     
-    setWindowTitle("Select Players");
+    setWindowTitle(tr("Select Players"));
     resize(900, 650);
 }
 
 void PlayerSelectDialog::setupUi() {
-    QVBoxLayout* mainLayout = new QVBoxLayout(this);
+    auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setSpacing(10);
     mainLayout->setContentsMargins(15, 15, 15, 15);
     
@@ -37,254 +44,265 @@ void PlayerSelectDialog::setupUi() {
     setupTableView();
     setupButtons();
     
-    mainLayout->addWidget(titleLabel);
-    mainLayout->addWidget(selectionInfoLabel);
+    mainLayout->addWidget(m_titleLabel);
+    mainLayout->addWidget(m_selectionInfoLabel);
     mainLayout->addLayout(createSearchLayout());
-    mainLayout->addWidget(instructionLabel);
-    mainLayout->addWidget(playersTable, 1);
-    mainLayout->addWidget(loadingIndicator);
-    mainLayout->addWidget(buttonBox);
+    mainLayout->addWidget(m_instructionLabel);
+    mainLayout->addWidget(m_playersTable, 1);
+    mainLayout->addWidget(m_loadingIndicator);
+    mainLayout->addWidget(m_buttonBox);
 }
 
 void PlayerSelectDialog::setupTitleAndLabels() {
-    titleLabel = new QLabel("Player Search", this);
-    titleLabel->setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #e0e0e0;");
+    m_titleLabel = new QLabel(tr("Player Search"), this);
+    m_titleLabel->setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #e0e0e0;");
     
-    selectionInfoLabel = new QLabel("Selected: 0 players", this);
-    selectionInfoLabel->setStyleSheet("font-weight: bold; color: #e0e0e0;");
+    m_selectionInfoLabel = new QLabel(tr("Selected: 0 players"), this);
+    m_selectionInfoLabel->setStyleSheet("font-weight: bold; color: #e0e0e0;");
     
-    instructionLabel = new QLabel(
-        "Double-click on a row or checkbox to select players to add to your team", this);
-    instructionLabel->setStyleSheet("color: #b0b0b0; font-style: italic;");
+    m_instructionLabel = new QLabel(
+        tr("Double-click on a row or checkbox to select players to add to your team"), this);
+    m_instructionLabel->setStyleSheet("color: #b0b0b0; font-style: italic;");
     
-    loadingIndicator = new QLabel("Loading more players...", this);
-    loadingIndicator->setStyleSheet("color: #b0b0b0; font-style: italic; padding: 5px;");
-    loadingIndicator->setAlignment(Qt::AlignCenter);
-    loadingIndicator->hide();
+    m_loadingIndicator = new QLabel(tr("Loading more players..."), this);
+    m_loadingIndicator->setStyleSheet("color: #b0b0b0; font-style: italic; padding: 5px;");
+    m_loadingIndicator->setAlignment(Qt::AlignCenter);
+    m_loadingIndicator->hide();
 }
 
 QHBoxLayout* PlayerSelectDialog::createSearchLayout() {
-    QHBoxLayout* searchLayout = new QHBoxLayout();
+    auto* searchLayout = new QHBoxLayout();
     searchLayout->setSpacing(8);
     
-    searchLayout->addWidget(searchInput, 3);
-    searchLayout->addWidget(positionFilter, 2);
-    searchLayout->addWidget(clearButton);
+    searchLayout->addWidget(m_searchInput, 3);
+    searchLayout->addWidget(m_positionFilter, 2);
+    searchLayout->addWidget(m_clearButton);
     
     return searchLayout;
 }
 
 void PlayerSelectDialog::setupSearchControls() {
-    searchInput = new QLineEdit(this);
-    searchInput->setPlaceholderText("Enter player name");
-    searchInput->setMinimumHeight(28);
+    m_searchInput = new QLineEdit(this);
+    m_searchInput->setPlaceholderText(tr("Enter player name"));
+    m_searchInput->setMinimumHeight(28);
     
-    positionFilter = new QComboBox(this);
-    positionFilter->setMinimumWidth(140);
-    positionFilter->setMinimumHeight(28);
+    m_positionFilter = new QComboBox(this);
+    m_positionFilter->setMinimumWidth(140);
+    m_positionFilter->setMinimumHeight(28);
     
-    clearButton = new QPushButton("Clear Filters", this);
-    clearButton->setMinimumHeight(28);
-    clearButton->setCursor(Qt::PointingHandCursor);
+    m_clearButton = new QPushButton(tr("Clear Filters"), this);
+    m_clearButton->setMinimumHeight(28);
+    m_clearButton->setCursor(Qt::PointingHandCursor);
 }
 
 void PlayerSelectDialog::setupTableView() {
-    playersTable = new QTableView(this);
-    playersTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    playersTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    playersTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    playersTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
-    playersTable->verticalHeader()->setVisible(false);
-    playersTable->setSortingEnabled(true);
-    playersTable->setShowGrid(false);
-    playersTable->setAlternatingRowColors(true);
-    playersTable->horizontalHeader()->setStretchLastSection(true);
+    m_playersTable = new QTableView(this);
+    m_playersTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_playersTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_playersTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_playersTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    m_playersTable->verticalHeader()->setVisible(false);
+    m_playersTable->setSortingEnabled(true);
+    m_playersTable->setShowGrid(false);
+    m_playersTable->setAlternatingRowColors(true);
+    m_playersTable->horizontalHeader()->setStretchLastSection(true);
 }
 
 void PlayerSelectDialog::setupButtons() {
-    buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-    buttonBox->button(QDialogButtonBox::Ok)->setText("Add Selected Players");
-    buttonBox->button(QDialogButtonBox::Ok)->setCursor(Qt::PointingHandCursor);
-    buttonBox->button(QDialogButtonBox::Cancel)->setCursor(Qt::PointingHandCursor);
+    m_buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    m_buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Add Selected Players"));
+    m_buttonBox->button(QDialogButtonBox::Ok)->setCursor(Qt::PointingHandCursor);
+    m_buttonBox->button(QDialogButtonBox::Cancel)->setCursor(Qt::PointingHandCursor);
 }
 
 void PlayerSelectDialog::setupConnections() {
-    connect(searchInput, &QLineEdit::textChanged, this, &PlayerSelectDialog::searchPlayers);
-    connect(positionFilter, &QComboBox::currentIndexChanged, this, &PlayerSelectDialog::positionFilterChanged);
-    connect(clearButton, &QPushButton::clicked, this, &PlayerSelectDialog::clearFilters);
-    connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(m_searchInput, &QLineEdit::textChanged, this, &PlayerSelectDialog::searchPlayers);
+    connect(m_positionFilter, &QComboBox::currentIndexChanged, this, &PlayerSelectDialog::positionFilterChanged);
+    connect(m_clearButton, &QPushButton::clicked, this, &PlayerSelectDialog::clearFilters);
+    connect(m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     
     setupScrollConnections();
     setupTableConnections();
 }
 
 void PlayerSelectDialog::setupScrollConnections() {
-    connect(playersTable->verticalScrollBar(), &QScrollBar::valueChanged, 
+    connect(m_playersTable->verticalScrollBar(), &QScrollBar::valueChanged, 
             this, &PlayerSelectDialog::checkScrollPosition);
 }
 
 void PlayerSelectDialog::setupTableConnections() {
-    connect(playersTable, &QTableView::doubleClicked, this, &PlayerSelectDialog::toggleSelection);
+    connect(m_playersTable, &QTableView::doubleClicked, this, &PlayerSelectDialog::toggleSelection);
     
-    connect(playersTable, &QTableView::clicked, [this](const QModelIndex &index) {
+    connect(m_playersTable, &QTableView::clicked, this, [this](const QModelIndex &index) {
         if (index.column() == 0) {
             toggleSelection();
         }
     });
     
-    connect(playersTable->horizontalHeader(), &QHeaderView::sortIndicatorChanged,
+    connect(m_playersTable->horizontalHeader(), &QHeaderView::sortIndicatorChanged,
             this, &PlayerSelectDialog::sortPlayerList);
 }
 
 void PlayerSelectDialog::initializePositionFilter() {
-    positionFilter->addItem("All Positions");
+    m_positionFilter->addItem(tr("All Positions"));
     
-    std::vector<std::string> positions = teamManager.getAvailableSubPositions();
+    std::vector<std::string> positions = m_teamManager.getAvailableSubPositions();
     for (const auto& position : positions) {
-        positionFilter->addItem(QString::fromStdString(position));
+        m_positionFilter->addItem(QString::fromStdString(position));
     }
 }
 
-void PlayerSelectDialog::createNewModel() {
+void PlayerSelectDialog::createPlayerSelectModel() {
     std::vector<std::pair<int, Player>> allPlayers;
-    std::vector<Player> players = teamManager.getRatingManager().getAllPlayers();
+    std::vector<Player> players = m_teamManager.getRatingManager().getAllPlayers();
     
+    allPlayers.reserve(players.size());
     for (const auto& player : players) {
         allPlayers.emplace_back(player.playerId, player);
     }
     
-    QAbstractItemModel* oldModel = playersTable->model();
-    playersModel = new PlayerSelectModel(allPlayers, this);
-    playersTable->setModel(playersModel);
+    m_playersModel = std::make_unique<PlayerSelectModel>(allPlayers, this);
+    m_playersTable->setModel(m_playersModel.get());
     
-    if (oldModel && oldModel != playersModel) {
-        delete oldModel;
-    }
-    
-    connect(playersModel, &QAbstractItemModel::dataChanged, this, &PlayerSelectDialog::updateSelectionInfo);
+    connect(m_playersModel.get(), &QAbstractItemModel::dataChanged, 
+            this, &PlayerSelectDialog::updateSelectionInfo);
 }
 
 void PlayerSelectDialog::configureTableColumns() {
-    playersTable->setColumnWidth(0, 40);
-    playersTable->setColumnWidth(1, 60);
-    playersTable->setColumnWidth(2, 250);
-    playersTable->setColumnWidth(3, 80);
-    playersTable->setColumnWidth(4, 100);
-    playersTable->horizontalHeader()->setSectionResizeMode(5, QHeaderView::Stretch);
+    m_playersTable->setColumnWidth(0, 40);
+    m_playersTable->setColumnWidth(1, 60);
+    m_playersTable->setColumnWidth(2, 250);
+    m_playersTable->setColumnWidth(3, 80);
+    m_playersTable->setColumnWidth(4, 100);
 }
 
 void PlayerSelectDialog::selectCurrentTeamPlayers() {
-    if (!currentTeam || !playersModel) return;
+    if (!m_currentTeam || !m_playersModel) {
+        return;
+    }
     
-    for (const auto& player : currentTeam->players) {
-        playersModel->selectPlayer(player.playerId);
+    for (const auto& player : m_currentTeam->players) {
+        m_playersModel->selectPlayer(player.playerId);
     }
     updateSelectionInfo();
 }
 
 void PlayerSelectDialog::updatePlayerList() {
-    currentOffset = 0;
+    m_currentOffset = 0;
+    m_isLoading = false;
     
-    createNewModel();
+    createPlayerSelectModel();
     
-    if (currentTeam) {
+    if (m_currentTeam) {
         selectCurrentTeamPlayers();
     }
     
     configureTableColumns();
     
-    playersModel->setPagination(0, pageSize);
+    m_playersModel->setPagination(0, m_pageSize);
     updateSelectionInfo();
     
-    playersTable->horizontalHeader()->setSortIndicator(0, Qt::DescendingOrder);
-    playersTable->verticalScrollBar()->setValue(0);
+    m_playersTable->horizontalHeader()->setSortIndicator(0, Qt::DescendingOrder);
+    m_playersTable->verticalScrollBar()->setValue(0);
 }
 
 void PlayerSelectDialog::searchPlayers() {
-    if (!playersModel) return;
+    if (!m_playersModel) {
+        return;
+    }
     
-    loadingIndicator->hide();
-    isLoading = false;
+    m_loadingIndicator->hide();
+    m_isLoading = false;
     
-    QString searchText = searchInput->text().trimmed();
-    playersModel->setFilter(searchText);
-    playersModel->setPagination(0, pageSize);
-    currentOffset = 0;
+    const QString searchText = m_searchInput->text().trimmed();
+    m_playersModel->setFilter(searchText);
+    m_playersModel->setPagination(0, m_pageSize);
+    m_currentOffset = 0;
     
-    playersTable->horizontalHeader()->setSortIndicator(0, Qt::DescendingOrder);
+    m_playersTable->horizontalHeader()->setSortIndicator(0, Qt::DescendingOrder);
 }
 
 void PlayerSelectDialog::positionFilterChanged() {
-    if (!playersModel) return;
-    
-    loadingIndicator->hide();
-    isLoading = false;
-    
-    QString posFilter = positionFilter->currentText();
-    if (posFilter == "All Positions") {
-        posFilter = "";
+    if (!m_playersModel) {
+        return;
     }
     
-    playersModel->setPositionFilter(posFilter);
-    playersModel->setPagination(0, pageSize);
-    currentOffset = 0;
+    m_loadingIndicator->hide();
+    m_isLoading = false;
     
-    playersTable->horizontalHeader()->setSortIndicator(0, Qt::DescendingOrder);
+    QString posFilter = m_positionFilter->currentText();
+    if (posFilter == tr("All Positions")) {
+        posFilter.clear();
+    }
+    
+    m_playersModel->setPositionFilter(posFilter);
+    m_playersModel->setPagination(0, m_pageSize);
+    m_currentOffset = 0;
+    
+    m_playersTable->horizontalHeader()->setSortIndicator(0, Qt::DescendingOrder);
 }
 
 void PlayerSelectDialog::clearFilters() {
-    searchInput->clear();
-    positionFilter->setCurrentIndex(0);
+    m_searchInput->clear();
+    m_positionFilter->setCurrentIndex(0);
     
-    loadingIndicator->hide();
-    isLoading = false;
+    m_loadingIndicator->hide();
+    m_isLoading = false;
     
-    if (playersModel) {
-        playersModel->setFilter("");
-        playersModel->setPositionFilter("");
-        playersModel->setPagination(0, pageSize);
-        currentOffset = 0;
+    if (m_playersModel) {
+        m_playersModel->setFilter("");
+        m_playersModel->setPositionFilter("");
+        m_playersModel->setPagination(0, m_pageSize);
+        m_currentOffset = 0;
         
-        playersTable->horizontalHeader()->setSortIndicator(0, Qt::DescendingOrder);
+        m_playersTable->horizontalHeader()->setSortIndicator(0, Qt::DescendingOrder);
     }
 }
 
 void PlayerSelectDialog::toggleSelection() {
-    QModelIndex index = playersTable->currentIndex();
-    if (!index.isValid() || !playersModel) return;
+    QModelIndex index = m_playersTable->currentIndex();
+    if (!index.isValid() || !m_playersModel) {
+        return;
+    }
     
-    QModelIndex checkboxIndex = playersModel->index(index.row(), 0);
+    QModelIndex checkboxIndex = m_playersModel->index(index.row(), 0);
     Qt::CheckState currentState = static_cast<Qt::CheckState>(
-        playersModel->data(checkboxIndex, Qt::CheckStateRole).toInt());
+        m_playersModel->data(checkboxIndex, Qt::CheckStateRole).toInt());
     
-    playersModel->setData(checkboxIndex, 
+    m_playersModel->setData(checkboxIndex, 
                          currentState == Qt::Checked ? Qt::Unchecked : Qt::Checked, 
                          Qt::CheckStateRole);
     
-    playersTable->setCurrentIndex(index);
+    m_playersTable->setCurrentIndex(index);
 }
 
 void PlayerSelectDialog::updateSelectionInfo() {
-    if (!playersModel) return;
+    if (!m_playersModel) {
+        return;
+    }
     
-    int count = playersModel->getSelectedCount();
-    selectionInfoLabel->setText(QString("Selected: %1 player%2")
+    int count = m_playersModel->getSelectedCount();
+    m_selectionInfoLabel->setText(tr("Selected: %1 player%2")
                                 .arg(count)
                                 .arg(count == 1 ? "" : "s"));
 }
 
 void PlayerSelectDialog::sortPlayerList(int column, Qt::SortOrder order) {
-    if (playersModel) {
-        playersModel->sort(column, order);
+    if (m_playersModel) {
+        m_playersModel->sort(column, order);
     }
 }
 
 void PlayerSelectDialog::checkScrollPosition() {
-    if (!playersModel) return;
+    if (!m_playersModel) {
+        return;
+    }
     
-    QScrollBar* vScrollBar = playersTable->verticalScrollBar();
-    if (!vScrollBar) return;
+    QScrollBar* vScrollBar = m_playersTable->verticalScrollBar();
+    if (!vScrollBar) {
+        return;
+    }
     
     if (vScrollBar->value() >= vScrollBar->maximum() - 5) {
         loadMorePlayersIfNeeded();
@@ -292,40 +310,44 @@ void PlayerSelectDialog::checkScrollPosition() {
 }
 
 void PlayerSelectDialog::loadMorePlayersIfNeeded() {
-    if (!playersModel || isLoading) return;
+    if (!m_playersModel || m_isLoading) {
+        return;
+    }
     
-    int totalFiltered = playersModel->filteredPlayerCount();
-    bool hasMore = (currentOffset + pageSize) < totalFiltered;
+    int totalFiltered = m_playersModel->filteredPlayerCount();
+    bool hasMore = (m_currentOffset + m_pageSize) < totalFiltered;
     
     if (hasMore) {
-        isLoading = true;
-        loadingIndicator->show();
+        m_isLoading = true;
+        m_loadingIndicator->show();
         
-        QModelIndex currentIndex = playersTable->currentIndex();
-        int scrollValue = playersTable->verticalScrollBar()->value();
+        QModelIndex currentIndex = m_playersTable->currentIndex();
+        int scrollValue = m_playersTable->verticalScrollBar()->value();
         
         QTimer::singleShot(200, this, [this, scrollValue, currentIndex]() {
-            if ((currentOffset + pageSize) < playersModel->filteredPlayerCount()) {
-                currentOffset += pageSize;
+            if ((m_currentOffset + m_pageSize) < m_playersModel->filteredPlayerCount()) {
+                m_currentOffset += m_pageSize;
                 
-                playersModel->setPagination(0, currentOffset + pageSize);
+                m_playersModel->setPagination(0, m_currentOffset + m_pageSize);
                 
                 if (currentIndex.isValid()) {
-                    playersTable->setCurrentIndex(currentIndex);
+                    m_playersTable->setCurrentIndex(currentIndex);
                 }
                 
                 QTimer::singleShot(0, this, [this, scrollValue]() {
-                    playersTable->verticalScrollBar()->setValue(scrollValue);
+                    m_playersTable->verticalScrollBar()->setValue(scrollValue);
                 });
             }
             
-            loadingIndicator->hide();
-            isLoading = false;
+            m_loadingIndicator->hide();
+            m_isLoading = false;
         });
     }
 }
 
 std::vector<Player> PlayerSelectDialog::getSelectedPlayers() const {
-    if (!playersModel) return std::vector<Player>();
-    return playersModel->getSelectedPlayers();
+    if (!m_playersModel) {
+        return {};
+    }
+    return m_playersModel->getSelectedPlayers();
 }
