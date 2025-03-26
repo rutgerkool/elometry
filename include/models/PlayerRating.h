@@ -44,8 +44,8 @@ class PlayerRating {
         void processMatch(const Game& game, const std::vector<PlayerAppearance>& appearances);
         static bool sortPlayersByRating(const std::pair<int, Player>& a, const std::pair<int, Player>& b);
         void processMatchesParallel(const std::vector<Game>& games, const std::vector<PlayerAppearance>& appearances);
-        std::vector<std::pair<int, Player>> getSortedRatedPlayers();
-        std::vector<RatingChange> getPlayerRatingHistory(int playerId, int maxGames = 10);
+        std::vector<std::pair<int, Player>> getSortedRatedPlayers() const;
+        std::vector<RatingChange> getPlayerRatingHistory(int playerId, int maxGames = 10) const;
 
     private:
         void calculateTeamRatings(const Game& game, const std::vector<PlayerAppearance>& appearances, double& homeTeamRating, double& awayTeamRating);

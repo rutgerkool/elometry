@@ -54,7 +54,7 @@ std::vector<Player> RatingManager::getFilteredRatedPlayers(const std::vector<Pla
     return filteredPlayers;
 }
 
-std::vector<std::pair<int, double>> RatingManager::getRecentRatingProgression(int playerId, int maxGames) {
+std::vector<std::pair<int, double>> RatingManager::getRecentRatingProgression(int playerId, int maxGames) const {
     std::vector<RatingChange> history = ratingSystem.getPlayerRatingHistory(playerId, maxGames);
     std::vector<std::pair<int, double>> progression;
     

@@ -216,13 +216,13 @@ bool PlayerRating::sortPlayersByRating(const std::pair<int, Player>& a, const st
     return a.second.rating > b.second.rating;
 }
 
-std::vector<std::pair<int, Player>> PlayerRating::getSortedRatedPlayers() {
+std::vector<std::pair<int, Player>> PlayerRating::getSortedRatedPlayers() const {
     std::vector<std::pair<int, Player>> sortedRatedPlayers(ratedPlayers.begin(), ratedPlayers.end());
     std::sort(sortedRatedPlayers.begin(), sortedRatedPlayers.end(), sortPlayersByRating);
     return sortedRatedPlayers;
 }
 
-std::vector<RatingChange> PlayerRating::getPlayerRatingHistory(int playerId, int maxGames) {
+std::vector<RatingChange> PlayerRating::getPlayerRatingHistory(int playerId, int maxGames) const{
     std::vector<RatingChange> history;
     
     auto it = ratingHistory.find(playerId);

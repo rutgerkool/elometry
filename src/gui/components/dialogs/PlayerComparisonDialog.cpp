@@ -1,158 +1,178 @@
 #include "gui/components/dialogs/PlayerComparisonDialog.h"
+
 #include <QHeaderView>
 #include <QDateTime>
 #include <QLabel>
 #include <QFont>
 #include <QScreen>
 #include <QGuiApplication>
-#include <limits>
+#include <QApplication>
+#include <QPushButton>
+#include <QStandardItemModel>
+#include <QStandardItem>
+#include <QtCharts/QLineSeries>
+#include <QtCharts/QValueAxis>
+#include <QtCharts/QChartView>
+#include <QtCharts/QChart>
 #include <QtCharts/QLegendMarker>
+#include <QTableView>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QTimer>
+#include <algorithm>
+#include <limits>
 
-PlayerComparisonDialog::PlayerComparisonDialog(RatingManager& rm, int pId1, int pId2, QWidget* parent)
+PlayerComparisonDialog::PlayerComparisonDialog(RatingManager& ratingManager, int playerId1, int playerId2, QWidget* parent)
     : QDialog(parent)
-    , ratingManager(rm)
-    , playerId1(pId1)
-    , playerId2(pId2)
+    , m_ratingManager(ratingManager)
+    , m_playerId1(playerId1)
+    , m_playerId2(playerId2)
 {
-    setWindowTitle("Player Rating Comparison");
+    setWindowTitle(tr("Player Rating Comparison"));
     resize(1024, 768);
     setModal(true);
     
     initializeUI();
     loadPlayerData();
     
-    mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(20);
-    mainLayout->setContentsMargins(24, 24, 24, 24);
-    
-    createPlayerInfoLayouts();
-    setupComparisonChart();
-    mainLayout->addWidget(chartView);
-    createTableLayouts();
-    createButtonLayout();
-    centerDialogOnScreen(parent);
-}
-
-PlayerComparisonDialog::~PlayerComparisonDialog() {}
-
-void PlayerComparisonDialog::initializeUI() {
-    chart = new QChart();
-    chartView = new QChartView(chart, this);
-    
-    chart->setTitle("Rating Progression by Appearance");
-    chart->setTitleBrush(QBrush(Qt::white));
-    
-    QFont chartTitleFont("Segoe UI", 14);
-    chartTitleFont.setBold(true);
-    chart->setTitleFont(chartTitleFont);
-    
-    chart->setAnimationOptions(QChart::SeriesAnimations);
-    chart->setBackgroundBrush(QBrush(QColor(0x2a, 0x2a, 0x2a)));
-    chart->setPlotAreaBackgroundBrush(QBrush(QColor(0x2a, 0x2a, 0x2a)));
-    chart->setPlotAreaBackgroundVisible(true);
-    
-    chartView->setRenderHint(QPainter::Antialiasing);
-    chartView->setMinimumHeight(250);
-}
-
-void PlayerComparisonDialog::loadPlayerData() {
-    auto allPlayers = ratingManager.getSortedRatedPlayers();
-    bool player1Found = false;
-    bool player2Found = false;
-    
-    for (const auto& p : allPlayers) {
-        if (p.second.playerId == playerId1) {
-            player1 = p.second;
-            player1Found = true;
-        }
-        if (p.second.playerId == playerId2) {
-            player2 = p.second;
-            player2Found = true;
-        }
-    }
-    
-    if (!player1Found || !player2Found) {
-        close();
+    if (!validatePlayerData()) {
+        QTimer::singleShot(0, this, &QDialog::reject);
         return;
     }
     
-    player1History = ratingManager.getPlayerRatingHistory(playerId1, 10);
-    player2History = ratingManager.getPlayerRatingHistory(playerId2, 10);
-    rating1Progression = ratingManager.getRecentRatingProgression(playerId1, 10);
-    rating2Progression = ratingManager.getRecentRatingProgression(playerId2, 10);
-}
-
-QLabel* PlayerComparisonDialog::createPlayerLabel(const QString& text, const QString& color) {
-    QLabel* label = new QLabel(text, this);
-    label->setStyleSheet(QString("color: %1;").arg(color));
-    return label;
-}
-
-QLabel* PlayerComparisonDialog::createPlayerInfoLabel(const QString& text, const QString& color) {
-    QLabel* label = createPlayerLabel(text, color);
-    return label;
-}
-
-QLabel* PlayerComparisonDialog::createBoldPlayerLabel(const QString& text, const QString& color) {
-    QLabel* label = createPlayerLabel(text, color);
-    label->setStyleSheet(label->styleSheet() + " font-weight: bold;");
-    return label;
-}
-
-QVBoxLayout* PlayerComparisonDialog::createPlayerLayout(const Player& player, const QString& color, Qt::Alignment align) {
-    QVBoxLayout* layout = new QVBoxLayout();
-    layout->setSpacing(2);
+    m_mainLayout = new QVBoxLayout(this);
+    m_mainLayout->setSpacing(20);
+    m_mainLayout->setContentsMargins(24, 24, 24, 24);
     
-    QLabel* nameLabel = createBoldPlayerLabel(QString::fromStdString(player.name), color);
-    QLabel* clubLabel = createPlayerInfoLabel("Club: " + QString::fromStdString(player.clubName), color);
-    QLabel* positionLabel = createPlayerInfoLabel("Position: " + QString::fromStdString(player.position), color);
-    QLabel* ratingLabel = createPlayerInfoLabel("Rating: " + QString::number(player.rating, 'f', 1), color);
+    createPlayerInfoSection();
+    createChartSection();
+    createTableSection();
+    createButtonSection();
+    centerOnParent(parent);
+}
+
+void PlayerComparisonDialog::initializeUI() {
+    m_chart = new QChart();
+    m_chartView = new QChartView(m_chart, this);
     
-    layout->addWidget(nameLabel, 0, align);
-    layout->addWidget(clubLabel, 0, align);
-    layout->addWidget(positionLabel, 0, align);
-    layout->addWidget(ratingLabel, 0, align);
+    m_chart->setTitle(tr("Rating Progression by Appearance"));
+    m_chart->setTitleBrush(QBrush(Qt::white));
+    
+    QFont chartTitleFont("Segoe UI", 14);
+    chartTitleFont.setBold(true);
+    m_chart->setTitleFont(chartTitleFont);
+    
+    m_chart->setAnimationOptions(QChart::SeriesAnimations);
+    m_chart->setBackgroundBrush(QBrush(QColor(0x2a, 0x2a, 0x2a)));
+    m_chart->setPlotAreaBackgroundBrush(QBrush(QColor(0x2a, 0x2a, 0x2a)));
+    m_chart->setPlotAreaBackgroundVisible(true);
+    
+    m_chartView->setRenderHint(QPainter::Antialiasing);
+    m_chartView->setMinimumHeight(250);
+}
+
+void PlayerComparisonDialog::loadPlayerData() {
+    const auto allPlayers = m_ratingManager.getSortedRatedPlayers();
+    
+    for (const auto& [id, player] : allPlayers) {
+        if (player.playerId == m_playerId1) {
+            m_player1 = player;
+        }
+        if (player.playerId == m_playerId2) {
+            m_player2 = player;
+        }
+    }
+    
+    if (m_player1 && m_player2) {
+        m_player1History = m_ratingManager.getPlayerRatingHistory(m_playerId1, 10);
+        m_player2History = m_ratingManager.getPlayerRatingHistory(m_playerId2, 10);
+        m_rating1Progression = m_ratingManager.getRecentRatingProgression(m_playerId1, 10);
+        m_rating2Progression = m_ratingManager.getRecentRatingProgression(m_playerId2, 10);
+    }
+}
+
+bool PlayerComparisonDialog::validatePlayerData() const {
+    return m_player1.has_value() && m_player2.has_value() && 
+           !m_rating1Progression.empty() && !m_rating2Progression.empty();
+}
+
+QLabel* PlayerComparisonDialog::createPlayerNameLabel(const QString& text, const QColor& color) const {
+    auto* label = new QLabel(text);
+    label->setStyleSheet(QString("color: %1; font-weight: bold;").arg(color.name()));
+    return label;
+}
+
+QLabel* PlayerComparisonDialog::createPlayerInfoLabel(const QString& text, const QColor& color) const {
+    auto* label = new QLabel(text);
+    label->setStyleSheet(QString("color: %1;").arg(color.name()));
+    return label;
+}
+
+QHBoxLayout* PlayerComparisonDialog::createPlayerInfoLayout() const {
+    auto* layout = new QHBoxLayout();
+    layout->setSpacing(20);
+    
+    auto* player1Layout = new QVBoxLayout();
+    player1Layout->setSpacing(2);
+    
+    auto* player2Layout = new QVBoxLayout();
+    player2Layout->setSpacing(2);
+    
+    const QString player1Name = QString::fromStdString(m_player1->name);
+    const QString player2Name = QString::fromStdString(m_player2->name);
+    
+    auto* player1NameLabel = createPlayerNameLabel(player1Name, PLAYER1_COLOR);
+    auto* player2NameLabel = createPlayerNameLabel(player2Name, PLAYER2_COLOR);
+    
+    player1Layout->addWidget(player1NameLabel, 0, Qt::AlignLeft);
+    player1Layout->addWidget(createPlayerInfoLabel(tr("Club: %1").arg(QString::fromStdString(m_player1->clubName)), PLAYER1_COLOR), 0, Qt::AlignLeft);
+    player1Layout->addWidget(createPlayerInfoLabel(tr("Position: %1").arg(QString::fromStdString(m_player1->position)), PLAYER1_COLOR), 0, Qt::AlignLeft);
+    player1Layout->addWidget(createPlayerInfoLabel(tr("Rating: %1").arg(m_player1->rating, 0, 'f', 1), PLAYER1_COLOR), 0, Qt::AlignLeft);
+    
+    player2Layout->addWidget(player2NameLabel, 0, Qt::AlignRight);
+    player2Layout->addWidget(createPlayerInfoLabel(tr("Club: %1").arg(QString::fromStdString(m_player2->clubName)), PLAYER2_COLOR), 0, Qt::AlignRight);
+    player2Layout->addWidget(createPlayerInfoLabel(tr("Position: %1").arg(QString::fromStdString(m_player2->position)), PLAYER2_COLOR), 0, Qt::AlignRight);
+    player2Layout->addWidget(createPlayerInfoLabel(tr("Rating: %1").arg(m_player2->rating, 0, 'f', 1), PLAYER2_COLOR), 0, Qt::AlignRight);
+    
+    auto* player1Container = new QWidget();
+    player1Container->setLayout(player1Layout);
+    
+    auto* player2Container = new QWidget();
+    player2Container->setLayout(player2Layout);
+    
+    layout->addWidget(player1Container, 1);
+    layout->addWidget(player2Container, 1);
     
     return layout;
 }
 
-void PlayerComparisonDialog::createPlayerInfoLayouts() {
-    QHBoxLayout* playerInfoLayout = new QHBoxLayout();
-    playerInfoLayout->setSpacing(20);
-    
-    QVBoxLayout* player1Layout = createPlayerLayout(player1, "#0c7bb3", Qt::AlignLeft);
-    QVBoxLayout* player2Layout = createPlayerLayout(player2, "#2ea043", Qt::AlignRight);
-    
-    QWidget* player1Container = new QWidget(this);
-    player1Container->setLayout(player1Layout);
-    
-    QWidget* player2Container = new QWidget(this);
-    player2Container->setLayout(player2Layout);
-    
-    playerInfoLayout->addWidget(player1Container, 1);
-    playerInfoLayout->addWidget(player2Container, 1);
-    
-    mainLayout->addLayout(playerInfoLayout);
+void PlayerComparisonDialog::createPlayerInfoSection() {
+    m_mainLayout->addLayout(createPlayerInfoLayout());
 }
 
-void PlayerComparisonDialog::createTableLayouts() {
-    QHBoxLayout* tablesLayout = new QHBoxLayout();
-    QTableView* table1 = new QTableView(this);
+void PlayerComparisonDialog::createChartSection() {
+    setupChart();
+    m_mainLayout->addWidget(m_chartView);
+}
+
+void PlayerComparisonDialog::createTableSection() {
+    auto* tablesLayout = new QHBoxLayout();
     
-    setupPlayerTable(table1, player1History);
+    auto* table1 = new QTableView(this);
+    setupPlayerTable(table1, m_player1History);
     
-    QVBoxLayout* player1TableLayout = new QVBoxLayout();
-    QLabel* player1TableLabel = createBoldPlayerLabel(QString::fromStdString(player1.name), "#0c7bb3");
+    auto* player1TableLayout = new QVBoxLayout();
+    auto* player1TableLabel = createPlayerNameLabel(QString::fromStdString(m_player1->name), PLAYER1_COLOR);
     player1TableLabel->setAlignment(Qt::AlignCenter);
     
     player1TableLayout->addWidget(player1TableLabel);
     player1TableLayout->addWidget(table1);
     
-    QTableView* table2 = new QTableView(this);
-    setupPlayerTable(table2, player2History);
+    auto* table2 = new QTableView(this);
+    setupPlayerTable(table2, m_player2History);
     
-    QVBoxLayout* player2TableLayout = new QVBoxLayout();
-    QLabel* player2TableLabel = createBoldPlayerLabel(QString::fromStdString(player2.name), "#2ea043");
+    auto* player2TableLayout = new QVBoxLayout();
+    auto* player2TableLabel = createPlayerNameLabel(QString::fromStdString(m_player2->name), PLAYER2_COLOR);
     player2TableLabel->setAlignment(Qt::AlignCenter);
     
     player2TableLayout->addWidget(player2TableLabel);
@@ -161,151 +181,167 @@ void PlayerComparisonDialog::createTableLayouts() {
     tablesLayout->addLayout(player1TableLayout);
     tablesLayout->addLayout(player2TableLayout);
     
-    mainLayout->addLayout(tablesLayout);
+    m_mainLayout->addLayout(tablesLayout);
 }
 
-void PlayerComparisonDialog::createButtonLayout() {
-    closeButton = new QPushButton("Close", this);
-    closeButton->setCursor(Qt::PointingHandCursor);
-    closeButton->setMinimumWidth(120);
-    closeButton->setMinimumHeight(36);
-    connect(closeButton, &QPushButton::clicked, this, &QDialog::accept);
+void PlayerComparisonDialog::createButtonSection() {
+    m_closeButton = new QPushButton(tr("Close"), this);
+    m_closeButton->setCursor(Qt::PointingHandCursor);
+    m_closeButton->setMinimumWidth(120);
+    m_closeButton->setMinimumHeight(36);
+    connect(m_closeButton, &QPushButton::clicked, this, &QDialog::accept);
     
-    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    auto* buttonLayout = new QHBoxLayout();
     buttonLayout->addStretch();
-    buttonLayout->addWidget(closeButton);
+    buttonLayout->addWidget(m_closeButton);
     buttonLayout->addStretch();
     
-    mainLayout->addLayout(buttonLayout);
+    m_mainLayout->addLayout(buttonLayout);
 }
 
-void PlayerComparisonDialog::centerDialogOnScreen(QWidget* parent) {
-    QScreen* screen = nullptr;
-    
-    if (parent) {
-        QWidget* parentWidget = qobject_cast<QWidget*>(parent);
-        if (parentWidget) {
-            screen = parentWidget->screen();
-        }
-    }
-    
-    if (!screen) {
-        screen = QGuiApplication::primaryScreen();
-    }
+void PlayerComparisonDialog::centerOnParent(QWidget* parent) {
+    const QScreen* screen = parent 
+        ? parent->screen() 
+        : QGuiApplication::primaryScreen();
     
     if (screen) {
-        QRect screenGeometry = screen->availableGeometry();
+        const QRect screenGeometry = screen->availableGeometry();
         move(screenGeometry.center() - rect().center());
     }
 }
 
-QStandardItem* PlayerComparisonDialog::createRatingItem(double rating) {
-    QStandardItem* item = new QStandardItem(QString::number(rating, 'f', 2));
-    item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    return item;
-}
-
-QStandardItem* PlayerComparisonDialog::createChangeItem(double newRating, double previousRating) {
-    double ratingChange = newRating - previousRating;
-    QString prefix = ratingChange >= 0 ? "+" : "";
-    QStandardItem* item = new QStandardItem(prefix + QString::number(ratingChange, 'f', 2));
-    item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+void PlayerComparisonDialog::setupPlayerTable(QTableView* tableView, std::span<const RatingChange> playerHistory) {
+    auto* model = createTableModel(playerHistory);
     
-    if (ratingChange > 0) {
-        item->setForeground(QBrush(QColor(0x66, 0xbb, 0x6a)));
-    } else if (ratingChange < 0) {
-        item->setForeground(QBrush(QColor(0xef, 0x53, 0x50)));
-    }
-    
-    return item;
+    tableView->setModel(model);
+    tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableView->setAlternatingRowColors(true);
+    tableView->verticalHeader()->setVisible(false);
 }
 
-QStandardItem* PlayerComparisonDialog::createDateItem(const std::string& dateStr) {
-    QDateTime date = QDateTime::fromString(QString::fromStdString(dateStr), Qt::ISODate);
-    QString formattedDate = date.isValid() ? date.toString("MMM dd, yyyy") : QString::fromStdString(dateStr);
-    return new QStandardItem(formattedDate);
-}
-
-QStandardItemModel* PlayerComparisonDialog::createTableModel(const std::vector<RatingChange>& playerHistory) {
-    QStandardItemModel* model = new QStandardItemModel(this);
-    QStringList headers = {"Date", "Rating", "Change"};
+QStandardItemModel* PlayerComparisonDialog::createTableModel(std::span<const RatingChange> playerHistory) const {
+    auto* model = new QStandardItemModel(static_cast<int>(playerHistory.size()), 3, const_cast<PlayerComparisonDialog*>(this));
+    QStringList headers = {tr("Date"), tr("Rating"), tr("Change")};
     model->setHorizontalHeaderLabels(headers);
     
-    for (const auto& change : playerHistory) {
-        QList<QStandardItem*> row;
-        row.append(createDateItem(change.date));
-        row.append(createRatingItem(change.newRating));
-        row.append(createChangeItem(change.newRating, change.previousRating));
-        model->appendRow(row);
+    for (int row = 0; row < static_cast<int>(playerHistory.size()); ++row) {
+        const auto& change = playerHistory[row];
+        
+        QDateTime date = QDateTime::fromString(QString::fromStdString(change.date), Qt::ISODate);
+        QString formattedDate = date.isValid() ? date.toString("MMM dd, yyyy") : QString::fromStdString(change.date);
+        model->setItem(row, 0, new QStandardItem(formattedDate));
+        
+        auto* ratingItem = new QStandardItem(QString::number(change.newRating, 'f', 2));
+        ratingItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        model->setItem(row, 1, ratingItem);
+        
+        double ratingChange = change.newRating - change.previousRating;
+        QString prefix = ratingChange >= 0 ? "+" : "";
+        auto* changeItem = new QStandardItem(prefix + QString::number(ratingChange, 'f', 2));
+        changeItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        
+        if (ratingChange > 0) {
+            changeItem->setForeground(QBrush(QColor(0x66, 0xbb, 0x6a)));
+        } else if (ratingChange < 0) {
+            changeItem->setForeground(QBrush(QColor(0xef, 0x53, 0x50)));
+        }
+        
+        model->setItem(row, 2, changeItem);
     }
     
     return model;
 }
 
-void PlayerComparisonDialog::setupPlayerTable(QTableView* table, const std::vector<RatingChange>& playerHistory) {
-    QStandardItemModel* model = createTableModel(playerHistory);
+void PlayerComparisonDialog::setupChart() {
+    m_chart->removeAllSeries();
     
-    table->setModel(model);
-    table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    table->setSelectionBehavior(QAbstractItemView::SelectRows);
-    table->setAlternatingRowColors(true);
-    table->verticalHeader()->setVisible(false);
+    if (m_rating1Progression.empty() || m_rating2Progression.empty()) {
+        return;
+    }
+    
+    populateChart();
 }
 
-QLineSeries* PlayerComparisonDialog::createPlayerSeries(const std::string& name, const QColor& color) {
-    QLineSeries* series = new QLineSeries(chart);
-    series->setName(QString::fromStdString(name));
-    series->setColor(color);
-    series->setPen(QPen(color, 3));
-    series->setPointsVisible(true);
-    return series;
+void PlayerComparisonDialog::populateChart() {
+    auto* series1 = new QLineSeries(m_chart);
+    auto* series2 = new QLineSeries(m_chart);
+    
+    configureSeries(series1, series2);
+    
+    double minRating = 0.0;
+    double maxRating = 0.0;
+    
+    auto [min, max] = calculateRatingRange(series1, series2);
+    minRating = min;
+    maxRating = max;
+    
+    auto* xAxis = new QValueAxis(m_chart);
+    auto* yAxis = new QValueAxis(m_chart);
+    
+    configureAxes(xAxis, yAxis, minRating, maxRating);
+    
+    m_chart->addSeries(series1);
+    m_chart->addSeries(series2);
+    m_chart->addAxis(xAxis, Qt::AlignBottom);
+    m_chart->addAxis(yAxis, Qt::AlignLeft);
+    
+    series1->attachAxis(xAxis);
+    series1->attachAxis(yAxis);
+    series2->attachAxis(xAxis);
+    series2->attachAxis(yAxis);
 }
 
-void PlayerComparisonDialog::setupXAxis(QValueAxis* axis, size_t maxSize) {
-    axis->setTitleText("Appearance");
-    axis->setRange(0.5, maxSize + 0.5);
-    axis->setTickType(QValueAxis::TickType::TicksDynamic);
-    axis->setTickInterval(1.0);
-    axis->setTickAnchor(1.0);
-    axis->setLabelFormat("%d");
-    axis->setMinorTickCount(0);
-    axis->setLabelsColor(Qt::white);
-    axis->setTitleBrush(QBrush(Qt::white));
-    axis->setGridLineColor(QColor(0x3d, 0x3d, 0x3d));
-    axis->setLinePenColor(QColor(0x3d, 0x3d, 0x3d));
+void PlayerComparisonDialog::configureSeries(QLineSeries* series1, QLineSeries* series2) {
+    series1->setName(QString::fromStdString(m_player1->name));
+    series1->setColor(PLAYER1_COLOR);
+    series1->setPen(QPen(PLAYER1_COLOR, 3));
+    series1->setPointsVisible(true);
+    
+    series2->setName(QString::fromStdString(m_player2->name));
+    series2->setColor(PLAYER2_COLOR);
+    series2->setPen(QPen(PLAYER2_COLOR, 3));
+    series2->setPointsVisible(true);
+    
+    m_chart->legend()->setLabelColor(Qt::white);
+    m_chart->legend()->setBackgroundVisible(false);
+    m_chart->legend()->setFont(QFont("Segoe UI", 10));
 }
 
-void PlayerComparisonDialog::setupYAxis(QValueAxis* axis, double minRating, double maxRating) {
-    axis->setRange(minRating, maxRating);
-    axis->setLabelFormat("%.1f");
-    axis->setTickCount(5);
-    axis->setTitleText("Rating");
-    axis->setLabelsColor(Qt::white);
-    axis->setTitleBrush(QBrush(Qt::white));
-    axis->setGridLineColor(QColor(0x3d, 0x3d, 0x3d));
-    axis->setLinePenColor(QColor(0x3d, 0x3d, 0x3d));
+void PlayerComparisonDialog::configureAxes(QValueAxis* xAxis, QValueAxis* yAxis, double minRating, double maxRating) {
+    size_t maxSize = std::max(m_rating1Progression.size(), m_rating2Progression.size());
+    xAxis->setTitleText(tr("Appearance"));
+    xAxis->setRange(0.5, maxSize + 0.5);
+    xAxis->setTickType(QValueAxis::TickType::TicksDynamic);
+    xAxis->setTickInterval(1.0);
+    xAxis->setTickAnchor(1.0);
+    xAxis->setLabelFormat("%d");
+    xAxis->setMinorTickCount(0);
+    xAxis->setLabelsColor(Qt::white);
+    xAxis->setTitleBrush(QBrush(Qt::white));
+    xAxis->setGridLineColor(QColor(0x3d, 0x3d, 0x3d));
+    xAxis->setLinePenColor(QColor(0x3d, 0x3d, 0x3d));
+    
+    double padding = calculateRatingPadding(minRating, maxRating);
+    minRating = std::max(0.0, minRating - padding);
+    maxRating = maxRating + padding;
+    
+    yAxis->setRange(minRating, maxRating);
+    yAxis->setLabelFormat("%.1f");
+    yAxis->setTickCount(5);
+    yAxis->setTitleText(tr("Rating"));
+    yAxis->setLabelsColor(Qt::white);
+    yAxis->setTitleBrush(QBrush(Qt::white));
+    yAxis->setGridLineColor(QColor(0x3d, 0x3d, 0x3d));
+    yAxis->setLinePenColor(QColor(0x3d, 0x3d, 0x3d));
 }
 
-void PlayerComparisonDialog::addSeriesToChart(QLineSeries* series1, QLineSeries* series2, QValueAxis* axisX, QValueAxis* axisY) {
-    chart->addSeries(series1);
-    chart->addSeries(series2);
-    chart->addAxis(axisX, Qt::AlignBottom);
-    chart->addAxis(axisY, Qt::AlignLeft);
-
-    series1->attachAxis(axisX);
-    series1->attachAxis(axisY);
-    series2->attachAxis(axisX);
-    series2->attachAxis(axisY);
+double PlayerComparisonDialog::calculateRatingPadding(double minRating, double maxRating) const {
+    return std::max((maxRating - minRating) * 0.1, 10.0);
 }
 
-void PlayerComparisonDialog::setupLegend() {
-    chart->legend()->setLabelColor(Qt::white);
-    chart->legend()->setBackgroundVisible(false);
-    chart->legend()->setFont(QFont("Segoe UI", 10));
-}
-
-void PlayerComparisonDialog::populateSeries(QLineSeries* series, const std::vector<std::pair<int, double>>& progression, 
-                                         double& minRating, double& maxRating) {
+void PlayerComparisonDialog::populateRatingData(QLineSeries* series, const std::vector<std::pair<int, double>>& progression, 
+                                             double& minRating, double& maxRating) {
     for (size_t i = 0; i < progression.size(); ++i) {
         double rating = progression[i].second;
         series->append(i + 1, rating);
@@ -314,54 +350,12 @@ void PlayerComparisonDialog::populateSeries(QLineSeries* series, const std::vect
     }
 }
 
-std::pair<double, double> PlayerComparisonDialog::findRatingBounds() {
+std::pair<double, double> PlayerComparisonDialog::calculateRatingRange(QLineSeries* series1, QLineSeries* series2) {
     double minRating = std::numeric_limits<double>::max();
     double maxRating = std::numeric_limits<double>::lowest();
     
+    populateRatingData(series1, m_rating1Progression, minRating, maxRating);
+    populateRatingData(series2, m_rating2Progression, minRating, maxRating);
+    
     return {minRating, maxRating};
-}
-
-void PlayerComparisonDialog::prepareChartSeries(QLineSeries*& series1, QLineSeries*& series2) {
-    QColor player1Color(0x0c, 0x7b, 0xb3);
-    QColor player2Color(0x2e, 0xa0, 0x43);
-
-    series1 = createPlayerSeries(player1.name, player1Color);
-    series2 = createPlayerSeries(player2.name, player2Color);
-    
-    setupLegend();
-}
-
-void PlayerComparisonDialog::calculateRatingRange(QLineSeries* series1, QLineSeries* series2, double& minRating, double& maxRating) {
-    minRating = std::numeric_limits<double>::max();
-    maxRating = std::numeric_limits<double>::lowest();
-    
-    populateSeries(series1, rating1Progression, minRating, maxRating);
-    populateSeries(series2, rating2Progression, minRating, maxRating);
-    
-    double padding = std::max((maxRating - minRating) * 0.1, 10.0);
-    minRating = std::max(0.0, minRating - padding);
-    maxRating += padding;
-}
-
-void PlayerComparisonDialog::setupComparisonChart() {
-    chart->removeAllSeries();
-
-    if (rating1Progression.empty() || rating2Progression.empty()) {
-        return;
-    }
-
-    QLineSeries* series1 = nullptr;
-    QLineSeries* series2 = nullptr;
-    prepareChartSeries(series1, series2);
-    
-    double minRating, maxRating;
-    calculateRatingRange(series1, series2, minRating, maxRating);
-    
-    QValueAxis* gameAxisX = new QValueAxis(chart);
-    setupXAxis(gameAxisX, std::max(rating1Progression.size(), rating2Progression.size()));
-
-    QValueAxis* gameAxisY = new QValueAxis(chart);
-    setupYAxis(gameAxisY, minRating, maxRating);
-
-    addSeriesToChart(series1, series2, gameAxisX, gameAxisY);
 }

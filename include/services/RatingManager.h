@@ -18,12 +18,12 @@ class RatingManager {
             int64_t budget
         );
         std::vector<Player> getFilteredRatedPlayers(const std::vector<Player>& filterPlayers);
-        std::vector<std::pair<int, double>> getRecentRatingProgression(int playerId, int maxGames = 10);
+        std::vector<std::pair<int, double>> getRecentRatingProgression(int playerId, int maxGames = 10) const;
         std::vector<Player> getAllPlayers();
-        std::vector<RatingChange> getPlayerRatingHistory(int playerId, int maxGames = 10) {
+        std::vector<RatingChange> getPlayerRatingHistory(int playerId, int maxGames = 10) const {
             return ratingSystem.getPlayerRatingHistory(playerId, maxGames);
         }
-        std::vector<std::pair<int, Player>> getSortedRatedPlayers() {
+        std::vector<std::pair<int, Player>> getSortedRatedPlayers() const {
             return ratingSystem.getSortedRatedPlayers();
         }
 };
