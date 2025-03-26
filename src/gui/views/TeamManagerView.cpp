@@ -998,7 +998,7 @@ void TeamManagerView::updatePlayerImageInModel(int playerId) {
 void TeamManagerView::fetchPlayerDetailImage(const QString& imageUrl) {
     QNetworkReply* reply = networkManager->get(QNetworkRequest(QUrl(imageUrl)));
 
-    connect(reply, &QNetworkReply::finished, this, [=]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         handlePlayerDetailImageResponse(reply);
     });
 }
@@ -1313,10 +1313,8 @@ void TeamManagerView::showClubSelectionDialog() {
     ClubSelectDialog dialog(availableClubs, this);
 
     if (dialog.exec() == QDialog::Accepted) {
-        int clubId = dialog.getSelectedClubId();
-
-        if (clubId != -1) {
-            loadTeamFromClub(clubId);
+        if (auto clubIdOpt = dialog.getSelectedClubId()) {
+            loadTeamFromClub(*clubIdOpt);
         }
     }
 }
