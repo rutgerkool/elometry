@@ -14,8 +14,7 @@ class KaggleAPIClient {
         time_t getDatasetLastUpdated(const std::string& dataset);
         bool downloadDataset(const std::string& dataset, const std::string& outputPath);
         bool setupDownloadRequest(CURL* curl, FILE* fp, struct curl_slist** headers);
-        bool initializeDownload(const std::string& dataset, CURL** curl, FILE** fp, 
-                               const std::string& outputPath, struct curl_slist** headers);
+        bool initializeDownload(const std::string& dataset, CURL** curl, FILE** fp, const std::string& outputPath);
         
         std::string getUsername() const { return username; }
         std::string getKey() const { return key; }
@@ -37,7 +36,7 @@ class KaggleAPIClient {
         void processBase64Remainder(int i, unsigned char* char_array_3, unsigned char* char_array_4, 
                                   std::string& encoded, const std::string& base64_chars);
         
-        CURL* initCurl(const std::string& url, bool requireAuth);
+        CURL* initCurl(const std::string& url);
         void cleanupCurl(CURL* curl, struct curl_slist* headers);
         
         static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, std::string* userp);

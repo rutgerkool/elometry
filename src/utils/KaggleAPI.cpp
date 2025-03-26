@@ -101,7 +101,7 @@ size_t KaggleAPIClient::WriteDataCallback(void* ptr, size_t size, size_t nmemb, 
     return fwrite(ptr, size, nmemb, stream);
 }
 
-CURL* KaggleAPIClient::initCurl(const std::string& url, bool requireAuth) {
+CURL* KaggleAPIClient::initCurl(const std::string& url) {
     CURL* curl = curl_easy_init();
 
     if (!curl) {
@@ -160,7 +160,7 @@ std::string KaggleAPIClient::makeApiRequest(const std::string& endpoint, bool re
     std::string responseBuffer;
     
     curl_global_init(CURL_GLOBAL_ALL);
-    CURL* curl = initCurl(endpoint, requireAuth);
+    CURL* curl = initCurl(endpoint);
 
     if (!curl) {
         curl_global_cleanup();
@@ -267,12 +267,12 @@ bool KaggleAPIClient::initializeDownload(
     const std::string& dataset, 
     CURL** curl, 
     FILE** fp, 
-    const std::string& outputPath, struct curl_slist** headers
+    const std::string& outputPath
 ) {
     std::string apiUrl = "https://www.kaggle.com/api/v1/datasets/download/" + dataset;
     
     curl_global_init(CURL_GLOBAL_ALL);
-    *curl = initCurl(apiUrl, true);
+    *curl = initCurl(apiUrl);
 
     if (!*curl) {
         curl_global_cleanup();
@@ -296,7 +296,7 @@ bool KaggleAPIClient::downloadDataset(const std::string& dataset, const std::str
     FILE* fp = nullptr;
     struct curl_slist* headers = nullptr;
     
-    if (!initializeDownload(dataset, &curl, &fp, outputPath, &headers)) {
+    if (!initializeDownload(dataset, &curl, &fp, outputPath)) {
         return false;
     }
     
