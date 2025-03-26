@@ -151,7 +151,7 @@ void MainWindow::setupConnections() {
 
 void MainWindow::animateViewTransition(QWidget* newWidget) {
     fadeAnimation->setDirection(QPropertyAnimation::Backward);
-    connect(fadeAnimation, &QPropertyAnimation::finished, this, [=]() {
+    connect(fadeAnimation, &QPropertyAnimation::finished, this, [this, newWidget]() {
         stackedWidget->setCurrentWidget(newWidget);
         fadeAnimation->setDirection(QPropertyAnimation::Forward);
         fadeAnimation->start();

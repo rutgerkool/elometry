@@ -1,78 +1,113 @@
 #include "gui/components/dialogs/LineupCreationDialog.h"
+#include "services/TeamManager.h"
+
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
+#include <QComboBox>
+#include <QPushButton>
 #include <QMessageBox>
+#include <QSpacerItem>
 
-LineupCreationDialog::LineupCreationDialog(TeamManager& tm, QWidget *parent)
+LineupCreationDialog::LineupCreationDialog(TeamManager& teamManager, QWidget* parent)
     : QDialog(parent)
-    , teamManager(tm)
+    , m_teamManager(teamManager)
 {
     setWindowTitle(tr("Create New Lineup"));
+    setModal(true);
+    resize(450, 180);
+    
     setupUi();
     populateFormations();
     setupConnections();
-    setModal(true);
-    resize(400, 150);
+}
+
+int LineupCreationDialog::getSelectedFormationId() const {
+    if (!m_formationComboBox || m_formationComboBox->count() == 0) {
+        return -1;
+    }
+    
+    const int index = m_formationComboBox->currentIndex();
+    return m_formationComboBox->itemData(index).toInt();
+}
+
+QString LineupCreationDialog::getLineupName() const {
+    return m_lineupNameInput ? m_lineupNameInput->text().trimmed() : QString();
 }
 
 void LineupCreationDialog::setupUi() {
-    auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(20, 20, 20, 20);
-    mainLayout->setSpacing(10);
+    m_mainLayout = new QVBoxLayout(this);
+    m_mainLayout->setContentsMargins(24, 24, 24, 24);
+    m_mainLayout->setSpacing(16);
 
-    setupFormationSection(mainLayout);
-    setupNameSection(mainLayout);
-    setupButtonSection(mainLayout);
+    setupFormationSection();
+    setupNameSection();
+    setupButtonSection();
 }
 
-void LineupCreationDialog::setupFormationSection(QVBoxLayout* mainLayout) {
+void LineupCreationDialog::setupFormationSection() {
     auto* formationLayout = new QHBoxLayout();
-    auto* formationLabel = new QLabel(tr("Formation:"), this);
-    formationComboBox = new QComboBox(this);
-    formationComboBox->setMinimumWidth(200);
-
-    formationLayout->addWidget(formationLabel);
-    formationLayout->addWidget(formationComboBox);
-    mainLayout->addLayout(formationLayout);
-}
-
-void LineupCreationDialog::setupNameSection(QVBoxLayout* mainLayout) {
-    auto* nameLayout = new QHBoxLayout();
-    auto* nameLabel = new QLabel(tr("Lineup Name:"), this);
-    lineupNameInput = new QLineEdit(this);
-    lineupNameInput->setPlaceholderText(tr("Optional: Enter a name for the lineup"));
-    lineupNameInput->setMinimumWidth(200);
-
-    nameLayout->addWidget(nameLabel);
-    nameLayout->addWidget(lineupNameInput);
-    mainLayout->addLayout(nameLayout);
-}
-
-void LineupCreationDialog::setupButtonSection(QVBoxLayout* mainLayout) {
-    auto* buttonLayout = new QHBoxLayout();
-    createButton = new QPushButton(tr("Create"), this);
-    cancelButton = new QPushButton(tr("Cancel"), this);
+    formationLayout->setSpacing(12);
     
-    createButton->setDefault(true);
+    auto* formationLabel = new QLabel(tr("Formation:"), this);
+    formationLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    formationLabel->setMinimumWidth(100);
+    
+    m_formationComboBox = new QComboBox(this);
+    m_formationComboBox->setMinimumWidth(250);
+    
+    formationLayout->addWidget(formationLabel);
+    formationLayout->addWidget(m_formationComboBox, 1);
+    
+    m_mainLayout->addLayout(formationLayout);
+}
 
-    buttonLayout->addStretch();
-    buttonLayout->addWidget(cancelButton);
-    buttonLayout->addWidget(createButton);
+void LineupCreationDialog::setupNameSection() {
+    auto* nameLayout = new QHBoxLayout();
+    nameLayout->setSpacing(12);
+    
+    auto* nameLabel = new QLabel(tr("Lineup Name:"), this);
+    nameLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    nameLabel->setMinimumWidth(100);
+    
+    m_lineupNameInput = new QLineEdit(this);
+    m_lineupNameInput->setPlaceholderText(tr("Optional: Enter a name for the lineup"));
+    m_lineupNameInput->setMinimumWidth(250);
+    
+    nameLayout->addWidget(nameLabel);
+    nameLayout->addWidget(m_lineupNameInput, 1);
+    
+    m_mainLayout->addLayout(nameLayout);
+}
 
-    mainLayout->addLayout(buttonLayout);
+void LineupCreationDialog::setupButtonSection() {
+    auto* buttonLayout = new QHBoxLayout();
+    buttonLayout->setSpacing(10);
+    
+    auto* spacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    
+    m_cancelButton = new QPushButton(tr("Cancel"), this);
+    m_createButton = new QPushButton(tr("Create"), this);
+    m_createButton->setDefault(true);
+    
+    buttonLayout->addItem(spacer);
+    buttonLayout->addWidget(m_cancelButton);
+    buttonLayout->addWidget(m_createButton);
+    
+    m_mainLayout->addLayout(buttonLayout);
 }
 
 void LineupCreationDialog::populateFormations() {
-    if (!formationComboBox) {
+    if (!m_formationComboBox) {
         return;
     }
     
-    formationComboBox->clear();
+    m_formationComboBox->clear();
     
-    const std::vector<Formation>& formations = teamManager.getAllFormations();
+    const auto& formations = m_teamManager.getAllFormations();
     for (const auto& formation : formations) {
-        formationComboBox->addItem(
+        m_formationComboBox->addItem(
             QString::fromStdString(formation.name), 
             formation.id
         );
@@ -80,27 +115,17 @@ void LineupCreationDialog::populateFormations() {
 }
 
 void LineupCreationDialog::setupConnections() {
-    if (!cancelButton || !createButton) {
-        return;
-    }
-    
-    connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
-    
-    connect(createButton, &QPushButton::clicked, [this]() {
-        if (validateInput()) {
-            accept();
-        }
-    });
-    
-    connect(lineupNameInput, &QLineEdit::returnPressed, createButton, &QPushButton::click);
+    connect(m_cancelButton, &QPushButton::clicked, this, &QDialog::reject);
+    connect(m_createButton, &QPushButton::clicked, this, &LineupCreationDialog::validateAndAccept);
+    connect(m_lineupNameInput, &QLineEdit::returnPressed, m_createButton, &QPushButton::click);
 }
 
-bool LineupCreationDialog::validateInput() const {
-    int formationId = getSelectedFormationId();
+bool LineupCreationDialog::isInputValid() const {
+    const int formationId = getSelectedFormationId();
     
     if (formationId <= 0) {
         QMessageBox::warning(
-            const_cast<LineupCreationDialog*>(this), 
+            const_cast<LineupCreationDialog*>(this),
             tr("Error"), 
             tr("Please select a formation.")
         );
@@ -110,15 +135,8 @@ bool LineupCreationDialog::validateInput() const {
     return true;
 }
 
-int LineupCreationDialog::getSelectedFormationId() const {
-    if (!formationComboBox || formationComboBox->count() == 0) {
-        return -1;
+void LineupCreationDialog::validateAndAccept() {
+    if (isInputValid()) {
+        accept();
     }
-    
-    int index = formationComboBox->currentIndex();
-    return formationComboBox->itemData(index).toInt();
-}
-
-QString LineupCreationDialog::getLineupName() const {
-    return lineupNameInput ? lineupNameInput->text().trimmed() : QString();
 }

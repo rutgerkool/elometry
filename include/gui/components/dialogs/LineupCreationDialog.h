@@ -2,40 +2,51 @@
 #define LINEUPCREATEDIALOG_H
 
 #include <QDialog>
-#include <QComboBox>
-#include <QLineEdit>
-#include <QPushButton>
-#include "services/TeamManager.h"
+#include <QString>
+#include <memory>
 
 class QVBoxLayout;
 class QHBoxLayout;
+class QComboBox;
+class QLineEdit;
+class QPushButton;
 class QLabel;
+class TeamManager;
 
-class LineupCreationDialog : public QDialog {
+class LineupCreationDialog final : public QDialog {
     Q_OBJECT
 
-    public:
-        explicit LineupCreationDialog(TeamManager& teamManager, QWidget *parent = nullptr);
-        ~LineupCreationDialog() override = default;
+public:
+    explicit LineupCreationDialog(TeamManager& teamManager, QWidget* parent = nullptr);
+    ~LineupCreationDialog() override = default;
+    
+    LineupCreationDialog(const LineupCreationDialog&) = delete;
+    LineupCreationDialog& operator=(const LineupCreationDialog&) = delete;
+    LineupCreationDialog(LineupCreationDialog&&) = delete;
+    LineupCreationDialog& operator=(LineupCreationDialog&&) = delete;
 
-        int getSelectedFormationId() const;
-        QString getLineupName() const;
+    [[nodiscard]] int getSelectedFormationId() const;
+    [[nodiscard]] QString getLineupName() const;
 
-    private:
-        void setupUi();
-        void setupFormationSection(QVBoxLayout* mainLayout);
-        void setupNameSection(QVBoxLayout* mainLayout);
-        void setupButtonSection(QVBoxLayout* mainLayout);
-        void setupConnections();
-        void populateFormations();
-        bool validateInput() const;
+private slots:
+    void validateAndAccept();
 
-        TeamManager& teamManager;
-        
-        QComboBox* formationComboBox{nullptr};
-        QLineEdit* lineupNameInput{nullptr};
-        QPushButton* createButton{nullptr};
-        QPushButton* cancelButton{nullptr};
+private:
+    void setupUi();
+    void setupFormationSection();
+    void setupNameSection();
+    void setupButtonSection();
+    void setupConnections();
+    void populateFormations();
+    [[nodiscard]] bool isInputValid() const;
+
+    TeamManager& m_teamManager;
+    QVBoxLayout* m_mainLayout{nullptr};
+    
+    QComboBox* m_formationComboBox{nullptr};
+    QLineEdit* m_lineupNameInput{nullptr};
+    QPushButton* m_createButton{nullptr};
+    QPushButton* m_cancelButton{nullptr};
 };
 
 #endif
