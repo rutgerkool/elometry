@@ -1,17 +1,16 @@
 #ifndef PLAYERHISTORYDIALOG_H
 #define PLAYERHISTORYDIALOG_H
 
+#include "services/RatingManager.h"
+
 #include <QDialog>
 #include <QVBoxLayout>
-#include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QTableView>
-#include <QStandardItemModel>
 #include <QGraphicsOpacityEffect>
 #include <QPropertyAnimation>
 #include <QParallelAnimationGroup>
-#include "services/RatingManager.h"
 
 #include <QChartView>
 #include <QLineSeries>
@@ -19,61 +18,66 @@
 #include <QValueAxis>
 #include <QChart>
 #include <QScatterSeries>
+#include <QStandardItemModel>
 
-class PlayerHistoryDialog : public QDialog {
+#include <memory>
+#include <span>
+#include <optional>
+
+class PlayerHistoryDialog final : public QDialog {
     Q_OBJECT
 
-    public:
-        PlayerHistoryDialog(RatingManager& ratingManager, int playerId, QWidget* parent = nullptr);
-        ~PlayerHistoryDialog();
+public:
+    explicit PlayerHistoryDialog(const RatingManager& ratingManager, int playerId, QWidget* parent = nullptr);
+    ~PlayerHistoryDialog() override = default;
 
-    private slots:
-        void setupHistoryTable();
-        void setupHistoryChart();
-        void animateContent();
+    PlayerHistoryDialog(const PlayerHistoryDialog&) = delete;
+    PlayerHistoryDialog& operator=(const PlayerHistoryDialog&) = delete;
+    PlayerHistoryDialog(PlayerHistoryDialog&&) = delete;
+    PlayerHistoryDialog& operator=(PlayerHistoryDialog&&) = delete;
 
-    private:
-        void initializeUI();
-        void loadPlayerData();
-        void setupTitle();
-        void setupPlayerInfo();
-        void setupChartView();
-        void setupTableView();
-        void setupAnimations();
-        void centerDialog(QWidget* parent);
-        void createTable();
-        void populateTable();
-        void configureChartAppearance();
-        void createChartSeries(QLineSeries* series, QScatterSeries* pointSeries);
-        void setupChartAxes(QLineSeries* series, QScatterSeries* pointSeries, double minRating, double maxRating, QDateTimeAxis* axisX, QValueAxis* axisY);
-        double calculatePadding(double minRating, double maxRating);
-        QStandardItem* createRatingItem(double rating);
-        QStandardItem* createChangeItem(double previousRating, double newRating);
-        void setupTableColumns();
-        void applyChartAxisStyling(QAbstractAxis* axis, const QString& title);
-        void createAndPopulateChartSeries(QLineSeries* series, QScatterSeries* pointSeries, double& minRating, double& maxRating);
-        void addPointToSeries(QLineSeries* series, QScatterSeries* pointSeries, const RatingChange& change, int gameId, double value, double& minRating, double& maxRating, bool& firstPoint);
+private slots:
+    void animateContent();
 
-        RatingManager& ratingManager;
-        int playerId;
-        Player player;
-        std::vector<RatingChange> playerHistory;
-        std::vector<std::pair<int, double>> ratingProgression;
+private:
+    void initializeUi();
+    void loadPlayerData();
+    void setupChartView();
+    void setupTableView();
+    void setupAnimations();
+    void centerOnParent();
+    void setupChart();
+    void setupTable();
+    void configureChartAppearance();
+    void createChartSeries();
+    void createChartAxes();
+    
+    [[nodiscard]] std::pair<double, double> calculateRatingRange() const;
+    [[nodiscard]] double calculatePadding(double minRating, double maxRating) const;
+    
+    void populateTableWithHistory();
+    void configureTableColumns();
 
-        QVBoxLayout* mainLayout;
-        QLabel* titleLabel;
-        QLabel* playerInfoLabel;
-        QTableView* historyTable;
-        QStandardItemModel* tableModel;
-        QChartView* chartView;
-        QChart* chart;
-        QPushButton* closeButton;
+    const RatingManager& m_ratingManager;
+    const int m_playerId;
+    std::optional<Player> m_player;
+    std::vector<RatingChange> m_playerHistory;
+    std::vector<std::pair<int, double>> m_ratingProgression;
 
-        QGraphicsOpacityEffect* chartOpacityEffect;
-        QPropertyAnimation* chartAnimation;
-        QGraphicsOpacityEffect* tableOpacityEffect;
-        QPropertyAnimation* tableAnimation;
-        QParallelAnimationGroup* animationGroup;
+    QVBoxLayout* m_mainLayout{nullptr};
+    QLabel* m_titleLabel{nullptr};
+    QLabel* m_playerInfoLabel{nullptr};
+    QTableView* m_historyTable{nullptr};
+    QStandardItemModel* m_tableModel{nullptr};
+    QChartView* m_chartView{nullptr};
+    QChart* m_chart{nullptr};
+    QPushButton* m_closeButton{nullptr};
+
+    QGraphicsOpacityEffect* m_chartOpacityEffect{nullptr};
+    QPropertyAnimation* m_chartAnimation{nullptr};
+    QGraphicsOpacityEffect* m_tableOpacityEffect{nullptr};
+    QPropertyAnimation* m_tableAnimation{nullptr};
+    QParallelAnimationGroup* m_animationGroup{nullptr};
 };
 
 #endif
