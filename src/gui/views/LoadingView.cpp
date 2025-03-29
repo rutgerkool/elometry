@@ -5,24 +5,22 @@
 #include <QtWidgets/QApplication>
 #include <QEasingCurve>
 
-LoadingView::LoadingView(QWidget *parent)
+LoadingView::LoadingView(QWidget* parent)
     : QWidget(parent)
+    , m_statusLabel(nullptr)
+    , m_appNameLabel(nullptr)
+    , m_progressBar(nullptr)
+    , m_progressAnimation(std::make_unique<QPropertyAnimation>())
+    , m_statusOpacityAnimation(std::make_unique<QPropertyAnimation>())
+    , m_statusOpacityEffect(std::make_unique<QGraphicsOpacityEffect>())
+    , m_appNameAnimation(std::make_unique<QPropertyAnimation>())
 {
     setupUi();
     setupAnimations();
 }
 
-LoadingView::~LoadingView() {
-    delete progressAnimation;
-    progressAnimation = nullptr;
-    delete statusOpacityAnimation;
-    statusOpacityAnimation = nullptr;
-    delete appNameAnimation;
-    appNameAnimation = nullptr;
-}
-
 void LoadingView::setupUi() {
-    createLayout();
+    setupLayout();
     setupAppNameLabel();
     setupProgressBar();
     setupStatusLabel();
@@ -31,45 +29,51 @@ void LoadingView::setupUi() {
     setMinimumSize(500, 350);
 }
 
-void LoadingView::createLayout() {
-    QVBoxLayout* mainLayout = new QVBoxLayout(this);
+void LoadingView::setupLayout() {
+    auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(50, 50, 50, 50);
     mainLayout->setSpacing(30);
     mainLayout->setAlignment(Qt::AlignCenter);
     
     mainLayout->addStretch();
-    mainLayout->addWidget(appNameLabel = new QLabel("Elometry", this));
-    mainLayout->addWidget(progressBar = new QProgressBar(this));
-    mainLayout->addWidget(statusLabel = new QLabel("Initializing", this));
+    
+    m_appNameLabel = new QLabel("Elometry", this);
+    m_progressBar = new QProgressBar(this);
+    m_statusLabel = new QLabel("Initializing", this);
+    
+    mainLayout->addWidget(m_appNameLabel);
+    mainLayout->addWidget(m_progressBar);
+    mainLayout->addWidget(m_statusLabel);
+    
     mainLayout->addStretch();
 }
 
 void LoadingView::setupAppNameLabel() {
     QFont headerFont("Segoe UI", 36);
     headerFont.setBold(true);
-    appNameLabel->setFont(headerFont);
-    appNameLabel->setStyleSheet("color: #0c7bb3;");
-    appNameLabel->setAlignment(Qt::AlignCenter);
+    m_appNameLabel->setFont(headerFont);
+    m_appNameLabel->setStyleSheet("color: #0c7bb3;");
+    m_appNameLabel->setAlignment(Qt::AlignCenter);
 }
 
 void LoadingView::setupProgressBar() {
-    progressBar->setRange(0, 100);
-    progressBar->setValue(0);
-    progressBar->setMinimumWidth(400);
-    progressBar->setMinimumHeight(10);
-    progressBar->setMaximumHeight(10);
-    progressBar->setTextVisible(false);
+    m_progressBar->setRange(0, 100);
+    m_progressBar->setValue(0);
+    m_progressBar->setMinimumWidth(400);
+    m_progressBar->setMinimumHeight(10);
+    m_progressBar->setMaximumHeight(10);
+    m_progressBar->setTextVisible(false);
 }
 
 void LoadingView::setupStatusLabel() {
-    statusOpacityEffect = new QGraphicsOpacityEffect(this);
-    statusOpacityEffect->setOpacity(1.0);
+    m_statusOpacityEffect->setOpacity(1.0);
+    m_statusLabel->setGraphicsEffect(m_statusOpacityEffect.get());
     
-    statusLabel->setAlignment(Qt::AlignCenter);
-    statusLabel->setGraphicsEffect(statusOpacityEffect);
+    m_statusLabel->setAlignment(Qt::AlignCenter);
+    
     QFont statusFont("Segoe UI", 12);
-    statusLabel->setFont(statusFont);
-    statusLabel->setStyleSheet("color: #a0a0a0;");
+    m_statusLabel->setFont(statusFont);
+    m_statusLabel->setStyleSheet("color: #a0a0a0;");
 }
 
 void LoadingView::setupAnimations() {
@@ -79,58 +83,61 @@ void LoadingView::setupAnimations() {
 }
 
 void LoadingView::setupProgressAnimation() {
-    progressAnimation = new QPropertyAnimation(progressBar, "value", this);
-    progressAnimation->setDuration(300);
-    progressAnimation->setEasingCurve(QEasingCurve::OutQuad);
+    m_progressAnimation->setTargetObject(m_progressBar);
+    m_progressAnimation->setPropertyName("value");
+    m_progressAnimation->setDuration(300);
+    m_progressAnimation->setEasingCurve(QEasingCurve::OutQuad);
 }
 
 void LoadingView::setupStatusAnimation() {
-    statusOpacityAnimation = new QPropertyAnimation(statusOpacityEffect, "opacity", this);
-    statusOpacityAnimation->setDuration(250);
-    statusOpacityAnimation->setEasingCurve(QEasingCurve::InOutQuad);
+    m_statusOpacityAnimation->setTargetObject(m_statusOpacityEffect.get());
+    m_statusOpacityAnimation->setPropertyName("opacity");
+    m_statusOpacityAnimation->setDuration(250);
+    m_statusOpacityAnimation->setEasingCurve(QEasingCurve::InOutQuad);
 }
 
 void LoadingView::setupAppNameAnimation() {
-    appNameAnimation = new QPropertyAnimation(appNameLabel, "geometry", this);
-    appNameAnimation->setDuration(800);
-    appNameAnimation->setEasingCurve(QEasingCurve::OutBack);
+    m_appNameAnimation->setTargetObject(m_appNameLabel);
+    m_appNameAnimation->setPropertyName("geometry");
+    m_appNameAnimation->setDuration(800);
+    m_appNameAnimation->setEasingCurve(QEasingCurve::OutBack);
 }
 
 void LoadingView::updateStatus(const QString& status) {
-    statusOpacityAnimation->setStartValue(1.0);
-    statusOpacityAnimation->setEndValue(0.0);
+    m_statusOpacityAnimation->setStartValue(1.0);
+    m_statusOpacityAnimation->setEndValue(0.0);
     
-    disconnect(statusOpacityAnimation, &QPropertyAnimation::finished, this, nullptr);
+    disconnect(m_statusOpacityAnimation.get(), &QPropertyAnimation::finished, this, nullptr);
     
-    connect(statusOpacityAnimation, &QPropertyAnimation::finished, this, [this, status]() {
-        statusLabel->setText(status);
-        statusOpacityAnimation->setStartValue(0.0);
-        statusOpacityAnimation->setEndValue(1.0);
-        statusOpacityAnimation->start();
-        disconnect(statusOpacityAnimation, &QPropertyAnimation::finished, this, nullptr);
+    connect(m_statusOpacityAnimation.get(), &QPropertyAnimation::finished, this, [this, status]() {
+        m_statusLabel->setText(status);
+        m_statusOpacityAnimation->setStartValue(0.0);
+        m_statusOpacityAnimation->setEndValue(1.0);
+        m_statusOpacityAnimation->start();
+        disconnect(m_statusOpacityAnimation.get(), &QPropertyAnimation::finished, this, nullptr);
     });
     
-    statusOpacityAnimation->start();
+    m_statusOpacityAnimation->start();
     QApplication::processEvents();
 }
 
 void LoadingView::updateProgress(int value) {
-    progressAnimation->stop();
-    progressAnimation->setStartValue(progressBar->value());
-    progressAnimation->setEndValue(value);
-    progressAnimation->start();
+    m_progressAnimation->stop();
+    m_progressAnimation->setStartValue(m_progressBar->value());
+    m_progressAnimation->setEndValue(value);
+    m_progressAnimation->start();
     QApplication::processEvents();
 }
 
 void LoadingView::markLoadingComplete() {
-    QRect currentGeometry = appNameLabel->geometry();
-    appNameAnimation->setStartValue(currentGeometry);
+    QRect currentGeometry = m_appNameLabel->geometry();
+    m_appNameAnimation->setStartValue(currentGeometry);
     
     QRect endGeometry = currentGeometry;
     endGeometry.translate(0, -10);
     
-    appNameAnimation->setEndValue(endGeometry);
-    appNameAnimation->start();
+    m_appNameAnimation->setEndValue(endGeometry);
+    m_appNameAnimation->start();
     
     updateStatus("Loading complete!");
     

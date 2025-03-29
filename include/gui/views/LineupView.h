@@ -22,17 +22,25 @@
 #include <QtWidgets/QStackedWidget>
 #include <set>
 #include <map>
+#include <span>
+#include <optional>
 #include "services/TeamManager.h"
 #include "gui/views/LineupPitchView.h"
 #include "gui/components/dialogs/LineupCreationDialog.h"
 #include "gui/components/widgets/DraggableListWidget.h"
 
-class LineupView : public QWidget {
+class LineupView final : public QWidget {
     Q_OBJECT
 
     public:
-        explicit LineupView(TeamManager& teamManager, Team* currentTeam, QWidget *parent = nullptr);
+        explicit LineupView(TeamManager& teamManager, Team* currentTeam = nullptr, QWidget* parent = nullptr);
         ~LineupView() override;
+        
+        LineupView(const LineupView&) = delete;
+        LineupView& operator=(const LineupView&) = delete;
+        LineupView(LineupView&&) = delete;
+        LineupView& operator=(LineupView&&) = delete;
+        
         void setTeam(Team* team);
 
     signals:
@@ -47,7 +55,7 @@ class LineupView : public QWidget {
         void updatePlayerLists();
 
     protected:
-        virtual void resizeEvent(QResizeEvent* event) override;
+        void resizeEvent(QResizeEvent* event) override;
 
     private:
         void setupUi();
@@ -60,12 +68,12 @@ class LineupView : public QWidget {
         void connectDraggableListWidgets();
         void loadLineups();
         void populatePlayerLists();
-        void collectStartingPlayers(const std::set<int>& teamPlayerIds, QSet<int>& usedPlayerIds);
-        void collectBenchPlayers(const std::set<int>& teamPlayerIds, QSet<int>& usedPlayerIds);
-        void collectReservePlayers(const std::set<int>& teamPlayerIds, QSet<int>& usedPlayerIds);
+        void collectStartingPlayers(std::span<const Player> teamPlayers, QSet<int>& usedPlayerIds);
+        void collectBenchPlayers(std::span<const Player> teamPlayers, QSet<int>& usedPlayerIds);
+        void collectReservePlayers(std::span<const Player> teamPlayers, QSet<int>& usedPlayerIds);
         void addRemainingPlayersToReserveList(const QSet<int>& usedPlayerIds);
         void updateLineupVisibility(bool visible);
-        bool eventFilter(QObject* watched, QEvent* event);
+        [[nodiscard]] bool eventFilter(QObject* watched, QEvent* event) override;
         void loadPlayerImage(int playerId, const QString& imageUrl, const QString& position);
         void handleImageLoaded(QNetworkReply* reply, int playerId, const QString& position);
         void loadTeamPlayerImages();
@@ -84,86 +92,88 @@ class LineupView : public QWidget {
         void collectPlayerPositionsFromPitch();
         void removePlayerFromList(int playerId, QListWidget* sourceList);
         void addRemainingPlayersToReserves();
-        bool isPlayerInListAlready(int playerId, QListWidget* targetList);
-        QListWidgetItem* createPlayerItem(const Player& player);
-        Player* findPlayerById(int playerId);
-        QPixmap getPlayerImage(int playerId, const QString& position);
-        QWidget* createPlaceholderWidget(QWidget* parent);
+        [[nodiscard]] bool isPlayerInListAlready(int playerId, QListWidget* targetList) const;
+        [[nodiscard]] QListWidgetItem* createPlayerItem(const Player& player) const;
+        [[nodiscard]] Player* findPlayerById(int playerId) const;
+        [[nodiscard]] QPixmap getPlayerImage(int playerId, const QString& position);
+        [[nodiscard]] QWidget* createPlaceholderWidget(QWidget* parent);
         
         void setupLineupRatingDisplay();
         void updateLineupRatingDisplay();
-        double calculateInitialLineupRating();
+        [[nodiscard]] double calculateInitialLineupRating() const;
         void handleDeleteLineupAction();
         void setupListWidget(QListWidget* listWidget);
         void connectListWidgetItems(QListWidget* listWidget);
-        QString getPlayerImageUrl(const Player* player);
-        bool isPlayerInTeam(int playerId, const std::set<int>& teamPlayerIds);
+        [[nodiscard]] QString getPlayerImageUrl(const Player* player) const;
+        [[nodiscard]] bool isPlayerInTeam(int playerId, const std::set<int>& teamPlayerIds) const;
         void updateRatingLabel(double averageRating, double ratingDiff);
         void createAndSetupNewLineup(int formationId, const QString& lineupName);
         void setupPlaceholderLabels(QVBoxLayout* layout, QWidget* parent);
         void setupLineupControls(QGridLayout* controlsLayout);
         void setupStackedWidget();
-        QGroupBox* createBenchGroup();
-        QGroupBox* createReservesGroup();
+        [[nodiscard]] QGroupBox* createBenchGroup();
+        [[nodiscard]] QGroupBox* createReservesGroup();
         void setupInstructionsLabel();
         void processDropEventData(QDropEvent* dropEvent, QObject* watched, const QString& mimeText);
         void handleDropPositions(QDropEvent* dropEvent, int playerId, const QString& fromPosition, const QString& toPosition);
-        bool confirmLineupDeletion();
+        [[nodiscard]] bool confirmLineupDeletion();
         void setupPitchViewConnections();
         void setupListWidgetConnections();
         void addLineupToComboBox(const Lineup& lineup);
-        QString createLineupDisplayName(int lineupId, const QString& lineupName, const QString& formationName);
+        [[nodiscard]] QString createLineupDisplayName(int lineupId, const QString& lineupName, const QString& formationName) const;
         void highlightActiveLineup();
         void loadActiveTeamLineup();
         void setActiveLineup(const Lineup& activeLineup);
-        std::set<int> getTeamPlayerIds();
+        [[nodiscard]] std::set<int> getTeamPlayerIds() const;
         void loadPlayerImageFromUrl(const Player& player);
-        QListWidget* getListWidgetByPosition(const QString& position);
+        [[nodiscard]] QListWidget* getListWidgetByPosition(const QString& position) const;
         void removePlayerFromSourceList(int playerId, QListWidget* sourceList);
         void collectAllPlayerPositions();
         void addPlayerToPositions(int playerId, PositionType posType, const QString& fieldPos, int order);
         void collectPlayersFromList(QListWidget* listWidget, PositionType posType);
         void processPlayerDragDrop(int playerId, const QString& fromPosition, const QString& toPosition);
-        int findExistingPlayerAtPosition(const QString& position);
+        [[nodiscard]] int findExistingPlayerAtPosition(const QString& position) const;
         void addPlayerToList(int playerId, QListWidget* targetList);
-        bool isFromField(const QString& position);
-        bool isListPosition(const QString& position);
-        QPixmap loadPlayerImageFromSource(int playerId, const QString& position);
+        [[nodiscard]] bool isFromField(const QString& position) const;
+        [[nodiscard]] bool isListPosition(const QString& position) const;
+        [[nodiscard]] QPixmap loadPlayerImageFromSource(int playerId, const QString& position);
         void moveExistingPlayerToField(int existingPlayerId, Player* existingPlayer, const QString& position);
         void moveExistingPlayerToList(Player* player, const QString& targetPosition);
         void addPlayerToListAndTrack(int playerId, QListWidget* list, QSet<int>& usedPlayerIds);
         void processLoadedImage(QNetworkReply* reply, int playerId, const QString& position);
         void setupRatingLayout(QVBoxLayout* ratingLayout);
         void resetRatingDisplay();
-        double calculateCurrentLineupRating();
+        [[nodiscard]] double calculateCurrentLineupRating() const;
 
-        TeamManager& teamManager;
-        Team* currentTeam;
-        Lineup currentLineup;
-        QMap<int, Formation> formations;
-        QMap<int, QPixmap> playerImageCache;
+        TeamManager& m_teamManager;
+        Team* m_currentTeam{nullptr};
+        Lineup m_currentLineup;
+        QMap<int, Formation> m_formations;
+        QMap<int, QPixmap> m_playerImageCache;
 
-        QComboBox* existingLineupsComboBox;
-        QPushButton* newLineupButton;
-        QPushButton* deleteLineupButton;
+        QComboBox* m_existingLineupsComboBox{nullptr};
+        QPushButton* m_newLineupButton{nullptr};
+        QPushButton* m_deleteLineupButton{nullptr};
         
-        QWidget* lineupContentWidget;
+        QWidget* m_lineupContentWidget{nullptr};
         
-        LineupPitchView* pitchView;
-        QListWidget* reservesList;
-        QListWidget* benchList;
+        LineupPitchView* m_pitchView{nullptr};
+        QListWidget* m_reservesList{nullptr};
+        QListWidget* m_benchList{nullptr};
         
-        QScrollArea* lineupScrollArea;
-        QLabel* instructionsLabel;
+        QScrollArea* m_lineupScrollArea{nullptr};
+        QLabel* m_instructionsLabel{nullptr};
         
-        QLabel* lineupRatingLabel;
-        QWidget* lineupRatingWidget;
-        double initialLineupRating;
-        bool hasInitialLineupRating;
+        QLabel* m_lineupRatingLabel{nullptr};
+        QWidget* m_lineupRatingWidget{nullptr};
+        double m_initialLineupRating{0.0};
+        bool m_hasInitialLineupRating{false};
 
-        std::map<std::pair<int, int>, double> initialLineupRatings;
+        std::map<std::pair<int, int>, double> m_initialLineupRatings;
         
-        QStackedWidget* lineupStackedWidget;
+        QStackedWidget* m_lineupStackedWidget{nullptr};
+        
+        std::unique_ptr<QNetworkAccessManager> m_networkManager;
 };
 
 #endif

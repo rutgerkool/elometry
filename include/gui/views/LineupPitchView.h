@@ -9,21 +9,32 @@
 #include <QtGui/QDropEvent>
 #include <QtGui/QMouseEvent>
 #include <QtCore/QMimeData>
+#include <memory>
+#include <optional>
+#include <span>
 #include "services/TeamManager.h"
 #include "gui/components/widgets/PlayerPositionWidget.h"
 
-class LineupPitchView : public QWidget {
+class LineupPitchView final : public QWidget {
     Q_OBJECT
 
     public:
-        explicit LineupPitchView(QWidget *parent = nullptr);
+        explicit LineupPitchView(QWidget* parent = nullptr);
+        ~LineupPitchView() override;
+
+        LineupPitchView(const LineupPitchView&) = delete;
+        LineupPitchView& operator=(const LineupPitchView&) = delete;
+        LineupPitchView(LineupPitchView&&) = delete;
+        LineupPitchView& operator=(LineupPitchView&&) = delete;
+
         void setFormation(const QString& formation);
         void clearPosition(const QString& position);
         void clearPositions();
         void setPlayerAtPosition(int playerId, const QString& position);
-        QStringList getPositionsForFormation(const QString& formation);
-        QMap<QString, int> getPlayersPositions() const;
         void setPlayerAtPosition(int playerId, const QString& playerName, const QPixmap& playerImage, const QString& position);
+        
+        [[nodiscard]] QStringList getPositionsForFormation(const QString& formation) const;
+        [[nodiscard]] QMap<QString, int> getPlayersPositions() const;
         
     signals:
         void playerDragDropped(int playerId, const QString& fromPosition, const QString& toPosition);
@@ -35,13 +46,14 @@ class LineupPitchView : public QWidget {
     private:
         void setupFormationPositions(const QString& formation);
         void createPlayerWidgets();
-        QPoint getPositionCoordinates(const QString& position);
-        QMap<QString, QPoint> getFormationCoordinates(const QString& formation) const;
-        QMap<QString, QPoint> getFormation433Coordinates() const;
-        QMap<QString, QPoint> getFormation442Coordinates() const;
-        QMap<QString, QPoint> getFormation532Coordinates() const;
-        QMap<QString, QPoint> getFormation352Coordinates() const;
-        QMap<QString, QPoint> getFormation4231Coordinates() const;
+        
+        [[nodiscard]] QPoint getPositionCoordinates(const QString& position) const;
+        [[nodiscard]] QMap<QString, QPoint> getFormationCoordinates(const QString& formation) const;
+        [[nodiscard]] QMap<QString, QPoint> getFormation433Coordinates() const;
+        [[nodiscard]] QMap<QString, QPoint> getFormation442Coordinates() const;
+        [[nodiscard]] QMap<QString, QPoint> getFormation532Coordinates() const;
+        [[nodiscard]] QMap<QString, QPoint> getFormation352Coordinates() const;
+        [[nodiscard]] QMap<QString, QPoint> getFormation4231Coordinates() const;
         
         void drawPitch(QPainter& painter);
         void drawCenterLine(QPainter& painter, const QRect& fieldRect);
@@ -51,14 +63,14 @@ class LineupPitchView : public QWidget {
         void drawGridLines(QPainter& painter, const QRect& fieldRect);
         
         void initializeFormations();
-        QStringList getAllPositions() const;
+        [[nodiscard]] QStringList getAllPositions() const;
         void setupPlayerPositionWidget(PlayerPositionWidget* posWidget);
         void clearPlayerFromOtherPositions(int playerId, const QString& currentPosition);
         
-        QString currentFormation;
-        QGridLayout* mainLayout;
-        QMap<QString, PlayerPositionWidget*> positionWidgets;
-        QMap<QString, QStringList> formationPositionsMap;
+        QString m_currentFormation;
+        QGridLayout* m_mainLayout;
+        QMap<QString, PlayerPositionWidget*> m_positionWidgets;
+        QMap<QString, QStringList> m_formationPositionsMap;
 };
 
 #endif

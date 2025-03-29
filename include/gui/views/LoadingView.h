@@ -3,30 +3,36 @@
 
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QLabel>
-#include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QProgressBar>
+#include <QString>
 #include <QPropertyAnimation>
 #include <QSequentialAnimationGroup>
 #include <QGraphicsOpacityEffect>
+#include <memory>
 
-class LoadingView : public QWidget {
+class LoadingView final : public QWidget {
     Q_OBJECT
 
     public:
-        explicit LoadingView(QWidget *parent = nullptr);
-        ~LoadingView() override;
+        explicit LoadingView(QWidget* parent = nullptr);
+        ~LoadingView() override = default;
+
+        LoadingView(const LoadingView&) = delete;
+        LoadingView& operator=(const LoadingView&) = delete;
+        LoadingView(LoadingView&&) = delete;
+        LoadingView& operator=(LoadingView&&) = delete;
 
     public slots:
         void updateStatus(const QString& status);
         void updateProgress(int value);
         void markLoadingComplete();
-        
+            
     signals:
         void loadingFinished();
 
     private:
         void setupUi();
-        void createLayout();
+        void setupLayout();
         void setupAppNameLabel();
         void setupProgressBar();
         void setupStatusLabel();
@@ -35,14 +41,14 @@ class LoadingView : public QWidget {
         void setupStatusAnimation();
         void setupAppNameAnimation();
         
-        QLabel* statusLabel;
-        QLabel* appNameLabel;
-        QProgressBar* progressBar;
+        QLabel* m_statusLabel{nullptr};
+        QLabel* m_appNameLabel{nullptr};
+        QProgressBar* m_progressBar{nullptr};
         
-        QPropertyAnimation* progressAnimation = nullptr;
-        QPropertyAnimation* statusOpacityAnimation = nullptr;
-        QGraphicsOpacityEffect* statusOpacityEffect = nullptr;
-        QPropertyAnimation* appNameAnimation = nullptr;
+        std::unique_ptr<QPropertyAnimation> m_progressAnimation;
+        std::unique_ptr<QPropertyAnimation> m_statusOpacityAnimation;
+        std::unique_ptr<QGraphicsOpacityEffect> m_statusOpacityEffect;
+        std::unique_ptr<QPropertyAnimation> m_appNameAnimation;
 };
 
 #endif

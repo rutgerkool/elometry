@@ -6,126 +6,65 @@
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QLabel> 
-#include <QtGui/QIcon>
 #include <QtCore/QSize> 
 #include <QTimer>
 #include <QEasingCurve>
 #include <QPropertyAnimation>
 #include <QGraphicsOpacityEffect>
-#include <QParallelAnimationGroup>
 #include <QScreen>
 #include <QApplication>
-#include <QGuiApplication>
-#include <QCursor>
 
-MainWindow::MainWindow(RatingManager& ratingManager, TeamManager& teamManager, Database& database, QWidget *parent)
+MainWindow::MainWindow(RatingManager& ratingManager, TeamManager& teamManager, Database& database, QWidget* parent)
     : QMainWindow(parent)
-    , ratingManager(ratingManager)
-    , teamManager(teamManager)
-    , database(database)
-    , playerListView(nullptr)
-    , teamManagerView(nullptr)
-    , settingsView(nullptr)
-    , loadingView(nullptr)
-    , mainView(nullptr)
-    , stackedWidget(nullptr)
-    , loadingThread(nullptr)
-    , fadeAnimation(nullptr)
-    , opacityEffect(nullptr)
-    , appInitialized(false)
+    , m_ratingManager(ratingManager)
+    , m_teamManager(teamManager)
+    , m_database(database)
+    , m_loadingView(std::make_unique<LoadingView>())
+    , m_loadingThread(std::make_unique<QThread>())
+    , m_viewTransitionEffect(std::make_unique<QGraphicsOpacityEffect>())
+    , m_fadeAnimation(nullptr)
 {
     setFixedSize(1024, 848);
-
-    stackedWidget = new QStackedWidget(this);
-
-    loadingView = new LoadingView(this);
     
-    mainView = new QWidget(this);
+    m_stackedWidget = new QStackedWidget(this);
+    m_mainMenuView = new QWidget(this);
     
-    stackedWidget->addWidget(loadingView);
-    stackedWidget->addWidget(mainView);
+    m_stackedWidget->addWidget(m_loadingView.get());
+    m_stackedWidget->addWidget(m_mainMenuView);
     
-    setCentralWidget(stackedWidget);
+    setCentralWidget(m_stackedWidget);
+    m_stackedWidget->setCurrentWidget(m_loadingView.get());
     
-    stackedWidget->setCurrentWidget(loadingView);
-    
-    setupAnimations();
-    initializeApp();
+    m_fadeAnimation = std::make_unique<QPropertyAnimation>(m_viewTransitionEffect.get(), "opacity");
+    setupViewTransitions();
+    initializeApplication();
 
     setWindowTitle("Elometry");
 }
 
-void MainWindow::centerWindow() {
-    QPoint cursorPos = QCursor::pos();
-    QScreen* screen = nullptr;
-
-    for (QScreen* s : QGuiApplication::screens()) {
-        if (s->geometry().contains(cursorPos)) {
-            screen = s;
-            break;
-        }
-    }
+void MainWindow::setupUserInterface() {
+    createMainMenu();
     
-    if (!screen) {
-        screen = QGuiApplication::primaryScreen();
-    }
-    
-    if (screen) {
-        QRect screenGeometry = screen->availableGeometry();
-        
-        int x = screenGeometry.x() + (screenGeometry.width() - width()) / 2;
-        int y = screenGeometry.y() + (screenGeometry.height() - height()) / 2;
-        
-        move(x, y);
-    }
+    m_mainMenuView->setGraphicsEffect(m_viewTransitionEffect.get());
+    m_viewTransitionEffect->setOpacity(1.0);
 }
 
-void MainWindow::showEvent(QShowEvent* event) {
-    centerWindow();
-    QMainWindow::showEvent(event);
-}
-
-MainWindow::~MainWindow() {
-    if (loadingThread && loadingThread->isRunning()) {
-        loadingThread->requestInterruption();
-        loadingThread->quit();
-        if (!loadingThread->wait(1000)) {
-            loadingThread->terminate();
-            loadingThread->wait();
-        }
-    }
-    
-    disconnect(this, nullptr, nullptr, nullptr);
-
-    delete fadeAnimation;
-    delete opacityEffect;
-}
-
-void MainWindow::setupAnimations() {
-    opacityEffect = new QGraphicsOpacityEffect(this);
-    fadeAnimation = new QPropertyAnimation(opacityEffect, "opacity", this);
-    fadeAnimation->setDuration(200);
-    fadeAnimation->setStartValue(0.0);
-    fadeAnimation->setEndValue(1.0);
-    fadeAnimation->setEasingCurve(QEasingCurve::OutCubic);
-}
-
-void MainWindow::setupUi() {
-    QVBoxLayout* layout = new QVBoxLayout(mainView);
+void MainWindow::createMainMenu() {
+    auto* layout = new QVBoxLayout(m_mainMenuView);
     layout->setContentsMargins(40, 40, 40, 40);
     layout->setSpacing(24);
 
-    QLabel* headerLabel = new QLabel("Elometry", this);
+    auto* headerLabel = new QLabel("Elometry", m_mainMenuView);
     headerLabel->setObjectName("headerLabel");
     layout->addWidget(headerLabel, 0, Qt::AlignCenter);
 
-    QPushButton* playerListButton = new QPushButton("Player Ratings List", this);
+    auto* playerListButton = new QPushButton("Player Ratings List", m_mainMenuView);
     playerListButton->setMinimumHeight(60);
 
-    QPushButton* teamManagerButton = new QPushButton("Team Manager", this);
+    auto* teamManagerButton = new QPushButton("Team Manager", m_mainMenuView);
     teamManagerButton->setMinimumHeight(60);
 
-    QPushButton* settingsButton = new QPushButton("Settings", this);
+    auto* settingsButton = new QPushButton("Settings", m_mainMenuView);
     settingsButton->setMinimumHeight(60);
 
     layout->addWidget(playerListButton);
@@ -133,99 +72,161 @@ void MainWindow::setupUi() {
     layout->addWidget(teamManagerButton);
     layout->addSpacing(16);
     layout->addWidget(settingsButton);
-    layout->addStretch();  
+    layout->addStretch();
 
-    mainView->setGraphicsEffect(opacityEffect);
-    opacityEffect->setOpacity(1.0);
-
-    connect(playerListButton, &QPushButton::clicked, this, &MainWindow::showPlayerList);
-    connect(teamManagerButton, &QPushButton::clicked, this, &MainWindow::showTeamManager);
-    connect(settingsButton, &QPushButton::clicked, this, &MainWindow::showSettings);
+    connect(playerListButton, &QPushButton::clicked, this, &MainWindow::navigateToPlayerList);
+    connect(teamManagerButton, &QPushButton::clicked, this, &MainWindow::navigateToTeamManager);
+    connect(settingsButton, &QPushButton::clicked, this, &MainWindow::navigateToSettings);
 }
 
-void MainWindow::setupConnections() {
-    connect(playerListView, &PlayerListView::backToMain, this, &MainWindow::showMainView);
-    connect(teamManagerView, &TeamManagerView::backToMain, this, &MainWindow::showMainView);
-    connect(settingsView, &SettingsView::backToMain, this, &MainWindow::showMainView);
-}
+void MainWindow::centerWindowOnScreen() {
+    const QPoint cursorPos = QCursor::pos();
+    QScreen* targetScreen = nullptr;
 
-void MainWindow::animateViewTransition(QWidget* newWidget) {
-    fadeAnimation->setDirection(QPropertyAnimation::Backward);
-    connect(fadeAnimation, &QPropertyAnimation::finished, this, [this, newWidget]() {
-        stackedWidget->setCurrentWidget(newWidget);
-        fadeAnimation->setDirection(QPropertyAnimation::Forward);
-        fadeAnimation->start();
-        disconnect(fadeAnimation, &QPropertyAnimation::finished, this, nullptr);
-    });
-    fadeAnimation->start();
-}
-
-void MainWindow::showMainView() {
-    if (!appInitialized) {
-        playerListView = new PlayerListView(ratingManager, teamManager, this);
-        teamManagerView = new TeamManagerView(teamManager, this);
-        settingsView = new SettingsView(database, this);
-        
-        stackedWidget->addWidget(playerListView);
-        stackedWidget->addWidget(teamManagerView);
-        stackedWidget->addWidget(settingsView);
-        
-        setupConnections();
-        appInitialized = true;
+    for (QScreen* screen : QGuiApplication::screens()) {
+        if (screen->geometry().contains(cursorPos)) {
+            targetScreen = screen;
+            break;
+        }
     }
     
-    animateViewTransition(mainView);
-}
-
-void MainWindow::showPlayerList() {
-    animateViewTransition(playerListView);
-}
-
-void MainWindow::showTeamManager() {
-    animateViewTransition(teamManagerView);
-}
-
-void MainWindow::showSettings() {
-    animateViewTransition(settingsView);
-}
-
-void MainWindow::initializeApp() {
-    DataLoader* dataLoader = new DataLoader(ratingManager, teamManager, database);
-    loadingThread = new QThread(this);
-    dataLoader->moveToThread(loadingThread);
-    loadingView->updateStatus("Starting");
-    loadingView->updateProgress(0);
+    if (!targetScreen) {
+        targetScreen = QGuiApplication::primaryScreen();
+    }
     
-    connect(loadingThread, &QThread::started, dataLoader, &DataLoader::loadData, 
+    if (targetScreen) {
+        const QRect screenGeometry = targetScreen->availableGeometry();
+        move(screenGeometry.center() - rect().center());
+    }
+}
+
+void MainWindow::showEvent(QShowEvent* event) {
+    centerWindowOnScreen();
+    QMainWindow::showEvent(event);
+}
+
+void MainWindow::setupViewTransitions() {
+    m_fadeAnimation->setDuration(200);
+    m_fadeAnimation->setStartValue(0.0);
+    m_fadeAnimation->setEndValue(1.0);
+    m_fadeAnimation->setEasingCurve(QEasingCurve::OutCubic);
+}
+
+void MainWindow::initializeViews() {
+    m_playerListView = std::make_unique<PlayerListView>(m_ratingManager, m_teamManager, this);
+    m_teamManagerView = std::make_unique<TeamManagerView>(m_teamManager, this);
+    m_settingsView = std::make_unique<SettingsView>(m_database, this);
+    
+    m_stackedWidget->addWidget(m_playerListView.get());
+    m_stackedWidget->addWidget(m_teamManagerView.get());
+    m_stackedWidget->addWidget(m_settingsView.get());
+    
+    connectSignals();
+    m_appInitialized = true;
+}
+
+void MainWindow::connectSignals() {
+    connect(m_playerListView.get(), &PlayerListView::backToMain, this, &MainWindow::navigateToMainMenu);
+    connect(m_teamManagerView.get(), &TeamManagerView::backToMain, this, &MainWindow::navigateToMainMenu);
+    connect(m_settingsView.get(), &SettingsView::backToMain, this, &MainWindow::navigateToMainMenu);
+}
+
+void MainWindow::navigateToPlayerList() {
+    QWidget* target = m_playerListView.get();
+    m_fadeAnimation->setDirection(QPropertyAnimation::Backward);
+    
+    connect(m_fadeAnimation.get(), &QPropertyAnimation::finished, this, [this, target]() {
+        m_stackedWidget->setCurrentWidget(target);
+        m_fadeAnimation->setDirection(QPropertyAnimation::Forward);
+        m_fadeAnimation->start();
+        disconnect(m_fadeAnimation.get(), &QPropertyAnimation::finished, this, nullptr);
+    });
+    m_fadeAnimation->start();
+}
+
+void MainWindow::navigateToTeamManager() {
+    QWidget* target = m_teamManagerView.get();
+    m_fadeAnimation->setDirection(QPropertyAnimation::Backward);
+    
+    connect(m_fadeAnimation.get(), &QPropertyAnimation::finished, this, [this, target]() {
+        m_stackedWidget->setCurrentWidget(target);
+        m_fadeAnimation->setDirection(QPropertyAnimation::Forward);
+        m_fadeAnimation->start();
+        disconnect(m_fadeAnimation.get(), &QPropertyAnimation::finished, this, nullptr);
+    });
+    m_fadeAnimation->start();
+}
+
+void MainWindow::navigateToSettings() {
+    QWidget* target = m_settingsView.get();
+    m_fadeAnimation->setDirection(QPropertyAnimation::Backward);
+    
+    connect(m_fadeAnimation.get(), &QPropertyAnimation::finished, this, [this, target]() {
+        m_stackedWidget->setCurrentWidget(target);
+        m_fadeAnimation->setDirection(QPropertyAnimation::Forward);
+        m_fadeAnimation->start();
+        disconnect(m_fadeAnimation.get(), &QPropertyAnimation::finished, this, nullptr);
+    });
+    m_fadeAnimation->start();
+}
+
+void MainWindow::navigateToMainMenu() {
+    QWidget* target = m_mainMenuView;
+    m_fadeAnimation->setDirection(QPropertyAnimation::Backward);
+    
+    connect(m_fadeAnimation.get(), &QPropertyAnimation::finished, this, [this, target]() {
+        m_stackedWidget->setCurrentWidget(target);
+        m_fadeAnimation->setDirection(QPropertyAnimation::Forward);
+        m_fadeAnimation->start();
+        disconnect(m_fadeAnimation.get(), &QPropertyAnimation::finished, this, nullptr);
+    });
+    m_fadeAnimation->start();
+}
+
+void MainWindow::initializeApplication() {
+    auto* dataLoader = new DataLoader(m_ratingManager, m_teamManager, m_database);
+    dataLoader->moveToThread(m_loadingThread.get());
+    m_loadingView->updateStatus("Starting");
+    m_loadingView->updateProgress(0);
+    
+    connect(m_loadingThread.get(), &QThread::started, dataLoader, &DataLoader::loadData, 
             Qt::QueuedConnection);
     
-    connect(dataLoader, &DataLoader::loadingComplete, this, &MainWindow::onLoadingComplete, 
+    connect(dataLoader, &DataLoader::loadingComplete, this, &MainWindow::transitionToMainView, 
             Qt::QueuedConnection);
     
-    connect(dataLoader, &DataLoader::progressUpdate, this, &MainWindow::onDataLoadProgress, 
+    connect(dataLoader, &DataLoader::progressUpdate, this, &MainWindow::handleDataLoadProgress, 
             Qt::QueuedConnection);
     
     QTimer::singleShot(100, [this]() {
-        loadingThread->start();
+        m_loadingThread->start();
     });
 }
 
-void MainWindow::onLoadingComplete() {
-    setupUi();
+void MainWindow::handleDataLoadProgress(const QString& status, int progress) {
+    m_loadingView->updateStatus(status);
+    m_loadingView->updateProgress(progress);
     
-    if (loadingThread && loadingThread->isRunning()) {
-        loadingThread->quit();
-        loadingThread->wait();
+    if (progress >= 100) {
+        QTimer::singleShot(500, m_loadingView.get(), &LoadingView::markLoadingComplete);
+    }
+}
+
+void MainWindow::transitionToMainView() {
+    setupUserInterface();
+    
+    if (m_loadingThread->isRunning()) {
+        m_loadingThread->quit();
+        m_loadingThread->wait();
     }
     
     showMainView();
 }
 
-void MainWindow::onDataLoadProgress(const QString& status, int progress) {
-    loadingView->updateStatus(status);
-    loadingView->updateProgress(progress);
-    
-    if (progress >= 100) {
-        QTimer::singleShot(500, loadingView, &LoadingView::markLoadingComplete);
+void MainWindow::showMainView() {
+    if (!m_appInitialized) {
+        initializeViews();
     }
+    
+    navigateToMainMenu();
 }
