@@ -1,136 +1,148 @@
 #include "gui/models/PlayerListModel.h"
 #include <algorithm>
+#include <ranges>
 
-PlayerListModel::PlayerListModel(const std::vector<std::pair<int, Player>>& players, QObject *parent)
+PlayerListModel::PlayerListModel(std::span<const std::pair<int, Player>> players, QObject* parent)
     : QAbstractTableModel(parent)
-    , allPlayers(players)
-    , filteredPlayers(players)
+    , m_allPlayers(players.begin(), players.end())
+    , m_filteredPlayers(players.begin(), players.end())
 {
 }
 
-int PlayerListModel::rowCount(const QModelIndex &parent) const {
-    if (parent.isValid()) return 0;
+int PlayerListModel::rowCount(const QModelIndex& parent) const {
+    if (parent.isValid()) {
+        return 0;
+    }
     
-    int totalFiltered = filteredPlayerCount();
-    
-    return std::min(maxPlayers, totalFiltered - startIndex);
+    const int totalFiltered = filteredPlayerCount();
+    return std::min(m_maxPlayers, totalFiltered - m_startIndex);
 }
 
-int PlayerListModel::columnCount(const QModelIndex &parent) const {
-    if (parent.isValid()) return 0;
-    return 5; 
+int PlayerListModel::columnCount(const QModelIndex& parent) const {
+    return parent.isValid() ? 0 : 5;
 }
 
-QVariant PlayerListModel::data(const QModelIndex &index, int role) const {
-    if (!index.isValid()) return QVariant();
+QVariant PlayerListModel::getDisplayData(const QModelIndex& index) const {
+    const int actualRow = index.row() + m_startIndex;
     
-    int actualRow = index.row() + startIndex;
-    
-    if (actualRow < 0 || static_cast<size_t>(actualRow) >= filteredPlayers.size()) {
-        return QVariant();
+    if (actualRow < 0 || actualRow >= static_cast<int>(m_filteredPlayers.size())) {
+        return {};
     }
 
-    if (role == Qt::DisplayRole) {
-        const auto& player = filteredPlayers[actualRow];
-        switch (index.column()) {
-            case 0: return player.first; 
-            case 1: return QString::fromStdString(player.second.name);
-            case 2: return player.second.rating;
-            case 3: return QString::fromStdString(player.second.subPosition);
-            case 4: return player.second.marketValue;
-        }
+    const auto& [playerId, player] = m_filteredPlayers[actualRow];
+    
+    switch (index.column()) {
+        case 0: return playerId;
+        case 1: return QString::fromStdString(player.name);
+        case 2: return player.rating;
+        case 3: return QString::fromStdString(player.subPosition);
+        case 4: return player.marketValue;
+        default: return {};
     }
+}
 
-    return QVariant();
+QVariant PlayerListModel::data(const QModelIndex& index, int role) const {
+    if (!index.isValid()) {
+        return {};
+    }
+    
+    return role == Qt::DisplayRole ? getDisplayData(index) : QVariant{};
 }
 
 QVariant PlayerListModel::headerData(int section, Qt::Orientation orientation, int role) const {
-    if (role != Qt::DisplayRole) return QVariant();
-
-    if (orientation == Qt::Horizontal) {
-        switch (section) {
-            case 0: return "ID";
-            case 1: return "Name";
-            case 2: return "Rating";
-            case 3: return "Position";
-            case 4: return "Market Value";
-        }
+    if (role != Qt::DisplayRole || orientation != Qt::Horizontal) {
+        return {};
     }
 
-    return QVariant();
-}
-
-int PlayerListModel::filteredPlayerCount() const {
-    return static_cast<int>(filteredPlayers.size());
-}
-
-size_t PlayerListModel::totalPlayers() const {
-    return allPlayers.size();
-}
-
-void PlayerListModel::setFilter(const QString& filter) {
-    beginResetModel();
-    currentFilter = filter;
-    
-    filteredPlayers = allPlayers;
-    
-    if (!filter.isEmpty()) {
-        filteredPlayers.erase(
-            std::remove_if(filteredPlayers.begin(), filteredPlayers.end(),
-                [&filter](const auto& player) {
-                    return !QString::fromStdString(player.second.name)
-                        .contains(filter, Qt::CaseInsensitive);
-                }
-            ),
-            filteredPlayers.end()
-        );
+    switch (section) {
+        case 0: return "ID";
+        case 1: return "Name";
+        case 2: return "Rating";
+        case 3: return "Position";
+        case 4: return "Market Value";
+        default: return {};
     }
+}
 
-    if (!currentPosition.isEmpty()) {
-        filteredPlayers.erase(
-            std::remove_if(filteredPlayers.begin(), filteredPlayers.end(),
-                [this](const auto& player) {
-                    return player.second.position != currentPosition.toStdString();
-                }
-            ),
-            filteredPlayers.end()
-        );
+bool PlayerListModel::matchesFilter(const std::pair<int, Player>& player) const {
+    if (m_currentFilter.isEmpty()) {
+        return true;
     }
     
-    startIndex = 0;
+    return QString::fromStdString(player.second.name)
+        .contains(m_currentFilter, Qt::CaseInsensitive);
+}
+
+bool PlayerListModel::matchesPosition(const std::pair<int, Player>& player) const {
+    if (m_currentPosition.isEmpty()) {
+        return true;
+    }
     
-    endResetModel();
+    return player.second.position == m_currentPosition.toStdString();
+}
+
+void PlayerListModel::applyFilters() {
+    m_filteredPlayers = m_allPlayers;
+    
+    auto isMatching = [this](const auto& player) {
+        return matchesFilter(player) && matchesPosition(player);
+    };
+    
+    m_filteredPlayers.erase(
+        std::remove_if(m_filteredPlayers.begin(), m_filteredPlayers.end(), 
+                       [&isMatching](const auto& player) { return !isMatching(player); }),
+        m_filteredPlayers.end()
+    );
+}
+
+int PlayerListModel::filteredPlayerCount() const noexcept {
+    return static_cast<int>(m_filteredPlayers.size());
+}
+
+size_t PlayerListModel::totalPlayers() const noexcept {
+    return m_allPlayers.size();
 }
 
 void PlayerListModel::setPagination(int start, int max) {
     beginResetModel();
-    startIndex = start;
-    maxPlayers = max;
+    m_startIndex = start;
+    m_maxPlayers = max;
     endResetModel();
 }
 
+void PlayerListModel::setFilter(const QString& filter) {
+    beginResetModel();
+    m_currentFilter = filter;
+    
+    applyFilters();
+    m_startIndex = 0;
+    
+    endResetModel();
+}
 
 void PlayerListModel::setPositionFilter(const QString& position) {
-    currentPosition = position;
-    setFilter(currentFilter);
+    m_currentPosition = position;
+    setFilter(m_currentFilter);
 }
 
 void PlayerListModel::sort(int column, Qt::SortOrder order) {
     beginResetModel();
 
-    std::sort(filteredPlayers.begin(), filteredPlayers.end(),
-        [column, order](const std::pair<int, Player>& a, const std::pair<int, Player>& b) {
-            switch (column) {
-                case 0: return order == Qt::AscendingOrder ? a.first < b.first : a.first > b.first;  
-                case 1: return order == Qt::AscendingOrder ? a.second.name < b.second.name : a.second.name > b.second.name;  
-                case 2: return order == Qt::AscendingOrder ? a.second.rating < b.second.rating : a.second.rating > b.second.rating;  
-                case 3: return order == Qt::AscendingOrder ? a.second.subPosition < b.second.subPosition : a.second.subPosition > b.second.subPosition;
-                case 4: return order == Qt::AscendingOrder ? a.second.marketValue < b.second.marketValue : a.second.marketValue > b.second.marketValue;
-            }
-            return false;
-        });
+    auto comparator = [column, order](const auto& a, const auto& b) {
+        const bool isAscending = order == Qt::AscendingOrder;
         
-    startIndex = 0;
+        switch (column) {
+            case 0: return isAscending ? a.first < b.first : a.first > b.first;
+            case 1: return isAscending ? a.second.name < b.second.name : a.second.name > b.second.name;
+            case 2: return isAscending ? a.second.rating < b.second.rating : a.second.rating > b.second.rating;
+            case 3: return isAscending ? a.second.subPosition < b.second.subPosition : a.second.subPosition > b.second.subPosition;
+            case 4: return isAscending ? a.second.marketValue < b.second.marketValue : a.second.marketValue > b.second.marketValue;
+            default: return false;
+        }
+    };
+    
+    std::ranges::sort(m_filteredPlayers, comparator);
+    m_startIndex = 0;
 
     endResetModel();
 }
