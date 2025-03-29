@@ -2,16 +2,28 @@
 #define DATALOADER_H
 
 #include <QObject>
-#include "services/RatingManager.h"
-#include "services/TeamManager.h"
-#include "utils/database/Database.h"
+#include <QString>
+#include <memory>
+#include <filesystem>
 
-class DataLoader : public QObject {
+class RatingManager;
+class TeamManager;
+class Database;
+
+class DataLoader final : public QObject {
     Q_OBJECT
 
     public:
-        explicit DataLoader(RatingManager& rm, TeamManager& tm, Database& db, QObject* parent = nullptr);
-        ~DataLoader() override;
+        explicit DataLoader(RatingManager& ratingManager, 
+                        TeamManager& teamManager, 
+                        Database& database, 
+                        QObject* parent = nullptr);
+        ~DataLoader() override = default;
+
+        DataLoader(const DataLoader&) = delete;
+        DataLoader& operator=(const DataLoader&) = delete;
+        DataLoader(DataLoader&&) = delete;
+        DataLoader& operator=(DataLoader&&) = delete;
 
     public slots:
         void loadData();
@@ -19,11 +31,16 @@ class DataLoader : public QObject {
     signals:
         void progressUpdate(const QString& status, int progress);
         void loadingComplete();
-        
+            
     private:
-        RatingManager& ratingManager;
-        TeamManager& teamManager;
-        Database& database;
+        void initializeDatabase();
+        void loadRatingData();
+        void loadTeamData();
+        void notifyProgress(const QString& status, int progress);
+
+        RatingManager& m_ratingManager;
+        TeamManager& m_teamManager;
+        Database& m_database;
 };
 
 #endif

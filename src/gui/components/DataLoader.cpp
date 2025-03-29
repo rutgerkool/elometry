@@ -1,36 +1,54 @@
 #include "gui/components/DataLoader.h"
+#include "services/RatingManager.h"
+#include "services/TeamManager.h"
+#include "utils/database/Database.h"
+
+#include <QCoreApplication>
+#include <QTimer>
 #include <filesystem>
 
 namespace fs = std::filesystem;
 
-DataLoader::DataLoader(RatingManager& rm, TeamManager& tm, Database& db, QObject* parent)
+DataLoader::DataLoader(RatingManager& ratingManager, 
+                     TeamManager& teamManager, 
+                     Database& database, 
+                     QObject* parent)
     : QObject(parent)
-    , ratingManager(rm)
-    , teamManager(tm)
-    , database(db)
+    , m_ratingManager(ratingManager)
+    , m_teamManager(teamManager)
+    , m_database(database)
 {}
 
-DataLoader::~DataLoader() {
-    disconnect(this, nullptr, nullptr, nullptr);
+void DataLoader::loadData() {
+    notifyProgress("Connecting to database", 10);
+    initializeDatabase();
+    
+    loadRatingData();
+    loadTeamData();
+    
+    notifyProgress("Ready!", 100);
+    emit loadingComplete();
 }
 
-void DataLoader::loadData()
-{
-    emit progressUpdate("Connecting to database", 10);
-    
+void DataLoader::initializeDatabase() {
     auto progressCallback = [this](const std::string& status, int progress) {
         emit progressUpdate(QString::fromStdString(status), progress);
     };
     
-    database.initialize(progressCallback);
+    m_database.initialize(progressCallback);
+}
 
-    emit progressUpdate("Processing player ratings", 75);
-    ratingManager.loadAndProcessRatings();
-    
-    emit progressUpdate("Loading team data", 90);
-    teamManager.loadTeams();
-    
-    emit progressUpdate("Ready!", 100);
-    
-    emit loadingComplete();
+void DataLoader::loadRatingData() {
+    notifyProgress("Processing player ratings", 75);
+    m_ratingManager.loadAndProcessRatings();
+}
+
+void DataLoader::loadTeamData() {
+    notifyProgress("Loading team data", 90);
+    m_teamManager.loadTeams();
+}
+
+void DataLoader::notifyProgress(const QString& status, int progress) {
+    emit progressUpdate(status, progress);
+    QCoreApplication::processEvents();
 }
