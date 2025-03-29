@@ -1,28 +1,35 @@
 #ifndef PLAYERPOSITIONWIDGET_H
 #define PLAYERPOSITIONWIDGET_H
 
-#include <QtWidgets/QWidget>
-#include <QtWidgets/QGridLayout>
 #include <QtWidgets/QLabel>
-#include <QtCore/QMap>
 #include <QtGui/QDragEnterEvent>
 #include <QtGui/QDropEvent>
 #include <QtGui/QMouseEvent>
 #include <QtCore/QMimeData>
-#include "services/TeamManager.h"
 
-class PlayerPositionWidget : public QLabel {
+class QVBoxLayout;
+
+#include <optional>
+#include <string_view>
+
+class PlayerPositionWidget final : public QLabel {
     Q_OBJECT
     
     public:
-        explicit PlayerPositionWidget(const QString& positionName, QWidget *parent = nullptr);
+        explicit PlayerPositionWidget(QString positionName, QWidget* parent = nullptr);
+        ~PlayerPositionWidget() override = default;
         
-        void setPlayer(int playerId, const QString& playerName, const QPixmap& playerImage = QPixmap());
+        PlayerPositionWidget(const PlayerPositionWidget&) = delete;
+        PlayerPositionWidget& operator=(const PlayerPositionWidget&) = delete;
+        PlayerPositionWidget(PlayerPositionWidget&&) = delete;
+        PlayerPositionWidget& operator=(PlayerPositionWidget&&) = delete;
+        
+        void setPlayer(int playerId, const QString& playerName, const QPixmap& playerImage = {});
         void clearPlayer();
         
-        bool hasPlayer() const { return playerId > 0; }
-        int getPlayerId() const { return playerId; }
-        QString getPositionName() const { return positionName; }
+        [[nodiscard]] bool hasPlayer() const noexcept { return m_playerId > 0; }
+        [[nodiscard]] int getPlayerId() const noexcept { return m_playerId; }
+        [[nodiscard]] const QString& getPositionName() const noexcept { return m_positionName; }
         
     signals:
         void playerDragged(int playerId, const QString& fromPosition);
@@ -37,22 +44,27 @@ class PlayerPositionWidget : public QLabel {
         void dropEvent(QDropEvent* event) override;
         
     private:
+        void setupInitialState();
         void createPlayerLayout(const QPixmap& playerImage);
         void createPlayerWithImage(const QPixmap& playerImage);
         void createPlayerWithInitials();
-        QString truncateNameForDisplay(const QString& name) const;
-        QString generateInitials() const;
-        void setupContentWidget(QVBoxLayout* contentLayout);
+        void setupContentLayout(QVBoxLayout* contentLayout);
+        
         void configureWithPlayer();
         void configureWithoutPlayer();
-        QPixmap createCircularAvatar(const QPixmap& playerImage);
-        QMimeData* setupDragMimeData();
-        QPixmap createDragPixmap();
         
-        QString positionName;
-        int playerId;
-        QString playerName;
-        QPoint dragStartPosition;
+        [[nodiscard]] std::unique_ptr<QMimeData> createDragMimeData() const;
+        [[nodiscard]] QPixmap createDragPixmap() const;
+        
+        [[nodiscard]] QString truncateNameForDisplay(std::string_view name) const;
+        [[nodiscard]] QString generateInitials() const;
+        [[nodiscard]] QPixmap createCircularAvatar(const QPixmap& playerImage) const;
+        void clearLayout();
+        
+        QString m_positionName;
+        int m_playerId = -1;
+        QString m_playerName;
+        QPoint m_dragStartPosition;
 };
 
 #endif
