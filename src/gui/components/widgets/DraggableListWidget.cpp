@@ -1,119 +1,141 @@
 #include "gui/components/widgets/DraggableListWidget.h"
-#include <QtWidgets/QMessageBox>
-#include <QtWidgets/QGroupBox>
-#include <QTimer>
-#include <QFile>
-#include <set>
+#include <QtCore/QMimeData>
+#include <QtWidgets/QApplication>
 
-QMimeData* DraggableListWidget::mimeData(const QList<QListWidgetItem*> &items) const {
+DraggableListWidget::DraggableListWidget(QString listType, QWidget* parent)
+    : QListWidget(parent)
+    , m_listType(std::move(listType))
+{
+}
+
+QMimeData* DraggableListWidget::mimeData(const QList<QListWidgetItem*>& items) const {
     QMimeData* mimeData = QListWidget::mimeData(items);
-    if (items.count() == 1) {
-        int playerId = items.first()->data(Qt::UserRole).toInt();
-        mimeData->setText(QString("%1|%2").arg(playerId).arg(listType));
+    
+    if (items.size() == 1) {
+        const int playerId = items.first()->data(Qt::UserRole).toInt();
+        mimeData->setText(QString("%1|%2").arg(playerId).arg(m_listType));
     }
+    
     return mimeData;
 }
 
 void DraggableListWidget::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
-        dragStartPosition = event->pos();
-        dragStarted = false;
+        m_dragStartPosition = event->pos();
+        m_dragStarted = false;
     }
+    
     QListWidget::mousePressEvent(event);
 }
 
 void DraggableListWidget::mouseMoveEvent(QMouseEvent* event) {
-    if (!(event->buttons() & Qt::LeftButton))
+    if (!(event->buttons() & Qt::LeftButton)) {
         return;
-        
-    if ((event->pos() - dragStartPosition).manhattanLength() >= QApplication::startDragDistance()) {
-        dragStarted = true;
+    }
+    
+    if ((event->pos() - m_dragStartPosition).manhattanLength() >= QApplication::startDragDistance()) {
+        m_dragStarted = true;
     }
     
     QListWidget::mouseMoveEvent(event);
 }
 
 void DraggableListWidget::mouseReleaseEvent(QMouseEvent* event) {
-    dragStarted = false;
+    m_dragStarted = false;
     QListWidget::mouseReleaseEvent(event);
 }
 
 void DraggableListWidget::dragEnterEvent(QDragEnterEvent* event) {
-    if (event->mimeData()->hasText()) {
-        QString text = event->mimeData()->text();
-
-        if (text.contains("|")) {
-            QStringList parts = text.split("|");
-            QString source = parts[1];
-            
-            if (source != "BENCH" && source != "RESERVE") {
-                event->setDropAction(Qt::MoveAction);
-                event->accept();
-                return;
-            }
-        }
-        event->acceptProposedAction();
+    if (!hasDragData(event->mimeData())) {
+        QListWidget::dragEnterEvent(event);
         return;
     }
-    QListWidget::dragEnterEvent(event);
+    
+    const QString source = extractSourceFromMimeData(event->mimeData());
+    
+    if (isFieldSource(source)) {
+        event->setDropAction(Qt::MoveAction);
+        event->accept();
+    } else if (!isSameListType(source)) {
+        event->acceptProposedAction();
+    } else {
+        QListWidget::dragEnterEvent(event);
+    }
 }
 
 void DraggableListWidget::dragMoveEvent(QDragMoveEvent* event) {
-    if (event->mimeData()->hasText()) {
-        QString text = event->mimeData()->text();
-        
-        if (text.contains("|")) {
-            QStringList parts = text.split("|");
-            QString source = parts[1];
-            
-            if (source != "BENCH" && source != "RESERVE") {
-                event->setDropAction(Qt::MoveAction);
-                event->accept();
-                return;
-            }
-        }
-        event->acceptProposedAction();
+    if (!hasDragData(event->mimeData())) {
+        QListWidget::dragMoveEvent(event);
         return;
     }
-    QListWidget::dragMoveEvent(event);
+    
+    const QString source = extractSourceFromMimeData(event->mimeData());
+    
+    if (isFieldSource(source)) {
+        event->setDropAction(Qt::MoveAction);
+        event->accept();
+    } else if (!isSameListType(source)) {
+        event->acceptProposedAction();
+    } else {
+        QListWidget::dragMoveEvent(event);
+    }
 }
 
 void DraggableListWidget::dropEvent(QDropEvent* event) {
-    if (event->mimeData()->hasText()) {
-        QString data = event->mimeData()->text();
-        
-        if (data.contains("|")) {
-            QStringList parts = data.split("|");
-            int playerId = parts[0].toInt();
-            QString source = parts[1];
-            
-            if (source != "BENCH" && source != "RESERVE") {
-                emit fieldPlayerDropped(playerId, source, listType);
-                event->setDropAction(Qt::MoveAction);
-                event->accept();
-                return;
-            }
-            else if (source != listType) {
-                event->acceptProposedAction();
-                return;
-            }
-            else if (source == listType) {
-                event->ignore();
-                return;
-            }
-        }
+    if (!hasDragData(event->mimeData())) {
+        QListWidget::dropEvent(event);
+        return;
     }
-    QListWidget::dropEvent(event);
+    
+    const QString source = extractSourceFromMimeData(event->mimeData());
+    
+    if (isFieldSource(source)) {
+        handleDragFromField(event, source);
+    } else if (!isSameListType(source)) {
+        handleDragFromDifferentList(event);
+    } else {
+        QListWidget::dropEvent(event);
+    }
 }
 
 void DraggableListWidget::enterEvent(QEnterEvent* event) {
     if (count() > 0) {
         setCursor(Qt::PointingHandCursor);
     }
+    
     QListWidget::enterEvent(event);
 }
 
 void DraggableListWidget::leaveEvent(QEvent* event) {
     setCursor(Qt::ArrowCursor);
     QListWidget::leaveEvent(event);
+}
+
+bool DraggableListWidget::isFieldSource(const QString& source) const {
+    return source != "BENCH" && source != "RESERVE";
+}
+
+bool DraggableListWidget::isSameListType(const QString& source) const {
+    return source == m_listType;
+}
+
+bool DraggableListWidget::hasDragData(const QMimeData* mimeData) const {
+    return mimeData && mimeData->hasText() && mimeData->text().contains('|');
+}
+
+QString DraggableListWidget::extractSourceFromMimeData(const QMimeData* mimeData) const {
+    return mimeData->text().split('|').at(1);
+}
+
+void DraggableListWidget::handleDragFromField(QDropEvent* event, const QString& source) {
+    const QStringList parts = event->mimeData()->text().split('|');
+    const int playerId = parts.first().toInt();
+    
+    emit fieldPlayerDropped(playerId, source, m_listType);
+    event->setDropAction(Qt::MoveAction);
+    event->accept();
+}
+
+void DraggableListWidget::handleDragFromDifferentList(QDropEvent* event) {
+    event->acceptProposedAction();
 }

@@ -1,52 +1,52 @@
 #ifndef DRAGGABLELISTWIDGET_H
 #define DRAGGABLELISTWIDGET_H
 
-#include <QtWidgets/QWidget>
-#include <QtWidgets/QTableView>
-#include <QtWidgets/QPushButton>
-#include <QtWidgets/QComboBox>
-#include <QtWidgets/QLabel>
-#include <QtWidgets/QVBoxLayout>
-#include <QtWidgets/QHBoxLayout>
-#include <QtWidgets/QScrollArea>
 #include <QtWidgets/QListWidget>
-#include <QtWidgets/QListWidgetItem>
-#include <QtGui/QStandardItemModel>
-#include <QtCore/QMap>
-#include <QtNetwork/QNetworkAccessManager>
-#include <QtNetwork/QNetworkRequest>
-#include <QtNetwork/QNetworkReply>
-#include <QtWidgets/QApplication>
-#include <QEnterEvent>
-#include "services/TeamManager.h"
-#include "gui/views/LineupPitchView.h"
-#include "gui/components/dialogs/LineupCreationDialog.h"
+#include <QtCore/QString>
+#include <QtCore/QPoint>
+#include <QtGui/QMouseEvent>
+#include <QtGui/QDragEnterEvent>
+#include <QtGui/QDragMoveEvent>
+#include <QtGui/QDropEvent>
+#include <QtGui/QEnterEvent>
 
-class DraggableListWidget : public QListWidget {
+class DraggableListWidget final : public QListWidget {
     Q_OBJECT
     
     public:
-        explicit DraggableListWidget(const QString& listType, QWidget* parent = nullptr)
-            : QListWidget(parent), listType(listType), dragStarted(false) {}
+        explicit DraggableListWidget(QString listType, QWidget* parent = nullptr);
+        ~DraggableListWidget() override = default;
+        
+        DraggableListWidget(const DraggableListWidget&) = delete;
+        DraggableListWidget& operator=(const DraggableListWidget&) = delete;
+        DraggableListWidget(DraggableListWidget&&) = delete;
+        DraggableListWidget& operator=(DraggableListWidget&&) = delete;
         
     signals:
         void fieldPlayerDropped(int playerId, const QString& fromPosition, const QString& toListType);
         
     protected:
-        virtual QMimeData* mimeData(const QList<QListWidgetItem*> &items) const override;
-        virtual void mousePressEvent(QMouseEvent* event) override;
-        virtual void mouseMoveEvent(QMouseEvent* event) override;
-        virtual void mouseReleaseEvent(QMouseEvent* event) override;
-        virtual void dragEnterEvent(QDragEnterEvent* event) override;
-        virtual void dragMoveEvent(QDragMoveEvent* event) override;
-        virtual void dropEvent(QDropEvent* event) override;
+        [[nodiscard]] QMimeData* mimeData(const QList<QListWidgetItem*>& items) const override;
+        void mousePressEvent(QMouseEvent* event) override;
+        void mouseMoveEvent(QMouseEvent* event) override;
+        void mouseReleaseEvent(QMouseEvent* event) override;
+        void dragEnterEvent(QDragEnterEvent* event) override;
+        void dragMoveEvent(QDragMoveEvent* event) override;
+        void dropEvent(QDropEvent* event) override;
         void enterEvent(QEnterEvent* event) override;
         void leaveEvent(QEvent* event) override;
         
     private:
-        QString listType;
-        QPoint dragStartPosition;
-        bool dragStarted;
+        bool isFieldSource(const QString& source) const;
+        bool isSameListType(const QString& source) const;
+        bool hasDragData(const QMimeData* mimeData) const;
+        QString extractSourceFromMimeData(const QMimeData* mimeData) const;
+        void handleDragFromField(QDropEvent* event, const QString& source);
+        void handleDragFromDifferentList(QDropEvent* event);
+        
+        const QString m_listType;
+        QPoint m_dragStartPosition;
+        bool m_dragStarted = false;
 };
 
 #endif
