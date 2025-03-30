@@ -1,72 +1,69 @@
-#ifndef PLAYERSEARCHMODEL_H
-#define PLAYERSEARCHMODEL_H
+#ifndef PLAYERSELECT_MODEL_H
+#define PLAYERSELECT_MODEL_H
 
-#include <QtWidgets/QDialog>
-#include <QtWidgets/QTableView>
-#include <QtWidgets/QLineEdit>
-#include <QtWidgets/QPushButton>
-#include <QtWidgets/QVBoxLayout>
-#include <QtWidgets/QHBoxLayout>
-#include <QtWidgets/QLabel>
-#include <QtWidgets/QComboBox>
-#include <QtWidgets/QCheckBox>
-#include <QtWidgets/QDialogButtonBox>
-#include <QtWidgets/QHeaderView>
-#include <QtWidgets/QStyledItemDelegate>
-#include <QtWidgets/QScrollBar>
-#include <QTimer>
+#include <QAbstractTableModel>
+#include <QString>
+#include <vector>
+#include <unordered_set>
+#include <span>
+#include <optional>
 #include "services/TeamManager.h"
-#include <set>
 
-class PlayerSelectModel : public QAbstractTableModel {
+class PlayerSelectModel final : public QAbstractTableModel {
     Q_OBJECT
 
     public:
-        explicit PlayerSelectModel(const std::vector<std::pair<int, Player>>& players, QObject *parent = nullptr);
+        explicit PlayerSelectModel(std::span<const std::pair<int, Player>> players, QObject* parent = nullptr);
+        ~PlayerSelectModel() override = default;
 
-        int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-        int columnCount(const QModelIndex &parent = QModelIndex()) const override;
-        QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-        QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
-        bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
-        Qt::ItemFlags flags(const QModelIndex &index) const override;
+        PlayerSelectModel(const PlayerSelectModel&) = delete;
+        PlayerSelectModel& operator=(const PlayerSelectModel&) = delete;
+        PlayerSelectModel(PlayerSelectModel&&) = delete;
+        PlayerSelectModel& operator=(PlayerSelectModel&&) = delete;
+
+        [[nodiscard]] int rowCount(const QModelIndex& parent = QModelIndex()) const override;
+        [[nodiscard]] int columnCount(const QModelIndex& parent = QModelIndex()) const override;
+        [[nodiscard]] QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+        [[nodiscard]] QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+        bool setData(const QModelIndex& index, const QVariant& value, int role = Qt::EditRole) override;
+        [[nodiscard]] Qt::ItemFlags flags(const QModelIndex& index) const override;
         
         void setFilter(const QString& filter);
         void setPositionFilter(const QString& position);
         void setPagination(int start, int max);
-        int filteredPlayerCount() const;
+        [[nodiscard]] int filteredPlayerCount() const noexcept;
         
-        void togglePlayerSelection(const QModelIndex &index);
+        void togglePlayerSelection(const QModelIndex& index);
         void selectPlayer(int playerId);
         void deselectPlayer(int playerId);
-        bool isPlayerSelected(int playerId) const;
-        std::vector<Player> getSelectedPlayers() const;
-        int getSelectedCount() const;
+        [[nodiscard]] bool isPlayerSelected(int playerId) const noexcept;
+        [[nodiscard]] std::vector<Player> getSelectedPlayers() const;
+        [[nodiscard]] int getSelectedCount() const noexcept;
         
         void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
 
     private:
         void applyFilters();
-        QVariant getDisplayData(const QModelIndex &index) const;
-        QVariant getDecorativeData(const QModelIndex &index) const;
-        QVariant getAlignmentData(const QModelIndex &index) const;
-        QVariant getTooltipData(const QModelIndex &index) const;
-        QVariant getFontData(const QModelIndex &index) const;
-        
-        QVariant getHeaderDisplayData(int section) const;
-        QVariant getHeaderTooltipData(int section) const;
-        QVariant getHeaderAlignmentData(int section) const;
-        
         void updatePlayerVisibility(int playerId);
         
-        std::vector<std::pair<int, Player>> allPlayers;
-        std::vector<std::pair<int, Player>> filteredPlayers;
-        std::set<int> selectedPlayerIds;
+        [[nodiscard]] QVariant getDisplayData(const QModelIndex& index) const;
+        [[nodiscard]] QVariant getDecorativeData(const QModelIndex& index) const;
+        [[nodiscard]] QVariant getAlignmentData(const QModelIndex& index) const;
+        [[nodiscard]] QVariant getTooltipData(const QModelIndex& index) const;
+        [[nodiscard]] QVariant getFontData(const QModelIndex& index) const;
         
-        QString currentFilter;
-        QString currentPosition;
-        int startIndex = 0;
-        int maxPlayers = 20;
+        [[nodiscard]] QVariant getHeaderDisplayData(int section) const;
+        [[nodiscard]] QVariant getHeaderTooltipData(int section) const;
+        [[nodiscard]] QVariant getHeaderAlignmentData(int section) const;
+        
+        std::vector<std::pair<int, Player>> m_allPlayers;
+        std::vector<std::pair<int, Player>> m_filteredPlayers;
+        std::unordered_set<int> m_selectedPlayerIds;
+        
+        QString m_currentFilter;
+        QString m_currentPosition;
+        int m_startIndex = 0;
+        int m_maxPlayers = 20;
 };
 
 #endif
