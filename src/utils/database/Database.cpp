@@ -16,38 +16,58 @@
 namespace fs = std::filesystem;
 
 size_t Database::WriteDataCallback(void* ptr, size_t size, size_t nmemb, FILE* stream) {
-    size_t written = fwrite(ptr, size, nmemb, stream);
-    return written;
+    return fwrite(ptr, size, nmemb, stream);
 }
 
-Database::Database(const std::string& path) : dbPath(path), kaggleClient(nullptr) {
-    newDatabase = !fileExists(dbPath);
+Database::Database(std::string_view dbPath) 
+    : m_dbPath(dbPath) {
+    m_newDatabase = !fileExists(dbPath);
     
-    if (sqlite3_open(dbPath.c_str(), &db) != SQLITE_OK) {
-        std::cerr << "Can't open database: " << sqlite3_errmsg(db) << std::endl;
+    if (sqlite3_open(m_dbPath.c_str(), &m_db) != SQLITE_OK) {
+        std::cerr << "Can't open database: " << sqlite3_errmsg(m_db) << std::endl;
     }
 }
 
-void Database::initialize(std::function<void(const std::string&, int)> progressCallback) {
-    newDatabase = !fileExists(dbPath);
-    
-    if (!newDatabase && !isDatabaseInitialized()) {
-        newDatabase = true;
+Database::~Database() {
+    if (m_db) {
+        sqlite3_close(m_db);
+        m_db = nullptr;
     }
+}
+
+sqlite3* Database::getConnection() const {
+    return m_db;
+}
+
+bool Database::fileExists(std::string_view filePath) const {
+    try {
+        return fs::exists(filePath) && fs::is_regular_file(filePath);
+    } catch (const fs::filesystem_error&) {
+        struct stat buffer;
+        return (stat(std::string(filePath).c_str(), &buffer) == 0);
+    }
+}
+
+void Database::initialize(ProgressCallback progressCallback) {
+    m_newDatabase = !fileExists(m_dbPath) || !isDatabaseInitialized();
     
-    if (newDatabase) {
-        progressCallback("Creating database schema", 15);
+    if (m_newDatabase) {
+        if (progressCallback) {
+            progressCallback("Creating database schema", 15);
+        }
         executeSQLFile("../db/data.sql");
         executeSQLFile("../db/user.sql");
         loadDataIntoDatabase(false, progressCallback);
     } else {
-        progressCallback("Checking for dataset updates", 15);
+        if (progressCallback) {
+            progressCallback("Checking for dataset updates", 15);
+        }
         updateDatasetIfNeeded(progressCallback);
     }
 }
 
-bool Database::isDatabaseInitialized() {
-    std::vector<std::string> requiredTables = {
+bool Database::isDatabaseInitialized() const {
+    const std::vector<std::string> requiredTables = {
         "appearances", "club_games", "clubs", "competitions",
         "game_events", "game_lineups", "games", "player_valuations",
         "players", "transfers", "metadata"
@@ -63,20 +83,16 @@ bool Database::isDatabaseInitialized() {
         }
     }
     
-    if (!metadataHasEntry("last_updated")) {
-        return false;
-    }
-    
-    return true;
+    return metadataHasEntry("last_updated");
 }
 
-bool Database::tableExists(const std::string& tableName) {
-    std::string query = "SELECT name FROM sqlite_master WHERE type='table' AND name=?;";
-    sqlite3_stmt* stmt;
+bool Database::tableExists(std::string_view tableName) const {
+    sqlite3_stmt* stmt = nullptr;
     bool exists = false;
+    const std::string query = "SELECT name FROM sqlite_master WHERE type='table' AND name=?;";
     
-    if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, tableName.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_prepare_v2(m_db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, tableName.data(), static_cast<int>(tableName.size()), SQLITE_TRANSIENT);
         
         if (sqlite3_step(stmt) == SQLITE_ROW) {
             exists = true;
@@ -87,91 +103,35 @@ bool Database::tableExists(const std::string& tableName) {
     return exists;
 }
 
-bool Database::tableHasData(const std::string& tableName) {
+bool Database::tableHasData(std::string_view tableName) const {
     if (tableName == "metadata") {
         return true;
     }
     
-    std::string query = "SELECT COUNT(*) FROM " + tableName + ";";
-    sqlite3_stmt* stmt;
+    std::string query = "SELECT COUNT(*) FROM " + std::string(tableName) + ";";
+    sqlite3_stmt* stmt = nullptr;
     bool hasData = false;
     
-    if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+    if (sqlite3_prepare_v2(m_db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
         if (sqlite3_step(stmt) == SQLITE_ROW) {
-            int count = sqlite3_column_int(stmt, 0);
-            hasData = (count > 0);
+            hasData = (sqlite3_column_int(stmt, 0) > 0);
         }
-    } else {
-        std::cerr << "Error checking data in table '" << tableName << "': " 
-                  << sqlite3_errmsg(db) << std::endl;
     }
     
     sqlite3_finalize(stmt);
     return hasData;
 }
 
-bool Database::metadataHasEntry(const std::string& key) {
-    std::string value = getMetadataValue(key);
-    return !value.empty();
+bool Database::metadataHasEntry(std::string_view key) const {
+    return !getMetadataValue(key).empty();
 }
 
-Database::~Database() {
-    if (db) {
-        sqlite3_close(db);
-        db = nullptr;
-    }
-    
-    delete kaggleClient;
-    kaggleClient = nullptr;
+bool Database::isNewDatabase() const {
+    return m_newDatabase;
 }
 
-bool Database::fileExists(const std::string& dbPath) {
-    struct stat buffer;
-    return (stat(dbPath.c_str(), &buffer) == 0);
-}
-
-void Database::loadDataIntoDatabase(bool updateDataset, std::function<void(const std::string&, int)> progressCallback) {
-    std::vector<std::string> tableNames {
-        "appearances", "club_games", "clubs", "competitions",
-        "game_events", "game_lineups", "games", "player_valuations",
-        "players", "transfers"
-    };
-
-    progressCallback("Downloading dataset", 20);
-    bool downloadSuccess = downloadAndExtractDataset(updateDataset, progressCallback);
-    
-    if (!downloadSuccess) {
-        std::cerr << "Failed to download or extract dataset. Database initialization aborted." << std::endl;
-        return;
-    }
-    
-    if (!fs::exists("data") || !fs::exists("data/players.csv")) {
-        std::cerr << "Data directory or essential CSV files missing. Database initialization aborted." << std::endl;
-        return;
-    }
-
-    int baseProgress = 30;
-    int progressPerTable = 40 / static_cast<int>(tableNames.size());
-    
-    for (size_t i = 0; i < tableNames.size(); i++) {
-        std::string tableName = tableNames[i];
-        std::string csvPath = "data/" + tableName + ".csv";
-        
-        if (!fileExists(csvPath)) {
-            std::cerr << "Warning: CSV file not found: " << csvPath << ". Skipping this table." << std::endl;
-            continue;
-        }
-        
-        progressCallback("Loading " + tableName + " data", baseProgress + static_cast<int>(i) * progressPerTable);
-        loadCSVIntoTable(tableName, csvPath);
-    }
-
-    progressCallback("Finalizing database setup", 70);
-    setLastUpdateTimestamp();
-}
-
-void Database::executeSQLFile(const std::string& filePath) {
-    std::ifstream file(filePath);
+void Database::executeSQLFile(std::string_view filePath) {
+    std::ifstream file(filePath.data());
 
     if (!file.is_open()) {
         std::cerr << "Failed to open SQL file: " << filePath << std::endl;
@@ -181,60 +141,60 @@ void Database::executeSQLFile(const std::string& filePath) {
     std::stringstream ss;
     std::string line;
 
-    while (getline(file, line)) {
+    while (std::getline(file, line)) {
         ss << line << "\n";
     }
 
-    char * errMsg;
-
-    if (sqlite3_exec(db, ss.str().c_str(), 0, 0, &errMsg) != SQLITE_OK) {
+    char* errMsg = nullptr;
+    if (sqlite3_exec(m_db, ss.str().c_str(), nullptr, nullptr, &errMsg) != SQLITE_OK) {
         std::cerr << "SQL schema execution error: " << errMsg << std::endl;
         sqlite3_free(errMsg);
     }
 }
 
-sqlite3 * Database::getConnection() {
-    return db;
-}
-
-std::string Database::sanitizeCSVValue(std::string value) {
-    if (value.empty())
+std::string Database::sanitizeCSVValue(std::string_view value) const {
+    if (value.empty()) {
         return "NULL";
+    }
 
-    value.erase(0, value.find_first_not_of(" \t\n\r"));
-    value.erase(value.find_last_not_of(" \t\n\r") + 1);
+    std::string result(value);
+    
+    auto startPos = result.find_first_not_of(" \t\n\r");
+    auto endPos = result.find_last_not_of(" \t\n\r");
+    
+    if (startPos == std::string::npos) {
+        return "NULL";
+    }
+    
+    result = result.substr(startPos, endPos - startPos + 1);
 
-    if (value.front() == '"' && value.back() == '"') {
-        value = value.substr(1, value.size() - 2);
-        std::replace(value.begin(), value.end(), '\n', ' ');
+    if (result.front() == '"' && result.back() == '"' && result.size() > 1) {
+        result = result.substr(1, result.size() - 2);
+        std::replace(result.begin(), result.end(), '\n', ' ');
     }
 
     std::string escapedValue;
-    for (char c : value) {
-        if (c == '\'') 
+    for (char c : result) {
+        if (c == '\'') {
             escapedValue += "''";
-        else 
+        } else {
             escapedValue += c;
+        }
     }
 
     return "'" + escapedValue + "'";
 }
 
-std::vector<std::string> Database::getSanitizedValues(std::ifstream& file, std::string& line) {
+std::vector<std::string> Database::getSanitizedValues(std::ifstream& file, std::string& line) const {
     std::vector<std::string> values;
-    std::string value;
     std::string tempValue;
     bool inQuotes = false;
 
     while (true) {
-        for (size_t i = 0; i < line.size(); i++) {
-            char c = line[i];
-
+        for (char c : line) {
             if (c == '"') {
                 inQuotes = !inQuotes; 
-            }
-
-            if (c == ',' && !inQuotes) {
+            } else if (c == ',' && !inQuotes) {
                 values.push_back(sanitizeCSVValue(tempValue));
                 tempValue.clear();
             } else {
@@ -244,8 +204,9 @@ std::vector<std::string> Database::getSanitizedValues(std::ifstream& file, std::
 
         if (inQuotes) { 
             std::string nextLine;
-            if (!getline(file, nextLine)) 
+            if (!std::getline(file, nextLine)) {
                 break;
+            }
             tempValue += "\n" + nextLine;
             line = nextLine;
         } else {
@@ -254,15 +215,16 @@ std::vector<std::string> Database::getSanitizedValues(std::ifstream& file, std::
     }
 
     values.push_back(sanitizeCSVValue(tempValue));
-
     return values;
 }
 
-bool Database::downloadAndExtractDataset(bool updateDataset, std::function<void(const std::string&, int)> progressCallback) {
-    std::string datasetPath = "player-scores.zip";
+bool Database::downloadAndExtractDataset(bool updateDataset, ProgressCallback progressCallback) {
+    const std::string datasetPath = "player-scores.zip";
 
     if (updateDataset || !fileExists(datasetPath)) {
-        progressCallback("Downloading dataset from Kaggle", 20);
+        if (progressCallback) {
+            progressCallback("Downloading dataset from Kaggle", 20);
+        }
         
         KaggleAPIClient client;
         
@@ -273,7 +235,9 @@ bool Database::downloadAndExtractDataset(bool updateDataset, std::function<void(
     }
 
     if (updateDataset || !fs::exists("data")) {
-        progressCallback("Extracting dataset files", 25);
+        if (progressCallback) {
+            progressCallback("Extracting dataset files", 25);
+        }
         
         if (!fs::exists("data")) {
             fs::create_directory("data");
@@ -308,7 +272,7 @@ bool Database::downloadAndExtractDataset(bool updateDataset, std::function<void(
     return true;
 }
 
-std::string Database::join(const std::vector<std::string>& values, const std::string& delimiter) {
+std::string Database::joinStrings(std::span<const std::string> values, std::string_view delimiter) const {
     std::ostringstream result;
     for (size_t i = 0; i < values.size(); ++i) {
         result << values[i];
@@ -319,33 +283,61 @@ std::string Database::join(const std::vector<std::string>& values, const std::st
     return result.str();
 }
 
-void Database::loadCSVIntoTable(const std::string& tableName, const std::string& csvPath) {
-    std::ifstream file(csvPath);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open CSV file: " << csvPath << std::endl;
+void Database::loadDataIntoDatabase(bool updateDataset, ProgressCallback progressCallback) {
+    std::vector<std::string> tableNames {
+        "appearances", "club_games", "clubs", "competitions",
+        "game_events", "game_lineups", "games", "player_valuations",
+        "players", "transfers"
+    };
+
+    if (progressCallback) {
+        progressCallback("Downloading dataset", 20);
+    }
+    
+    bool downloadSuccess = downloadAndExtractDataset(updateDataset, progressCallback);
+    
+    if (!downloadSuccess) {
+        std::cerr << "Failed to download or extract dataset. Database initialization aborted." << std::endl;
+        return;
+    }
+    
+    if (!fs::exists("data") || !fs::exists("data/players.csv")) {
+        std::cerr << "Data directory or essential CSV files missing. Database initialization aborted." << std::endl;
         return;
     }
 
-    std::string headerLine;
-    getline(file, headerLine);
-    std::vector<std::string> columns = getSanitizedValues(file, headerLine);
-    if (columns.empty()) {
-        std::cerr << "Error: Could not extract columns from CSV file: " << csvPath << std::endl;
-        return;
+    int baseProgress = 30;
+    int progressPerTable = 40 / static_cast<int>(tableNames.size());
+    
+    for (size_t i = 0; i < tableNames.size(); i++) {
+        std::string tableName = tableNames[i];
+        std::string csvPath = "data/" + tableName + ".csv";
+        
+        if (!fileExists(csvPath)) {
+            std::cerr << "Warning: CSV file not found: " << csvPath << ". Skipping this table." << std::endl;
+            continue;
+        }
+        
+        if (progressCallback) {
+            progressCallback("Loading " + tableName + " data", baseProgress + static_cast<int>(i) * progressPerTable);
+        }
+        loadCSVIntoTable(tableName, csvPath);
     }
 
-    std::string query = buildInsertQuery(tableName, columns, file);
-    executeCSVImportQuery(query, csvPath, tableName);
+    if (progressCallback) {
+        progressCallback("Finalizing database setup", 70);
+    }
+    setLastUpdateTimestamp();
 }
 
-std::string Database::buildInsertQuery(const std::string& tableName, 
-                                      const std::vector<std::string>& columns, 
-                                      std::ifstream& file) {
+std::string Database::buildInsertQuery(std::string_view tableName, 
+                                     std::span<const std::string> columns, 
+                                     std::ifstream& file) const {
     std::stringstream sqlBatch;
     sqlBatch << "BEGIN TRANSACTION;\n";
 
-    std::string columnNames = "(" + join(columns, ", ") + ")";
-    sqlBatch << "INSERT OR REPLACE INTO " + tableName + " " + columnNames + " VALUES ";
+    std::string columnList = "(" + joinStrings(columns, ", ") + ")";
+    sqlBatch << "INSERT OR REPLACE INTO " << tableName << " " << columnList << " VALUES ";
 
     bool firstRow = true;
     appendCSVRowsToQuery(file, sqlBatch, firstRow);
@@ -354,11 +346,9 @@ std::string Database::buildInsertQuery(const std::string& tableName,
     return sqlBatch.str();
 }
 
-void Database::appendCSVRowsToQuery(std::ifstream& file, 
-                                   std::stringstream& sqlBatch,
-                                   bool& firstRow) {
+void Database::appendCSVRowsToQuery(std::ifstream& file, std::stringstream& sqlBatch, bool& firstRow) const {
     std::string line;
-    while (getline(file, line)) {
+    while (std::getline(file, line)) {
         std::vector<std::string> values = getSanitizedValues(file, line);
         if (values.empty()) {
             continue;
@@ -373,8 +363,7 @@ void Database::appendCSVRowsToQuery(std::ifstream& file,
     }
 }
 
-void Database::appendRowValuesToQuery(const std::vector<std::string>& values, 
-                                     std::stringstream& sqlBatch) {
+void Database::appendRowValuesToQuery(std::span<const std::string> values, std::stringstream& sqlBatch) const {
     sqlBatch << "(";
     for (size_t i = 0; i < values.size(); i++) {
         sqlBatch << values[i];
@@ -385,11 +374,9 @@ void Database::appendRowValuesToQuery(const std::vector<std::string>& values,
     sqlBatch << ")";
 }
 
-void Database::executeCSVImportQuery(const std::string& query, 
-                                    const std::string& csvPath,
-                                    const std::string& tableName) {
-    char *errMsg;
-    if (sqlite3_exec(db, query.c_str(), 0, 0, &errMsg) != SQLITE_OK) {
+void Database::executeCSVImportQuery(std::string_view query, std::string_view csvPath, std::string_view tableName) {
+    char* errMsg = nullptr;
+    if (sqlite3_exec(m_db, query.data(), nullptr, nullptr, &errMsg) != SQLITE_OK) {
         std::cerr << "SQL error: " << errMsg << std::endl;
         sqlite3_free(errMsg);
     } else {
@@ -397,12 +384,12 @@ void Database::executeCSVImportQuery(const std::string& query,
     }
 }
 
-time_t Database::getLastUpdateTimestamp() {
+time_t Database::getLastUpdateTimestamp() const {
     const char* query = "SELECT value FROM metadata WHERE key = 'last_updated';";
-    sqlite3_stmt* stmt;
+    sqlite3_stmt* stmt = nullptr;
     time_t lastUpdated = 0;
 
-    if (sqlite3_prepare_v2(db, query, -1, &stmt, nullptr) == SQLITE_OK) {
+    if (sqlite3_prepare_v2(m_db, query, -1, &stmt, nullptr) == SQLITE_OK) {
         if (sqlite3_step(stmt) == SQLITE_ROW) {
             lastUpdated = std::stol(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)));
         }
@@ -412,34 +399,45 @@ time_t Database::getLastUpdateTimestamp() {
 }
 
 void Database::setLastUpdateTimestamp() {
-    time_t now = time(0);
+    time_t now = time(nullptr);
     std::string query = "INSERT INTO metadata (key, value) VALUES ('last_updated', '" + std::to_string(now) + 
                         "') ON CONFLICT(key) DO UPDATE SET value = '" + std::to_string(now) + "';";
 
-    char *errMsg;
-    if (sqlite3_exec(db, query.c_str(), 0, 0, &errMsg) != SQLITE_OK) {
+    char* errMsg = nullptr;
+    if (sqlite3_exec(m_db, query.c_str(), nullptr, nullptr, &errMsg) != SQLITE_OK) {
         std::cerr << "Failed to update last updated timestamp: " << errMsg << std::endl;
         sqlite3_free(errMsg);
     }
 }
 
-std::string Database::formatTimestamp(time_t timestamp) {
-    struct tm* timeinfo = localtime(&timestamp);
+std::string Database::formatTimestamp(time_t timestamp) const {
+    struct tm timeinfo;
     char buffer[80];
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+    
+#ifdef _WIN32
+    localtime_s(&timeinfo, &timestamp);
+#else
+    localtime_r(&timestamp, &timeinfo);
+#endif
+    
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
     return std::string(buffer);
 }
 
-void Database::updateDatasetIfNeeded(std::function<void(const std::string&, int)> progressCallback) {
+void Database::updateDatasetIfNeeded(ProgressCallback progressCallback) {
     std::string kaggleUsername = getMetadataValue("KAGGLE_USERNAME");
     std::string kaggleKey = getMetadataValue("KAGGLE_KEY");
 
     if (kaggleUsername.empty() || kaggleKey.empty()) {
-        progressCallback("Kaggle credentials not set. Skipping update check.", 70);
+        if (progressCallback) {
+            progressCallback("Kaggle credentials not set. Skipping update check.", 70);
+        }
         return;
     }
 
-    progressCallback("Checking for dataset updates", 25);
+    if (progressCallback) {
+        progressCallback("Checking for dataset updates", 25);
+    }
     
     time_t kaggleUpdatedTime = getKaggleDatasetLastUpdated();
 
@@ -448,22 +446,24 @@ void Database::updateDatasetIfNeeded(std::function<void(const std::string&, int)
         return;
     }
 
-    progressCallback("Comparing dataset versions", 30);
+    if (progressCallback) {
+        progressCallback("Comparing dataset versions", 30);
+    }
     
     compareAndUpdateDataset(kaggleUpdatedTime, progressCallback);
 }
 
-std::string Database::getMetadataValue(const std::string& key) {
+std::string Database::getMetadataValue(std::string_view key) const {
     if (!tableExists("metadata")) {
         return "";
     }
     
-    std::string query = "SELECT value FROM metadata WHERE key = ?;";
-    sqlite3_stmt* stmt;
+    sqlite3_stmt* stmt = nullptr;
     std::string value;
+    std::string query = "SELECT value FROM metadata WHERE key = ?;";
 
-    if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_prepare_v2(m_db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, key.data(), static_cast<int>(key.size()), SQLITE_TRANSIENT);
 
         if (sqlite3_step(stmt) == SQLITE_ROW) {
             const unsigned char* storedValue = sqlite3_column_text(stmt, 0);
@@ -475,24 +475,24 @@ std::string Database::getMetadataValue(const std::string& key) {
     return value;
 }
 
-void Database::setMetadataValue(const std::string& key, const std::string& value) {
+void Database::setMetadataValue(std::string_view key, std::string_view value) {
     if (!tableExists("metadata")) {
-        char* errMsg;
-        if (sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);", 
-                         NULL, NULL, &errMsg) != SQLITE_OK) {
+        char* errMsg = nullptr;
+        if (sqlite3_exec(m_db, "CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);", 
+                        nullptr, nullptr, &errMsg) != SQLITE_OK) {
             std::cerr << "Failed to create metadata table: " << errMsg << std::endl;
             sqlite3_free(errMsg);
             return;
         }
     }
     
+    sqlite3_stmt* stmt = nullptr;
     std::string query = "INSERT INTO metadata (key, value) VALUES (?, ?) "
                         "ON CONFLICT(key) DO UPDATE SET value = excluded.value;";
-    sqlite3_stmt* stmt;
-
-    if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_text(stmt, 2, value.c_str(), -1, SQLITE_TRANSIENT);
+    
+    if (sqlite3_prepare_v2(m_db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, key.data(), static_cast<int>(key.size()), SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 2, value.data(), static_cast<int>(value.size()), SQLITE_TRANSIENT);
 
         if (sqlite3_step(stmt) != SQLITE_DONE) {
             std::cerr << "Failed to set metadata value for key: " << key << std::endl;
@@ -502,7 +502,7 @@ void Database::setMetadataValue(const std::string& key, const std::string& value
     sqlite3_finalize(stmt);
 }
 
-time_t Database::getKaggleDatasetLastUpdated() {
+time_t Database::getKaggleDatasetLastUpdated() const {
     std::string kaggleUsername = getMetadataValue("KAGGLE_USERNAME");
     std::string kaggleKey = getMetadataValue("KAGGLE_KEY");
     
@@ -511,34 +511,57 @@ time_t Database::getKaggleDatasetLastUpdated() {
         return 0;
     }
     
-    if (!kaggleClient || kaggleClient->getUsername() != kaggleUsername || kaggleClient->getKey() != kaggleKey) {
-        delete kaggleClient;
-        kaggleClient = new KaggleAPIClient(kaggleUsername, kaggleKey);
+    if (!m_kaggleClient || m_kaggleClient->getUsername() != kaggleUsername || m_kaggleClient->getKey() != kaggleKey) {
+        m_kaggleClient = std::make_unique<KaggleAPIClient>(kaggleUsername, kaggleKey);
     }
     
-    return kaggleClient->getDatasetLastUpdated("davidcariboo/player-scores");
+    return m_kaggleClient->getDatasetLastUpdated("davidcariboo/player-scores");
 }
 
-void Database::compareAndUpdateDataset(time_t kaggleUpdatedTime, std::function<void(const std::string&, int)> progressCallback) {
+void Database::compareAndUpdateDataset(time_t kaggleUpdatedTime, ProgressCallback progressCallback) {
     time_t lastUpdated = getLastUpdateTimestamp();
 
     if (kaggleUpdatedTime > lastUpdated) {
-        progressCallback("New dataset available, updating", 35);
+        if (progressCallback) {
+            progressCallback("New dataset available, updating", 35);
+        }
         loadDataIntoDatabase(true, progressCallback);
     } else {
-        progressCallback("Dataset is already up-to-date", 70);
+        if (progressCallback) {
+            progressCallback("Dataset is already up-to-date", 70);
+        }
     }
 }
 
-std::string Database::getKaggleUsername() {
+std::string Database::getKaggleUsername() const {
     return getMetadataValue("KAGGLE_USERNAME");
 }
 
-std::string Database::getKaggleKey() {
+std::string Database::getKaggleKey() const {
     return getMetadataValue("KAGGLE_KEY");
 }
 
-void Database::setKaggleCredentials(const std::string& username, const std::string& key) {
+void Database::setKaggleCredentials(std::string_view username, std::string_view key) {
     setMetadataValue("KAGGLE_USERNAME", username);
     setMetadataValue("KAGGLE_KEY", key);
+}
+
+void Database::loadCSVIntoTable(std::string_view tableName, std::string_view csvPath) {
+    std::ifstream file(csvPath.data());
+    if (!file.is_open()) {
+        std::cerr << "Failed to open CSV file: " << csvPath << std::endl;
+        return;
+    }
+
+    std::string headerLine;
+    std::getline(file, headerLine);
+    std::vector<std::string> columns = getSanitizedValues(file, headerLine);
+    
+    if (columns.empty()) {
+        std::cerr << "Error: Could not extract columns from CSV file: " << csvPath << std::endl;
+        return;
+    }
+
+    std::string query = buildInsertQuery(tableName, columns, file);
+    executeCSVImportQuery(query, csvPath, tableName);
 }

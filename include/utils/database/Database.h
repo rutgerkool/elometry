@@ -5,63 +5,75 @@
 #include <vector>
 #include <sqlite3.h>
 #include <functional>
-#ifdef _WIN32
-#include <stdlib.h>
-#include <iomanip>
-#include <sstream>
-#endif
+#include <filesystem>
+#include <span>
+#include <optional>
+#include <memory>
 
 class KaggleAPIClient;
 
-typedef int PlayerId;
+using ProgressCallback = std::function<void(const std::string&, int)>;
+using PlayerId = int;
 
 class Database {
-    public:
-        Database(const std::string& dbPath);
-        ~Database();
+public:
+    explicit Database(std::string_view dbPath);
+    ~Database();
 
-        sqlite3 * getConnection();
+    Database(const Database&) = delete;
+    Database& operator=(const Database&) = delete;
+    Database(Database&&) noexcept = delete;
+    Database& operator=(Database&&) noexcept = delete;
 
-        std::string getKaggleUsername();
-        std::string getKaggleKey();
-        void setKaggleCredentials(const std::string& username, const std::string& key);
-        void loadCSVIntoTable(const std::string& tableName, const std::string& csvPath);
-        void executeSQLFile(const std::string& filePath);
-        bool fileExists(const std::string& dbPath);
-        void loadDataIntoDatabase(bool updateDataset = false, std::function<void(const std::string&, int)> progressCallback = nullptr);
-        void updateDatasetIfNeeded(std::function<void(const std::string&, int)> progressCallback = nullptr);
-        bool isNewDatabase() const { return newDatabase; }
-        void initialize(std::function<void(const std::string&, int)> progressCallback = nullptr);
+    [[nodiscard]] sqlite3* getConnection() const;
 
-    private:
-        sqlite3 * db = nullptr;
-        std::string dbPath;
-        bool newDatabase = false;
-        KaggleAPIClient* kaggleClient = nullptr;
+    [[nodiscard]] std::string getKaggleUsername() const;
+    [[nodiscard]] std::string getKaggleKey() const;
+    void setKaggleCredentials(std::string_view username, std::string_view key);
+    void loadCSVIntoTable(std::string_view tableName, std::string_view csvPath);
+    void executeSQLFile(std::string_view filePath);
+    [[nodiscard]] bool isNewDatabase() const;
+    void initialize(ProgressCallback progressCallback = nullptr);
 
-        std::string sanitizeCSVValue(std::string value);
-        std::string join(const std::vector<std::string>& values, const std::string& delimiter);
-        std::vector<std::string> getSanitizedValues(std::ifstream& file, std::string& line);
-        void setLastUpdateTimestamp();
-        time_t getLastUpdateTimestamp();
-        std::string getMetadataValue(const std::string& key);
-        void setMetadataValue(const std::string& key, const std::string& value);
-        bool downloadAndExtractDataset(bool updateDataset = false, std::function<void(const std::string&, int)> progressCallback = nullptr);
-        time_t getKaggleDatasetLastUpdated();
-        std::string formatTimestamp(time_t timestamp);
-        void compareAndUpdateDataset(time_t kaggleUpdatedTime, std::function<void(const std::string&, int)> progressCallback = nullptr);
-        
-        bool isDatabaseInitialized();
-        bool tableExists(const std::string& tableName);
-        bool tableHasData(const std::string& tableName);
-        bool metadataHasEntry(const std::string& key);
+private:
+    struct MetadataRecord {
+        std::string key;
+        std::string value;
+    };
 
-        std::string buildInsertQuery(const std::string& tableName, const std::vector<std::string>& columns, std::ifstream& file);
-        void appendCSVRowsToQuery(std::ifstream& file, std::stringstream& sqlBatch, bool& firstRow);
-        void appendRowValuesToQuery(const std::vector<std::string>& values, std::stringstream& sqlBatch);
-        void executeCSVImportQuery(const std::string& query, const std::string& csvPath, const std::string& tableName);
-        
-        static size_t WriteDataCallback(void* ptr, size_t size, size_t nmemb, FILE* stream);
+    sqlite3* m_db{nullptr};
+    std::string m_dbPath;
+    bool m_newDatabase{false};
+    mutable std::unique_ptr<KaggleAPIClient> m_kaggleClient;
+
+    [[nodiscard]] bool fileExists(std::string_view filePath) const;
+    [[nodiscard]] bool isDatabaseInitialized() const;
+    [[nodiscard]] bool tableExists(std::string_view tableName) const;
+    [[nodiscard]] bool tableHasData(std::string_view tableName) const;
+    [[nodiscard]] bool metadataHasEntry(std::string_view key) const;
+
+    void loadDataIntoDatabase(bool updateDataset, ProgressCallback progressCallback);
+    void updateDatasetIfNeeded(ProgressCallback progressCallback);
+    [[nodiscard]] bool downloadAndExtractDataset(bool updateDataset, ProgressCallback progressCallback);
+    void setLastUpdateTimestamp();
+    [[nodiscard]] time_t getLastUpdateTimestamp() const;
+    [[nodiscard]] std::string getMetadataValue(std::string_view key) const;
+    void setMetadataValue(std::string_view key, std::string_view value);
+    [[nodiscard]] time_t getKaggleDatasetLastUpdated() const;
+    [[nodiscard]] std::string formatTimestamp(time_t timestamp) const;
+    void compareAndUpdateDataset(time_t kaggleUpdatedTime, ProgressCallback progressCallback);
+
+    [[nodiscard]] std::vector<std::string> getSanitizedValues(std::ifstream& file, std::string& line) const;
+    [[nodiscard]] std::string sanitizeCSVValue(std::string_view value) const;
+    [[nodiscard]] std::string buildInsertQuery(std::string_view tableName, 
+                                              std::span<const std::string> columns, 
+                                              std::ifstream& file) const;
+    void appendCSVRowsToQuery(std::ifstream& file, std::stringstream& sqlBatch, bool& firstRow) const;
+    void appendRowValuesToQuery(std::span<const std::string> values, std::stringstream& sqlBatch) const;
+    void executeCSVImportQuery(std::string_view query, std::string_view csvPath, std::string_view tableName);
+    [[nodiscard]] std::string joinStrings(std::span<const std::string> values, std::string_view delimiter) const;
+
+    static size_t WriteDataCallback(void* ptr, size_t size, size_t nmemb, FILE* stream);
 };
 
 #endif
