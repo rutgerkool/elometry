@@ -4,14 +4,18 @@
 #include "models/PlayerRating.h"
 #include <vector>
 #include <string>
+#include <string_view>
+#include <span>
 #include <glpk.h>
 #include <cstdint>
 
 class ILPSelector {
     public:
-        ILPSelector(std::vector<std::pair<int, Player>>& p, const std::vector<std::string>& pos, int64_t b);
+        ILPSelector(std::span<const std::pair<int, Player>> players, 
+                    std::span<const std::string> requiredPositions,
+                    int64_t budget);
 
-        std::vector<std::pair<int, Player>> selectTeam();
+        [[nodiscard]] std::vector<std::pair<int, Player>> selectTeam() const;
 
     private:
         struct Variable {
@@ -22,14 +26,19 @@ class ILPSelector {
             int64_t cost;
         };
 
-        std::vector<std::pair<int, Player>>& players;
-        const std::vector<std::string>& requiredPositions;
-        int64_t budget;
+        std::span<const std::pair<int, Player>> m_players;
+        std::span<const std::string> m_requiredPositions;
+        int64_t m_budget;
 
-        std::vector<Variable> createVariables();
-        void addBudgetConstraint(glp_prob* lp, const std::vector<Variable>& vars);
-        void addPositionConstraints(glp_prob* lp, const std::vector<Variable>& vars);
-        void setupObjectiveFunction(glp_prob* lp, const std::vector<Variable>& vars);
+        [[nodiscard]] std::vector<Variable> createVariables() const;
+        void addBudgetConstraint(glp_prob* lp, std::span<const Variable> vars) const;
+        void addPositionConstraints(glp_prob* lp, std::span<const Variable> vars) const;
+        void setupObjectiveFunction(glp_prob* lp, std::span<const Variable> vars) const;
+        [[nodiscard]] glp_prob* createProblem() const;
+        void configureVariables(glp_prob* lp, std::span<const Variable> vars) const;
+        [[nodiscard]] std::vector<std::pair<int, Player>> extractSolution(
+            glp_prob* lp, 
+            std::span<const Variable> vars) const;
 };
 
 #endif
