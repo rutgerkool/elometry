@@ -3,6 +3,9 @@
 
 #include "utils/database/Database.h"
 #include <vector>
+#include <optional>
+#include <string_view>
+#include <span>
 
 struct Player {
     int playerId;
@@ -13,21 +16,37 @@ struct Player {
     std::string position;
     std::string contractExpirationDate;
     std::string imageUrl;
-    int marketValue;
-    int highestMarketValue;
+    int marketValue = 0;
+    int highestMarketValue = 0;
 
     double rating = 1500.00;
     int minutesPlayed = 0;
 };
 
 class PlayerRepository {
-    public:
-        PlayerRepository(Database& database);
-        PlayerRepository(sqlite3 * db);
-        std::vector<Player> fetchPlayers(int clubId = -1, int playerId = -1, int teamId = -1);
+public:
+    explicit PlayerRepository(Database& database);
+    explicit PlayerRepository(sqlite3* db);
+    
+    PlayerRepository(const PlayerRepository&) = delete;
+    PlayerRepository& operator=(const PlayerRepository&) = delete;
+    PlayerRepository(PlayerRepository&&) noexcept = default;
+    PlayerRepository& operator=(PlayerRepository&&) noexcept = default;
+    ~PlayerRepository() = default;
+    
+    [[nodiscard]] std::vector<Player> fetchPlayers(std::optional<int> clubId = std::nullopt,
+                                                   std::optional<int> playerId = std::nullopt,
+                                                   std::optional<int> teamId = std::nullopt) const;
 
-    private:
-        sqlite3 * db;
+    [[nodiscard]] std::optional<Player> fetchPlayerById(int playerId) const;
+    [[nodiscard]] std::vector<Player> fetchPlayersByClub(int clubId) const;
+    [[nodiscard]] std::vector<Player> fetchPlayersByTeam(int teamId) const;
+
+private:
+    sqlite3* m_db;
+
+    [[nodiscard]] std::vector<Player> executeQuery(std::string_view query, 
+                                                   std::span<const std::pair<int, int>> params = {}) const;
 };
 
 #endif

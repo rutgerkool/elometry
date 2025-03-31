@@ -2,18 +2,23 @@
 #include "utils/database/PlayerMapper.h"
 #include "utils/Season.h"
 #include <iostream>
+#include <array>
+#include <algorithm>
+#include <ranges>
+#include <format>
 
-PlayerRepository::PlayerRepository(Database& database) {
-    db = database.getConnection();
+PlayerRepository::PlayerRepository(Database& database)
+    : m_db(database.getConnection()) {
 }
 
-PlayerRepository::PlayerRepository(sqlite3 * db): db(db) {}
+PlayerRepository::PlayerRepository(sqlite3* db)
+    : m_db(db) {
+}
 
-std::vector<Player> PlayerRepository::fetchPlayers(int clubId, int playerId, int teamId) {
-    std::vector<Player> players;
-    sqlite3_stmt *stmt;
-    
-    int currentSeasonYear = getCurrentSeasonYear(); 
+std::vector<Player> PlayerRepository::fetchPlayers(std::optional<int> clubId,
+                                                  std::optional<int> playerId,
+                                                  std::optional<int> teamId) const {
+    int currentSeasonYear = getCurrentSeasonYear();
 
     std::string query = R"(
         SELECT 
@@ -31,41 +36,58 @@ std::vector<Player> PlayerRepository::fetchPlayers(int clubId, int playerId, int
         WHERE last_season = ?
     )";
 
-    if (clubId != -1) { 
+    std::vector<std::pair<int, int>> params = {{1, currentSeasonYear}};
+    int paramIndex = 2;
+
+    if (clubId && *clubId != -1) {
         query += " AND current_club_id = ?";
+        params.emplace_back(paramIndex++, *clubId);
     }
 
-    if (playerId != -1) { 
+    if (playerId && *playerId != -1) {
         query += " AND player_id = ?";
+        params.emplace_back(paramIndex++, *playerId);
     }
 
-    if (teamId != -1) {
+    if (teamId && *teamId != -1) {
         query += " AND player_id IN (SELECT player_id FROM team_players WHERE team_id = ?)";
+        params.emplace_back(paramIndex, *teamId);
     }
 
-    if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_int(stmt, 1, currentSeasonYear);
+    return executeQuery(query, params);
+}
 
-        int paramIndex = 2;
-        if (clubId != -1) {
-            sqlite3_bind_int(stmt, paramIndex++, clubId);
-        }
-        if (playerId != -1) {
-            sqlite3_bind_int(stmt, paramIndex++, playerId);
-        }
-        if (teamId != -1) {
-            sqlite3_bind_int(stmt, paramIndex, teamId);
-        }
+std::optional<Player> PlayerRepository::fetchPlayerById(int playerId) const {
+    auto players = fetchPlayers(std::nullopt, playerId);
+    return players.empty() ? std::nullopt : std::optional{players.front()};
+}
 
-        while (sqlite3_step(stmt) == SQLITE_ROW) {
-            Player player = PlayerMapper::mapPlayerFromStatement(stmt);
-            players.push_back(player);
-        }
-    } else {
-        std::cerr << "SQL error: " << sqlite3_errmsg(db) << std::endl;
+std::vector<Player> PlayerRepository::fetchPlayersByClub(int clubId) const {
+    return fetchPlayers(clubId);
+}
+
+std::vector<Player> PlayerRepository::fetchPlayersByTeam(int teamId) const {
+    return fetchPlayers(std::nullopt, std::nullopt, teamId);
+}
+
+std::vector<Player> PlayerRepository::executeQuery(std::string_view query, 
+                                                  std::span<const std::pair<int, int>> params) const {
+    std::vector<Player> players;
+    sqlite3_stmt* stmt = nullptr;
+
+    if (sqlite3_prepare_v2(m_db, query.data(), static_cast<int>(query.size()), &stmt, nullptr) != SQLITE_OK) {
+        std::cerr << "SQL error: " << sqlite3_errmsg(m_db) << std::endl;
+        return players;
+    }
+
+    for (const auto& [index, value] : params) {
+        sqlite3_bind_int(stmt, index, value);
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        players.push_back(PlayerMapper::mapPlayerFromStatement(stmt));
     }
 
     sqlite3_finalize(stmt);
-    
     return players;
 }

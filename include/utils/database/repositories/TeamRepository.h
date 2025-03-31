@@ -6,6 +6,9 @@
 #include "gui/models/LineupTypes.h"
 #include <vector>
 #include <string>
+#include <string_view>
+#include <optional>
+#include <span>
 
 struct Team {
     int teamId;
@@ -14,80 +17,55 @@ struct Team {
     int64_t budget = 20000000;
     
     Team() = default;
+    Team(int id, std::string name) : teamId(id), teamName(std::move(name)) {}
     
-    Team(int id, const std::string& name) 
-        : teamId(id), teamName(name) {}
-    
-    Team(Team&& other) noexcept 
-        : teamId(other.teamId),
-          teamName(std::move(other.teamName)),
-          players(std::move(other.players)),
-          budget(other.budget) {}
-    
-    Team& operator=(Team&& other) noexcept {
-        if (this != &other) {
-            teamId = other.teamId;
-            teamName = std::move(other.teamName);
-            players = std::move(other.players);
-            budget = other.budget;
-        }
-        return *this;
-    }
-    
-    Team(const Team& other) 
-        : teamId(other.teamId),
-          teamName(other.teamName),
-          players(other.players),
-          budget(other.budget) {}
-    
-    Team& operator=(const Team& other) {
-        if (this != &other) {
-            teamId = other.teamId;
-            teamName = other.teamName;
-            players = other.players;
-            budget = other.budget;
-        }
-        return *this;
-    }
+    Team(const Team&) = default;
+    Team& operator=(const Team&) = default;
+    Team(Team&&) noexcept = default;
+    Team& operator=(Team&&) noexcept = default;
 };
 
 class TeamRepository {
-    public:
-        explicit TeamRepository(Database& database);
-
-        std::vector<std::string> getAvailableSubPositions();
-
-        void createTeam(const Team& team);
-        std::vector<Team> getAllTeams();
-        void addPlayerToTeam(int teamId, int playerId);
-        void removePlayerFromTeam(int teamId, int playerId);
-        void removeAllPlayersFromTeam(int teamId);
-        void deleteTeam(int teamId);
-        bool updateTeamName(int teamId, const std::string& newName);
-
-        std::vector<Formation> getAllFormations();
-        int createLineup(int teamId, int formationId, const std::string& lineupName = "");
-        Lineup getActiveLineup(int teamId);
-        bool setActiveLineup(int teamId, int lineupId);
-        bool updatePlayerPosition(int lineupId, int playerId, PositionType positionType, const std::string& fieldPosition = "", int order = 0);
-        bool saveLineup(const Lineup& lineup);
-        bool deleteLineup(int lineupId);
-        std::vector<Lineup> getTeamLineups(int teamId);
-        void removePlayerFromAllLineups(int teamId, int playerId);
-
-    private:
-        sqlite3* db;
-        std::string positionTypeToString(PositionType positionType);
-        PositionType stringToPositionType(const std::string& positionType);
-        
-        bool executeStatement(const std::string& query, const std::vector<std::pair<int, int>>& intBindings = {}, 
-                             const std::vector<std::pair<int, std::string>>& textBindings = {});
-        bool executeStatement(sqlite3_stmt* stmt, const std::vector<std::pair<int, int>>& intBindings = {}, 
-                             const std::vector<std::pair<int, std::string>>& textBindings = {});
-        bool prepareStatement(const std::string& query, sqlite3_stmt** stmt);
-        bool deactivateTeamLineups(int teamId);
-        bool fillLineupPlayerPositions(Lineup& lineup);
-        bool saveLineupPlayers(const Lineup& lineup);
+public:
+    explicit TeamRepository(Database& database);
+    
+    [[nodiscard]] std::vector<std::string> getAvailableSubPositions() const;
+    
+    void createTeam(const Team& team);
+    [[nodiscard]] std::vector<Team> getAllTeams() const;
+    void addPlayerToTeam(int teamId, int playerId);
+    void removePlayerFromTeam(int teamId, int playerId);
+    void removeAllPlayersFromTeam(int teamId);
+    void deleteTeam(int teamId);
+    [[nodiscard]] bool updateTeamName(int teamId, std::string_view newName);
+    
+    [[nodiscard]] std::vector<Formation> getAllFormations() const;
+    [[nodiscard]] int createLineup(int teamId, int formationId, std::string_view lineupName = "");
+    [[nodiscard]] Lineup getActiveLineup(int teamId) const;
+    [[nodiscard]] bool setActiveLineup(int teamId, int lineupId);
+    [[nodiscard]] bool updatePlayerPosition(int lineupId, int playerId, PositionType positionType, 
+                                           std::string_view fieldPosition = "", int order = 0);
+    [[nodiscard]] bool saveLineup(const Lineup& lineup);
+    [[nodiscard]] bool deleteLineup(int lineupId);
+    [[nodiscard]] std::vector<Lineup> getTeamLineups(int teamId) const;
+    void removePlayerFromAllLineups(int teamId, int playerId);
+    
+private:
+    [[nodiscard]] std::string positionTypeToString(PositionType positionType) const;
+    [[nodiscard]] PositionType stringToPositionType(std::string_view positionType) const;
+    
+    [[nodiscard]] bool executeStatement(std::string_view query, 
+                                       std::span<const std::pair<int, int>> intBindings = {}, 
+                                       std::span<const std::pair<int, std::string>> textBindings = {}) const;
+    [[nodiscard]] bool executeStatement(sqlite3_stmt* stmt, 
+                                       std::span<const std::pair<int, int>> intBindings = {}, 
+                                       std::span<const std::pair<int, std::string>> textBindings = {}) const;
+    [[nodiscard]] bool prepareStatement(std::string_view query, sqlite3_stmt** stmt) const;
+    [[nodiscard]] bool deactivateTeamLineups(int teamId) const;
+    [[nodiscard]] bool fillLineupPlayerPositions(Lineup& lineup) const;
+    [[nodiscard]] bool saveLineupPlayers(const Lineup& lineup) const;
+    
+    sqlite3* m_db;
 };
 
 #endif
