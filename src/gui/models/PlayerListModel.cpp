@@ -80,19 +80,13 @@ bool PlayerListModel::matchesPosition(const std::pair<int, Player>& player) cons
     
     return player.second.position == m_currentPosition.toStdString();
 }
-
 void PlayerListModel::applyFilters() {
-    m_filteredPlayers = m_allPlayers;
+    auto filteredView = m_allPlayers 
+        | std::views::filter([this](const auto& player) {
+            return matchesFilter(player) && matchesPosition(player);
+        });
     
-    auto isMatching = [this](const auto& player) {
-        return matchesFilter(player) && matchesPosition(player);
-    };
-    
-    m_filteredPlayers.erase(
-        std::remove_if(m_filteredPlayers.begin(), m_filteredPlayers.end(), 
-                       [&isMatching](const auto& player) { return !isMatching(player); }),
-        m_filteredPlayers.end()
-    );
+    m_filteredPlayers.assign(filteredView.begin(), filteredView.end());
 }
 
 int PlayerListModel::filteredPlayerCount() const noexcept {

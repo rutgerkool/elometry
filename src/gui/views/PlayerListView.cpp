@@ -678,15 +678,20 @@ void PlayerListView::navigateToMainView() {
 }
 
 bool PlayerListView::findPlayerById(int playerId, Player& player) const {
-    const auto& allPlayers = m_ratingManager.getSortedRatedPlayers();
+    static std::unordered_map<int, Player> playerCache;
     
-    for (const auto& pair : allPlayers) {
-        if (pair.first == playerId) {
-            player = pair.second;
-            return true;
+    if (playerCache.empty()) {
+        const auto& allPlayers = m_ratingManager.getSortedRatedPlayers();
+        for (const auto& pair : allPlayers) {
+            playerCache[pair.first] = pair.second;
         }
     }
     
+    auto it = playerCache.find(playerId);
+    if (it != playerCache.end()) {
+        player = it->second;
+        return true;
+    }
     return false;
 }
 
