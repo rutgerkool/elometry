@@ -157,32 +157,33 @@ std::string Database::sanitizeCSVValue(std::string_view value) const {
         return "NULL";
     }
 
-    std::string result(value);
-    
-    auto startPos = result.find_first_not_of(" \t\n\r");
-    auto endPos = result.find_last_not_of(" \t\n\r");
-    
-    if (startPos == std::string::npos) {
+    auto startPos = value.find_first_not_of(" \t\n\r");
+    if (startPos == std::string_view::npos) {
         return "NULL";
     }
-    
-    result = result.substr(startPos, endPos - startPos + 1);
+    auto endPos = value.find_last_not_of(" \t\n\r");
+    value = value.substr(startPos, endPos - startPos + 1);
 
-    if (result.front() == '"' && result.back() == '"' && result.size() > 1) {
-        result = result.substr(1, result.size() - 2);
-        std::replace(result.begin(), result.end(), '\n', ' ');
+    if (value.size() > 1 && value.front() == '"' && value.back() == '"') {
+        value = value.substr(1, value.size() - 2);
     }
 
-    std::string escapedValue;
-    for (char c : result) {
+    std::string result;
+    result.reserve(value.size() + 10);
+    result += '\'';
+    
+    for (char c : value) {
         if (c == '\'') {
-            escapedValue += "''";
+            result += "''";
+        } else if (c == '\n') {
+            result += ' ';
         } else {
-            escapedValue += c;
+            result += c;
         }
     }
-
-    return "'" + escapedValue + "'";
+    
+    result += '\'';
+    return result;
 }
 
 std::vector<std::string> Database::getSanitizedValues(std::ifstream& file, std::string& line) const {

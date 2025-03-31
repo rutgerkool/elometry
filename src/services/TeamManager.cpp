@@ -236,15 +236,23 @@ void TeamManager::loadTeams() {
     m_teams.clear();
     std::vector<Team> loadedTeams = m_teamRepo.getAllTeams();
     
-    for (auto&& team : loadedTeams) {
+    std::mutex teamsMutex;
+    
+    #pragma omp parallel for
+    for (size_t i = 0; i < loadedTeams.size(); i++) {
+        Team& team = loadedTeams[i];
         int teamId = team.teamId;
+        
         std::vector<Player> selection = m_playerRepo.fetchPlayers(-1, -1, teamId);
         auto ratedPlayers = m_ratingManager.getFilteredRatedPlayers(selection);
         
-        m_teams[teamId] = std::move(team);
-        m_teams[teamId].players = std::move(ratedPlayers);
+        team.players = std::move(ratedPlayers);
         
-        m_nextTeamId = std::max(m_nextTeamId, teamId);
+        {
+            std::lock_guard<std::mutex> lock(teamsMutex);
+            m_teams[teamId] = std::move(team);
+            m_nextTeamId = std::max(m_nextTeamId, teamId);
+        }
     }
 }
 
