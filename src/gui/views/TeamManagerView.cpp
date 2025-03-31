@@ -15,6 +15,9 @@
 #include <QInputDialog>
 #include <QEasingCurve>
 #include <QParallelAnimationGroup>
+#include <QFuture>
+#include <QFutureWatcher>
+#include <QtConcurrent>
 #include <algorithm>
 #include <ranges>
 
@@ -908,20 +911,32 @@ void TeamManagerView::loadPlayerImage(int playerId, const QString& imageUrl) {
 }
 
 void TeamManagerView::loadNetworkImage(int playerId, const QString& imageUrl) {
-    QUrl url(imageUrl);
-    QNetworkRequest request(url);
-    QNetworkReply* reply = m_networkManager->get(request);
-    
-    connect(reply, &QNetworkReply::finished, this, [this, reply, playerId]() {
-        this->handleImageResponse(reply, playerId);
+    QFuture<QPixmap> future = QtConcurrent::run([imageUrl]() {
+        QNetworkAccessManager manager;
+        QEventLoop loop;
+        QNetworkReply* reply = manager.get(QNetworkRequest(QUrl(imageUrl)));
+        
+        QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+        loop.exec();
+        
+        QPixmap pixmap;
+        if (reply->error() == QNetworkReply::NoError) {
+            pixmap.loadFromData(reply->readAll());
+        }
         reply->deleteLater();
+        return pixmap;
     });
     
-    connect(reply, &QNetworkReply::errorOccurred, this, [reply]() {
-        reply->deleteLater();
+    QFutureWatcher<QPixmap>* watcher = new QFutureWatcher<QPixmap>(this);
+    connect(watcher, &QFutureWatcher<QPixmap>::finished, this, [this, watcher, playerId]() {
+        QPixmap pixmap = watcher->result();
+        if (!pixmap.isNull()) {
+            m_playerImageCache[playerId] = pixmap;
+            updatePlayerImageInModel(playerId);
+        }
+        watcher->deleteLater();
     });
-    
-    QTimer::singleShot(10000, reply, &QNetworkReply::abort);
+    watcher->setFuture(future);
 }
 
 void TeamManagerView::handleImageResponse(QNetworkReply* reply, int playerId) {

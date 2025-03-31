@@ -47,7 +47,7 @@ endif()
 find_package(CURL REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(GLPK REQUIRED)
-find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Network Charts)
+find_package(Qt6 CONFIG REQUIRED COMPONENTS Widgets Network Charts Concurrent)
 
 file(GLOB_RECURSE UI_HEADERS include/gui/*.h)
 
@@ -82,6 +82,7 @@ target_link_libraries(Elometry
     Qt6::Widgets 
     Qt6::Network
     Qt6::Charts
+    Qt6::Concurrent
     ${CURL_LIBRARIES}
 )
 
